@@ -9,4 +9,5 @@ KernelAddon nvmm :
 	nvmm.c
 	nvmm_haiku.cpp
 	nvmm_x86_vmx.c
+	nvmm_x86_svm.c
 ;
