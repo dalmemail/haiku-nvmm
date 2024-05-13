@@ -5,8 +5,9 @@
 #ifndef _KERNEL_ARCH_X86_64_CPU_H
 #define _KERNEL_ARCH_X86_64_CPU_H
 
-
+#ifdef __cplusplus
 #include <arch_thread_types.h>
+#endif
 
 
 extern uint16 gFPUControlDefault;
@@ -29,6 +30,7 @@ x86_write_msr(uint32_t msr, uint64_t value)
 }
 
 
+#ifdef __cplusplus
 static inline void
 x86_context_switch(arch_thread* oldState, arch_thread* newState)
 {
@@ -51,6 +53,7 @@ x86_context_switch(arch_thread* oldState, arch_thread* newState)
 	asm volatile("ldmxcsr %0" : : "m" (gFPUMXCSRDefault));
 	asm volatile("fldcw %0" : : "m" (gFPUControlDefault));
 }
+#endif
 
 
 static inline void
