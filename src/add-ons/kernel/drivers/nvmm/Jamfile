@@ -1,0 +1,12 @@
+SubDir HAIKU_TOP src add-ons kernel drivers nvmm ;
+
+UsePrivateKernelHeaders ;
+UsePrivateHeaders kernel ;
+
+SEARCH_SOURCE += [ FDirName $(SUBDIR) x86 ] ;
+
+KernelAddon nvmm :
+	nvmm.c
+	nvmm_haiku.cpp
+	nvmm_x86_vmx.c
+;
