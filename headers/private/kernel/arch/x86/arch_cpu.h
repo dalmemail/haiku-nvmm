@@ -15,7 +15,15 @@
 
 #include <module.h>
 
+#ifdef __cplusplus
 #include <arch_thread_types.h>
+#else
+#ifdef __x86_64__
+#	include <arch/x86/64/iframe.h>
+#else
+#	include <arch/x86/32/iframe.h>
+#endif // __x86_64__
+#endif // __cplusplus
 
 #include <arch/x86/arch_altcodepatch.h>
 #include <arch/x86/arch_cpuasm.h>
