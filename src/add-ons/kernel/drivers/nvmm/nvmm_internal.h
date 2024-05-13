@@ -145,9 +145,7 @@ struct nvmm_impl {
 };
 
 #if defined(__x86_64__)
-#ifndef __HAIKU__
 extern const struct nvmm_impl nvmm_x86_svm;
-#endif
 extern const struct nvmm_impl nvmm_x86_vmx;
 #endif
 

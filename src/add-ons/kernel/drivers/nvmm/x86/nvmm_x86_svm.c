@@ -26,15 +26,18 @@
  * SUCH DAMAGE.
  */
 
+#ifndef __HAIKU__
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/mman.h>
+#endif
 
 #include "../nvmm.h"
 #include "../nvmm_internal.h"
 #include "nvmm_x86.h"
 
+#if 0
 void svm_vmrun(paddr_t, uint64_t *);
 
 static inline void
@@ -48,6 +51,7 @@ svm_stgi(void)
 {
 	__asm volatile ("stgi" ::: "memory");
 }
+#endif
 
 #define	MSR_VM_HSAVE_PA	0xC0010117
 
@@ -234,6 +238,7 @@ svm_stgi(void)
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 struct vmcb_ctrl {
 	uint32_t intercept_cr;
 #define VMCB_CTRL_INTERCEPT_RCR(x)	__BIT( 0 + x)
@@ -472,9 +477,11 @@ struct vmcb {
 
 CTASSERT(sizeof(struct vmcb) == PAGE_SIZE);
 CTASSERT(offsetof(struct vmcb, state) == 0x400);
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static void svm_vcpu_state_provide(struct nvmm_cpu *, uint64_t);
 static void svm_vcpu_state_commit(struct nvmm_cpu *);
 
@@ -499,8 +506,10 @@ static struct svm_hsave hsave[OS_MAXCPUS];
 static uint8_t *svm_asidmap __read_mostly;
 static uint32_t svm_maxasid __read_mostly;
 static os_mtx_t svm_asidlock __cacheline_aligned;
+#endif // 0
 
 static bool svm_decode_assist __read_mostly;
+#if 0
 static uint32_t svm_ctrl_tlb_flush __read_mostly;
 
 #define SVM_XCR0_MASK_DEFAULT	(XCR0_X87|XCR0_SSE)
@@ -527,8 +536,10 @@ static uint64_t svm_xcr0_mask __read_mostly;
 #define CR4_TLB_FLUSH \
 	(CR4_PSE|CR4_PAE|CR4_PGE|CR4_PCIDE|CR4_SMEP)
 
+#endif
 /* -------------------------------------------------------------------------- */
 
+#if 0
 struct svm_machdata {
 	volatile uint64_t mach_htlb_gen;
 };
@@ -1361,8 +1372,10 @@ svm_exit_invalid(struct nvmm_vcpu_exit *exit, uint64_t code)
 	exit->reason = NVMM_VCPU_EXIT_INVALID;
 }
 
+#endif // 0
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static void
 svm_vcpu_guest_fpu_enter(struct nvmm_cpu *vcpu)
 {
@@ -1454,9 +1467,11 @@ svm_vcpu_guest_misc_leave(struct nvmm_cpu *vcpu)
 	wrmsr(MSR_FSBASE, cpudata->hstate.fsbase);
 	wrmsr(MSR_KERNELGSBASE, cpudata->hstate.kernelgsbase);
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static inline void
 svm_gtlb_catchup(struct nvmm_cpu *vcpu, int hcpu)
 {
@@ -1721,9 +1736,11 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 	return error;
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 #define SVM_MSRBM_READ	__BIT(0)
 #define SVM_MSRBM_WRITE	__BIT(1)
 
@@ -2099,9 +2116,11 @@ svm_vcpu_state_commit(struct nvmm_cpu *vcpu)
 	vcpu->comm->state_commit = 0;
 	svm_vcpu_setstate(vcpu);
 }
+#endif // 0
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static void
 svm_asid_alloc(struct nvmm_cpu *vcpu)
 {
@@ -2349,9 +2368,11 @@ svm_vcpu_destroy(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 
 	os_pagemem_free(cpudata, sizeof(*cpudata));
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static int
 svm_vcpu_configure_cpuid(struct svm_cpudata *cpudata, void *data)
 {
@@ -2419,9 +2440,11 @@ svm_vcpu_configure(struct nvmm_cpu *vcpu, uint64_t op, void *data)
 		return EINVAL;
 	}
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 #ifdef __NetBSD__
 static void
 svm_tlb_flush(struct pmap *pm)
@@ -2472,6 +2495,7 @@ svm_machine_configure(struct nvmm_machine *mach, uint64_t op, void *data)
 {
 	panic("%s: impossible", __func__);
 }
+#endif // 0
 
 /* -------------------------------------------------------------------------- */
 
@@ -2533,6 +2557,7 @@ svm_ident(void)
 	return true;
 }
 
+#if 0
 static void
 svm_init_asid(uint32_t maxasid)
 {
@@ -2666,10 +2691,11 @@ svm_capability(struct nvmm_capability *cap)
 	cap->arch.mxcsr_mask = x86_fpu_mxcsr_mask;
 	cap->arch.conf_cpuid_maxops = SVM_NCPUIDS;
 }
+#endif
 
 const struct nvmm_impl nvmm_x86_svm = {
 	.name = "x86-svm",
-	.ident = svm_ident,
+	.ident = svm_ident/*,
 	.init = svm_init,
 	.fini = svm_fini,
 	.capability = svm_capability,
@@ -2687,5 +2713,5 @@ const struct nvmm_impl nvmm_x86_svm = {
 	.vcpu_setstate = svm_vcpu_setstate,
 	.vcpu_getstate = svm_vcpu_getstate,
 	.vcpu_inject = svm_vcpu_inject,
-	.vcpu_run = svm_vcpu_run
+	.vcpu_run = svm_vcpu_run*/
 };
