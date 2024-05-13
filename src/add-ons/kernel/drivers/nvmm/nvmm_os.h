@@ -33,6 +33,12 @@
 #ifndef _NVMM_OS_H_
 #define _NVMM_OS_H_
 
+#if defined(__HAIKU__)
+#ifdef _KERNEL_MODE
+#define _KERNEL
+#endif
+#endif
+
 #ifndef _KERNEL
 #error "This file should not be included by userland programs."
 #endif
@@ -56,6 +62,19 @@
 #include <vm/pmap.h> /* pmap_ept_transform, pmap_npt_transform */
 #include <machine/cpu.h> /* hvm_break_wanted */
 #include <machine/cpufunc.h> /* ffsl, ffs, etc. */
+#elif defined(__HAIKU__)
+#include <arch/x86/arch_cpu.h>
+#include <Drivers.h>
+#include "include/sys/specialreg.h"
+#include <kernel/lock.h>
+#include <SupportDefs.h>
+#endif
+
+/* CPU Registers */
+#if defined(__HAIKU__)
+#define rdmsr		x86_read_msr
+#define x86_get_cr0	x86_read_cr0
+#define x86_get_cr4	x86_read_cr4
 #endif
 
 /* Types. */
@@ -74,18 +93,40 @@ typedef vm_offset_t		vaddr_t;
 typedef vm_offset_t		voff_t;
 typedef vm_size_t		vsize_t;
 typedef vm_paddr_t		paddr_t;
+#elif defined(__HAIKU__)
+typedef rw_lock			os_rwl_t;
+typedef mutex			os_mtx_t;
 #endif
 
 /* Attributes. */
 #if defined(__DragonFly__)
 #define __cacheline_aligned	__cachealign
 #define __diagused		__debugvar
+#elif defined(__HAIKU__)
+#define __cacheline_aligned
+#define __read_mostly
 #endif
 
 /* Macros. */
 #if defined(__DragonFly__)
 #define __arraycount(__x)	(sizeof(__x) / sizeof(__x[0]))
 #define __insn_barrier()	__asm __volatile("":::"memory")
+#elif defined (__HAIKU__)
+#define __arraycount		B_COUNT_OF
+// roundup() taken from headers/private/firewire/fwglue.h
+#define roundup(x, y)   ((((x)+((y)-1))/(y))*(y))  /* to any y */
+#define __aligned(bytes) __attribute__((__aligned__(bytes)))
+// bitops macros taken from sys/cdefs.h (NetBSD)
+#define NBBY 8 // (Number of Bits in a BYte)
+#define __BIT(__n)      \
+	(((uintmax_t)(__n) >= NBBY * sizeof(uintmax_t)) ? 0 : \
+	((uintmax_t)1 << (uintmax_t)((__n) & (NBBY * sizeof(uintmax_t) - 1))))
+
+#define __BITS(__m, __n)        \
+	((__BIT(max_c((__m), (__n)) + 1) - 1) ^ (__BIT(min_c((__m), (__n))) - 1))
+
+#define __LOWEST_SET_BIT(__mask) ((((__mask) - 1) & (__mask)) ^ (__mask))
+#define __SHIFTOUT(__x, __mask) (((__x) & (__mask)) / __LOWEST_SET_BIT(__mask))
 #endif
 
 /* Bitops. */
@@ -122,6 +163,14 @@ typedef vm_paddr_t		paddr_t;
 #define os_rwl_wlock(lock)	lockmgr(lock, LK_EXCLUSIVE);
 #define os_rwl_unlock(lock)	lockmgr(lock, LK_RELEASE)
 #define os_rwl_wheld(lock)	(lockstatus(lock, curthread) == LK_EXCLUSIVE)
+#elif defined(__HAIKU__)
+#define os_rwl_init(lock)	rw_lock_init(lock, NULL)
+#define os_rwl_destroy(lock)	rw_lock_destroy(lock)
+#define os_rwl_rlock(lock)	rw_lock_read_lock(lock)
+#define os_rwl_wlock(lock)	rw_lock_write_lock(lock)
+#define os_rwl_wheld(lock)	(lock->holder == thread_get_current_thread_id())
+#define os_rwl_unlock(lock)     (os_rwl_wheld(lock) \
+				? rw_lock_write_unlock(lock) : rw_lock_read_unlock(lock))
 #endif
 
 /* Mutexes. */
@@ -137,6 +186,16 @@ typedef vm_paddr_t		paddr_t;
 #define os_mtx_lock(lock)	lockmgr(lock, LK_EXCLUSIVE)
 #define os_mtx_unlock(lock)	lockmgr(lock, LK_RELEASE)
 #define os_mtx_owned(lock)	(lockstatus(lock, curthread) == LK_EXCLUSIVE)
+#elif defined(__HAIKU__)
+#define os_mtx_init(lock)	mutex_init(lock, NULL)
+#define os_mtx_destroy(lock)	mutex_destroy(lock)
+#define os_mtx_lock(lock)	mutex_lock(lock)
+#define os_mtx_unlock(lock)	mutex_unlock(lock)
+/* #define os_mtx_owned(lock) ...
+ * As far as I know there is no os_mtx_owned() equivalent in kernel/lock.h
+ * since holder is not stored unless KDEBUG is defined. This is only used
+ * once in the whole NVMM so we'll wait until we need it
+ */
 #endif
 
 /* Malloc. */
@@ -158,6 +217,9 @@ MALLOC_DECLARE(M_NVMM);
 #define os_printf		printf
 #elif defined(__DragonFly__)
 #define os_printf		kprintf
+#elif defined(__HAIKU__)
+#define TRACE_ALWAYS(a...)	dprintf(a)
+#define os_printf		TRACE_ALWAYS
 #endif
 
 /* Atomics. */
@@ -272,6 +334,7 @@ typedef cpumask_t		os_cpuset_t;
 
 /* -------------------------------------------------------------------------- */
 
+#ifndef __HAIKU__ // Not supported yet by our port
 os_vmspace_t *	os_vmspace_create(vaddr_t, vaddr_t);
 void		os_vmspace_destroy(os_vmspace_t *);
 int		os_vmspace_fault(os_vmspace_t *, vaddr_t, vm_prot_t);
@@ -314,6 +377,8 @@ os_return_needed(void)
 	return false;
 #endif
 }
+
+#endif // #ifndef __HAIKU__
 
 /* -------------------------------------------------------------------------- */
 
