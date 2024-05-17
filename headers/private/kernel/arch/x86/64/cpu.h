@@ -5,9 +5,7 @@
 #ifndef _KERNEL_ARCH_X86_64_CPU_H
 #define _KERNEL_ARCH_X86_64_CPU_H
 
-#ifdef __cplusplus
 #include <arch_thread_types.h>
-#endif
 
 
 extern uint16 gFPUControlDefault;
