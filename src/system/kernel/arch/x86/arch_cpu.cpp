@@ -1726,9 +1726,9 @@ arch_cpu_init_percpu(kernel_args* args, int cpu)
 status_t
 arch_cpu_init(kernel_args* args)
 {
-	if (args->ucode_data != NULL
+	if (args->ucode_data.ptr != NULL
 		&& args->ucode_data_size > 0) {
-		sUcodeData = args->ucode_data;
+		sUcodeData = args->ucode_data.ptr;
 		sUcodeDataSize = args->ucode_data_size;
 	} else {
 		dprintf("CPU: no microcode provided\n");

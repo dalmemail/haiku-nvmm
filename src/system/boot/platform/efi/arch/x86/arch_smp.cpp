@@ -168,7 +168,7 @@ calculate_apic_timer_conversion_factor(void)
 int
 arch_smp_get_current_cpu(void)
 {
-	if (gKernelArgs.arch_args.apic == NULL)
+	if (gKernelArgs.arch_args.apic.ptr == NULL)
 		return 0;
 
 	uint8 apicID = apic_read(APIC_ID) >> 24;
@@ -206,7 +206,7 @@ arch_smp_init_other_cpus(void)
 		(addr_t)gKernelArgs.arch_args.ioapic_phys);
 
 	// map in the apic
-	gKernelArgs.arch_args.apic = (void *)mmu_map_physical_memory(
+	gKernelArgs.arch_args.apic.ptr = (void *)mmu_map_physical_memory(
 		gKernelArgs.arch_args.apic_phys, B_PAGE_SIZE, kDefaultPageFlags);
 
 	TRACE("smp: apic (mapped) = %lx\n", (addr_t)gKernelArgs.arch_args.apic.Pointer());

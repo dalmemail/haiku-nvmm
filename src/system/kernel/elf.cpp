@@ -1270,7 +1270,7 @@ insert_preloaded_image(preloaded_elf_image *preloadedImage, bool kernel)
 	if (image == NULL)
 		return B_NO_MEMORY;
 
-	image->name = strdup(preloadedImage->name);
+	image->name = strdup((const char *)preloadedImage->name.ptr);
 	image->dynamic_section = preloadedImage->dynamic_section.start;
 
 	image->text_region.id = preloadedImage->text_region.id;
@@ -1302,24 +1302,24 @@ insert_preloaded_image(preloaded_elf_image *preloadedImage, bool kernel)
 		sKernelImage = image;
 
 	// copy debug symbols to the kernel heap
-	if (preloadedImage->debug_symbols != NULL) {
+	if (preloadedImage->debug_symbols.ptr != NULL) {
 		int32 debugSymbolsSize = sizeof(elf_sym)
 			* preloadedImage->num_debug_symbols;
 		image->debug_symbols = (elf_sym*)malloc(debugSymbolsSize);
 		if (image->debug_symbols != NULL) {
-			memcpy(image->debug_symbols, preloadedImage->debug_symbols,
+			memcpy(image->debug_symbols, preloadedImage->debug_symbols.ptr,
 				debugSymbolsSize);
 		}
 	}
 	image->num_debug_symbols = preloadedImage->num_debug_symbols;
 
 	// copy debug string table to the kernel heap
-	if (preloadedImage->debug_string_table != NULL) {
+	if (preloadedImage->debug_string_table.ptr != NULL) {
 		image->debug_string_table = (char*)malloc(
 			preloadedImage->debug_string_table_size);
 		if (image->debug_string_table != NULL) {
 			memcpy((void*)image->debug_string_table,
-				preloadedImage->debug_string_table,
+				preloadedImage->debug_string_table.ptr,
 				preloadedImage->debug_string_table_size);
 		}
 	}
@@ -2738,13 +2738,14 @@ elf_init(kernel_args* args)
 
 	// Build a image structure for the kernel, which has already been loaded.
 	// The preloaded_images were already prepared by the VM.
-	image = args->kernel_image;
+	image = (preloaded_image*)args->kernel_image.ptr;
 	if (insert_preloaded_image(static_cast<preloaded_elf_image *>(image),
 			true) < B_OK)
 		panic("could not create kernel image.\n");
 
 	// Build image structures for all preloaded images.
-	for (image = args->preloaded_images; image != NULL; image = image->next)
+	for (image = (preloaded_image*)args->preloaded_images.ptr;
+		image != NULL; image = (preloaded_image*)image->next.ptr)
 		insert_preloaded_image(static_cast<preloaded_elf_image *>(image),
 			false);
 

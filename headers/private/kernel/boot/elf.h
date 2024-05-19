@@ -27,12 +27,12 @@ typedef struct elf64_region {
 } _PACKED elf64_region;
 
 struct preloaded_image {
-	FixedWidthPointer<struct preloaded_image> next;
-	FixedWidthPointer<char> name;
+	FixedWidthPointer next;
+	FixedWidthPointer name;
 	uint8		elf_class;
 	addr_range	dynamic_section;
 
-	FixedWidthPointer<char> debug_string_table;
+	FixedWidthPointer debug_string_table;
 	uint32		num_debug_symbols;
 	uint32		debug_string_table_size;
 
@@ -48,16 +48,16 @@ struct preloaded_elf32_image : public preloaded_image {
 	elf32_region text_region;
 	elf32_region data_region;
 
-	FixedWidthPointer<Elf32_Sym> syms;
-	FixedWidthPointer<Elf32_Rel> rel;
+	FixedWidthPointer syms;
+	FixedWidthPointer rel;
 	int32		rel_len;
-	FixedWidthPointer<Elf32_Rela> rela;
+	FixedWidthPointer rela;
 	int32		rela_len;
-	FixedWidthPointer<Elf32_Rel> pltrel;
+	FixedWidthPointer pltrel;
 	int32		pltrel_len;
 	int32		pltrel_type;
 
-	FixedWidthPointer<Elf32_Sym> debug_symbols;
+	FixedWidthPointer debug_symbols;
 } _PACKED;
 
 struct preloaded_elf64_image : public preloaded_image {
@@ -65,16 +65,16 @@ struct preloaded_elf64_image : public preloaded_image {
 	elf64_region text_region;
 	elf64_region data_region;
 
-	FixedWidthPointer<Elf64_Sym> syms;
-	FixedWidthPointer<Elf64_Rel> rel;
+	FixedWidthPointer syms;
+	FixedWidthPointer rel;
 	int64		rel_len;
-	FixedWidthPointer<Elf64_Rela> rela;
+	FixedWidthPointer rela;
 	int64		rela_len;
-	FixedWidthPointer<Elf64_Rel> pltrel;
+	FixedWidthPointer pltrel;
 	int64		pltrel_len;
 	int64		pltrel_type;
 
-	FixedWidthPointer<Elf64_Sym> debug_symbols;
+	FixedWidthPointer debug_symbols;
 } _PACKED;
 
 

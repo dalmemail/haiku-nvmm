@@ -171,7 +171,7 @@ typedef struct image_queue_t {
 
 #define STRING(image, offset) ((char*)(&(image)->strtab[(offset)]))
 #define SYMNAME(image, sym) STRING(image, (sym)->st_name)
-#define SYMBOL(image, num) (&(image)->syms[num])
+#define SYMBOL(type, image, num) &(((type *)image->syms.ptr)[num])
 #define HASHTABSIZE(image) ((image)->symhash[0])
 #define HASHBUCKETS(image) ((unsigned int*)&(image)->symhash[2])
 #define HASHCHAINS(image) ((unsigned int*)&(image)->symhash[2+HASHTABSIZE(image)])

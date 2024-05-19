@@ -75,14 +75,14 @@ template<class T> static void
 convert_preloaded_image(preloaded_image* _image)
 {
 	T* image = static_cast<T*>(_image);
-	fix_address(image->next);
-	fix_address(image->name);
-	fix_address(image->debug_string_table);
-	fix_address(image->syms);
-	fix_address(image->rel);
-	fix_address(image->rela);
-	fix_address(image->pltrel);
-	fix_address(image->debug_symbols);
+	fix_address(&image->next);
+	fix_address(&image->name);
+	fix_address(&image->debug_string_table);
+	fix_address(&image->syms);
+	fix_address(&image->rel);
+	fix_address(&image->rela);
+	fix_address(&image->pltrel);
+	fix_address(&image->debug_symbols);
 }
 
 
@@ -90,27 +90,27 @@ convert_preloaded_image(preloaded_image* _image)
 static void
 convert_kernel_args()
 {
-	fix_address(gKernelArgs.boot_volume);
-	fix_address(gKernelArgs.vesa_modes);
-	fix_address(gKernelArgs.edid_info);
-	fix_address(gKernelArgs.debug_output);
-	fix_address(gKernelArgs.boot_splash);
+	fix_address(&gKernelArgs.boot_volume);
+	fix_address(&gKernelArgs.vesa_modes);
+	fix_address(&gKernelArgs.edid_info);
+	fix_address(&gKernelArgs.debug_output);
+	fix_address(&gKernelArgs.boot_splash);
 
 	arch_convert_kernel_args();
 
-	if (gKernelArgs.kernel_image->elf_class == ELFCLASS64) {
-		convert_preloaded_image<preloaded_elf64_image>(gKernelArgs.kernel_image);
+	if (((preloaded_image*)gKernelArgs.kernel_image.ptr)->elf_class == ELFCLASS64) {
+		convert_preloaded_image<preloaded_elf64_image>((preloaded_image*)gKernelArgs.kernel_image.ptr);
 	} else {
-		convert_preloaded_image<preloaded_elf32_image>(gKernelArgs.kernel_image);
+		convert_preloaded_image<preloaded_elf32_image>((preloaded_image*)gKernelArgs.kernel_image.ptr);
 	}
-	fix_address(gKernelArgs.kernel_image);
+	fix_address(&gKernelArgs.kernel_image);
 
 	// Iterate over the preloaded images. Must save the next address before
 	// converting, as the next pointer will be converted.
-	preloaded_image* image = gKernelArgs.preloaded_images;
-	fix_address(gKernelArgs.preloaded_images);
+	preloaded_image* image = (preloaded_image*)gKernelArgs.preloaded_images.ptr;
+	fix_address(&gKernelArgs.preloaded_images);
 	while (image != NULL) {
-		preloaded_image* next = image->next;
+		preloaded_image* next = (preloaded_image*)image->next.ptr;
 		if (image->elf_class == ELFCLASS64) {
 			convert_preloaded_image<preloaded_elf64_image>(image);
 		} else {
@@ -120,12 +120,12 @@ convert_kernel_args()
 	}
 
 	// Fix driver settings files.
-	driver_settings_file* file = gKernelArgs.driver_settings;
-	fix_address(gKernelArgs.driver_settings);
+	driver_settings_file* file = (driver_settings_file*)gKernelArgs.driver_settings.ptr;
+	fix_address(&gKernelArgs.driver_settings);
 	while (file != NULL) {
-		driver_settings_file* next = file->next;
-		fix_address(file->next);
-		fix_address(file->buffer);
+		driver_settings_file* next = (driver_settings_file*)file->next.ptr;
+		fix_address(&file->next);
+		fix_address(&file->buffer);
 		file = next;
 	}
 }
@@ -134,13 +134,13 @@ convert_kernel_args()
 static addr_t
 get_kernel_entry(void)
 {
-	if (gKernelArgs.kernel_image->elf_class == ELFCLASS64) {
+	if (((preloaded_image*)gKernelArgs.kernel_image.ptr)->elf_class == ELFCLASS64) {
 		preloaded_elf64_image *image = static_cast<preloaded_elf64_image *>(
-			gKernelArgs.kernel_image.Pointer());
+			gKernelArgs.kernel_image.ptr);
 		return image->elf_header.e_entry;
-	} else if (gKernelArgs.kernel_image->elf_class == ELFCLASS32) {
+	} else if (((preloaded_image*)gKernelArgs.kernel_image.ptr)->elf_class == ELFCLASS32) {
 		preloaded_elf32_image *image = static_cast<preloaded_elf32_image *>(
-			gKernelArgs.kernel_image.Pointer());
+			gKernelArgs.kernel_image.ptr);
 		return image->elf_header.e_entry;
 	}
 	panic("Unknown kernel format! Not 32-bit or 64-bit!");
@@ -151,17 +151,17 @@ get_kernel_entry(void)
 static void
 get_kernel_regions(addr_range& text, addr_range& data)
 {
-	if (gKernelArgs.kernel_image->elf_class == ELFCLASS64) {
+	if (((preloaded_image*)gKernelArgs.kernel_image.ptr)->elf_class == ELFCLASS64) {
 		preloaded_elf64_image *image = static_cast<preloaded_elf64_image *>(
-			gKernelArgs.kernel_image.Pointer());
+			gKernelArgs.kernel_image.ptr);
 		text.start = image->text_region.start;
 		text.size = image->text_region.size;
 		data.start = image->data_region.start;
 		data.size = image->data_region.size;
 		return;
-	} else if (gKernelArgs.kernel_image->elf_class == ELFCLASS32) {
+	} else if (((preloaded_image*)gKernelArgs.kernel_image.ptr)->elf_class == ELFCLASS32) {
 		preloaded_elf32_image *image = static_cast<preloaded_elf32_image *>(
-			gKernelArgs.kernel_image.Pointer());
+			gKernelArgs.kernel_image.ptr);
 		text.start = image->text_region.start;
 		text.size = image->text_region.size;
 		data.start = image->data_region.start;

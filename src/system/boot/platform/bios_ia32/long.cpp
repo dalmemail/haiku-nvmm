@@ -52,12 +52,15 @@ fix_address(uint64 address)
 }
 
 
-template<typename Type>
-inline void
-fix_address(FixedWidthPointer<Type>& p)
+/* Using a reference here instead of a pointer results in error
+   "cannot bind packet field". Pointers work since we are in x86_64
+   (where unaligned pointers are acceptable) but I'm not sure if
+   it's "legal" to do so: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=36566 */
+static inline void
+fix_address(FixedWidthPointer *p)
 {
-	if (p != NULL)
-		p.SetTo(fix_address(p.Get()));
+	if (p->ptr != NULL)
+		p->ptr = (void *)fix_address((uint64)p->ptr);
 }
 
 
@@ -244,14 +247,14 @@ long_mmu_init()
 static void
 convert_preloaded_image(preloaded_elf64_image* image)
 {
-	fix_address(image->next);
-	fix_address(image->name);
-	fix_address(image->debug_string_table);
-	fix_address(image->syms);
-	fix_address(image->rel);
-	fix_address(image->rela);
-	fix_address(image->pltrel);
-	fix_address(image->debug_symbols);
+	fix_address(&image->next);
+	fix_address(&image->name);
+	fix_address(&image->debug_string_table);
+	fix_address(&image->syms);
+	fix_address(&image->rel);
+	fix_address(&image->rela);
+	fix_address(&image->pltrel);
+	fix_address(&image->debug_symbols);
 }
 
 
@@ -259,26 +262,26 @@ convert_preloaded_image(preloaded_elf64_image* image)
 static void
 convert_kernel_args()
 {
-	fix_address(gKernelArgs.boot_volume);
-	fix_address(gKernelArgs.vesa_modes);
-	fix_address(gKernelArgs.edid_info);
-	fix_address(gKernelArgs.debug_output);
-	fix_address(gKernelArgs.previous_debug_output);
-	fix_address(gKernelArgs.boot_splash);
-	fix_address(gKernelArgs.ucode_data);
-	fix_address(gKernelArgs.arch_args.apic);
-	fix_address(gKernelArgs.arch_args.hpet);
+	fix_address(&gKernelArgs.boot_volume);
+	fix_address(&gKernelArgs.vesa_modes);
+	fix_address(&gKernelArgs.edid_info);
+	fix_address(&gKernelArgs.debug_output);
+	fix_address(&gKernelArgs.previous_debug_output);
+	fix_address(&gKernelArgs.boot_splash);
+	fix_address(&gKernelArgs.ucode_data);
+	fix_address(&gKernelArgs.arch_args.apic);
+	fix_address(&gKernelArgs.arch_args.hpet);
 
 	convert_preloaded_image(static_cast<preloaded_elf64_image*>(
-		gKernelArgs.kernel_image.Pointer()));
-	fix_address(gKernelArgs.kernel_image);
+		gKernelArgs.kernel_image.ptr));
+	fix_address(&gKernelArgs.kernel_image);
 
 	// Iterate over the preloaded images. Must save the next address before
 	// converting, as the next pointer will be converted.
-	preloaded_image* image = gKernelArgs.preloaded_images;
-	fix_address(gKernelArgs.preloaded_images);
+	preloaded_image* image = (preloaded_image*)gKernelArgs.preloaded_images.ptr;
+	fix_address(&gKernelArgs.preloaded_images);
 	while (image != NULL) {
-		preloaded_image* next = image->next;
+		preloaded_image* next = (preloaded_image*)image->next.ptr;
 		convert_preloaded_image(static_cast<preloaded_elf64_image*>(image));
 		image = next;
 	}
@@ -294,12 +297,12 @@ convert_kernel_args()
 	}
 
 	// Fix driver settings files.
-	driver_settings_file* file = gKernelArgs.driver_settings;
-	fix_address(gKernelArgs.driver_settings);
+	driver_settings_file* file = (driver_settings_file*)gKernelArgs.driver_settings.ptr;
+	fix_address(&gKernelArgs.driver_settings);
 	while (file != NULL) {
-		driver_settings_file* next = file->next;
-		fix_address(file->next);
-		fix_address(file->buffer);
+		driver_settings_file* next = (driver_settings_file*)file->next.ptr;
+		fix_address(&file->next);
+		fix_address(&file->buffer);
 		file = next;
 	}
 }
@@ -347,7 +350,7 @@ long_start_kernel()
 	enable_sse();
 
 	preloaded_elf64_image *image = static_cast<preloaded_elf64_image *>(
-		gKernelArgs.kernel_image.Pointer());
+		gKernelArgs.kernel_image.ptr);
 
 	smp_init_other_cpus();
 

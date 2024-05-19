@@ -156,10 +156,10 @@ platform_init_video(void)
 	list_init(&sModeList);
 
 	// we don't support VESA modes
-	gKernelArgs.vesa_modes = NULL;
+	gKernelArgs.vesa_modes.ptr = NULL;
 	gKernelArgs.vesa_modes_size = 0;
 
-	gKernelArgs.edid_info = NULL;
+	gKernelArgs.edid_info.ptr = NULL;
 
 	// make a guess at the best video mode to use, and save the mode ID for switching to graphics
 	// mode
@@ -240,7 +240,7 @@ platform_init_video(void)
 		edid1_info* edid_info = (edid1_info*)kernel_args_malloc(sizeof(edid1_info));
 		if (edid_info != NULL) {
 			edid_decode(edid_info, (edid1_raw*)sEdidActiveProtocol->Edid);
-			gKernelArgs.edid_info = edid_info;
+			gKernelArgs.edid_info.ptr = edid_info;
 		}
 	}
 

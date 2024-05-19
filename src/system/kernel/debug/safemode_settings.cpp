@@ -29,10 +29,10 @@ get_option_from_kernel_args(kernel_args* args, const char* settingsName,
 {
 	// find the settings in the kernel args
 	const char* settings = NULL;
-	for (driver_settings_file* file = args->driver_settings;
-			file != NULL; file = file->next) {
+	for (driver_settings_file* file = (driver_settings_file*)args->driver_settings.ptr;
+			file != NULL; file = (driver_settings_file*)file->next.ptr) {
 		if (strcmp(settingsName, file->name) == 0) {
-			settings = file->buffer;
+			settings = (const char *)file->buffer.ptr;
 			break;
 		}
 	}

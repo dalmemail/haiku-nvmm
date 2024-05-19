@@ -1380,7 +1380,7 @@ syslog_init_post_vm(struct kernel_args* args)
 		}
 	} else if (args->keep_debug_output_buffer) {
 		// create an area for the already-existing debug syslog buffer
-		void* base = (void*)ROUNDDOWN((addr_t)(void *)args->debug_output, B_PAGE_SIZE);
+		void* base = (void*)ROUNDDOWN((addr_t)args->debug_output.ptr, B_PAGE_SIZE);
 		size_t size = ROUNDUP(args->debug_size, B_PAGE_SIZE);
 		area_id area = create_area("syslog debug", &base, B_EXACT_ADDRESS, size,
 			B_ALREADY_WIRED, B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA);
@@ -1390,8 +1390,8 @@ syslog_init_post_vm(struct kernel_args* args)
 		}
 	}
 
-	if (!args->keep_debug_output_buffer && args->debug_output != NULL) {
-		syslog_write((const char*)args->debug_output.Pointer(),
+	if (!args->keep_debug_output_buffer && args->debug_output.ptr != NULL) {
+		syslog_write((const char*)args->debug_output.ptr,
 			args->debug_size, false);
 	}
 
@@ -1403,11 +1403,11 @@ syslog_init_post_vm(struct kernel_args* args)
 
 	// Allocate memory for the previous session's debug syslog output. In
 	// syslog_init_post_modules() we'll write it back to disk and free it.
-	if (args->previous_debug_output != NULL) {
+	if (args->previous_debug_output.ptr != NULL) {
 		sPreviousSessionSyslogBuffer = malloc(args->previous_debug_size);
 		if (sPreviousSessionSyslogBuffer != NULL) {
 			sPreviousSessionSyslogBufferSize = args->previous_debug_size;
-			memcpy(sPreviousSessionSyslogBuffer, args->previous_debug_output,
+			memcpy(sPreviousSessionSyslogBuffer, args->previous_debug_output.ptr,
 				sPreviousSessionSyslogBufferSize);
 		}
 	}
@@ -1461,10 +1461,10 @@ syslog_init_post_modules()
 static status_t
 syslog_init(struct kernel_args* args)
 {
-	if (!args->keep_debug_output_buffer || args->debug_output == NULL)
+	if (!args->keep_debug_output_buffer || args->debug_output.ptr == NULL)
 		return B_OK;
 
-	sSyslogBuffer = create_ring_buffer_etc(args->debug_output, args->debug_size,
+	sSyslogBuffer = create_ring_buffer_etc(args->debug_output.ptr, args->debug_size,
 		RING_BUFFER_INIT_FROM_BUFFER);
 	sDebugSyslog = true;
 

@@ -53,12 +53,12 @@ load_driver_settings_file(Directory* directory, const char* name)
 		// null terminate the buffer
 
 	strlcpy(file->name, name, sizeof(file->name));
-	file->buffer = buffer;
+	file->buffer.ptr = buffer;
 	file->size = stat.st_size;
 
 	// add it to the list
 	file->next = gKernelArgs.driver_settings;
-	gKernelArgs.driver_settings = file;
+	gKernelArgs.driver_settings.ptr = file;
 
 	return B_OK;
 }
@@ -146,12 +146,12 @@ add_safe_mode_settings(const char* settings)
 
 	strlcpy(file->name, B_SAFEMODE_DRIVER_SETTINGS, sizeof(file->name));
 	memcpy(buffer, settings, length + 1);
-	file->buffer = buffer;
+	file->buffer.ptr = buffer;
 	file->size = length;
 
 	// add it to the list
 	file->next = gKernelArgs.driver_settings;
-	gKernelArgs.driver_settings = file;
+	gKernelArgs.driver_settings.ptr = file;
 
 	return B_OK;
 }

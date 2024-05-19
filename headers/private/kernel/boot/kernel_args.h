@@ -8,12 +8,13 @@
 #ifndef KERNEL_BOOT_KERNEL_ARGS_H
 #define KERNEL_BOOT_KERNEL_ARGS_H
 
-
+#ifdef __cplusplus
 #include <SupportDefs.h>
 
 #include <boot/elf.h>
 #include <boot/disk_identifier.h>
 #include <boot/driver_settings.h>
+#endif
 
 #include <platform_kernel_args.h>
 #include <arch_kernel_args.h>
@@ -42,12 +43,13 @@ enum {
 	BOOT_METHOD_DEFAULT		= BOOT_METHOD_HARD_DISK
 };
 
+#ifdef __cplusplus
 typedef struct kernel_args {
 	uint32		kernel_args_size;
 	uint32		version;
 
-	FixedWidthPointer<struct preloaded_image> kernel_image;
-	FixedWidthPointer<struct preloaded_image> preloaded_images;
+	FixedWidthPointer kernel_image;
+	FixedWidthPointer preloaded_images;
 
 	uint32		num_physical_memory_ranges;
 	addr_range	physical_memory_range[MAX_PHYSICAL_MEMORY_RANGE];
@@ -63,10 +65,10 @@ typedef struct kernel_args {
 	addr_range	cpu_kstack[SMP_MAX_CPUS];
 
 	// boot volume KMessage data
-	FixedWidthPointer<void> boot_volume;
+	FixedWidthPointer boot_volume;
 	int32		boot_volume_size;
 
-	FixedWidthPointer<struct driver_settings_file> driver_settings;
+	FixedWidthPointer driver_settings;
 
 	struct {
 		addr_range	physical_buffer;
@@ -77,16 +79,16 @@ typedef struct kernel_args {
 		bool	enabled;
 	} frame_buffer;
 
-	FixedWidthPointer<void> vesa_modes;
+	FixedWidthPointer vesa_modes;
 	uint16		vesa_modes_size;
 	uint8		vesa_capabilities;
-	FixedWidthPointer<void> edid_info;
+	FixedWidthPointer edid_info;
 
-	FixedWidthPointer<void> debug_output;
+	FixedWidthPointer debug_output;
 		// If keep_debug_output_buffer, points to a ring_buffer, else to a
 		// simple flat buffer. In either case it stores the debug output from
 		// the boot loader.
-	FixedWidthPointer<void> previous_debug_output;
+	FixedWidthPointer previous_debug_output;
 		// A flat pointer to a buffer containing the debug output from the
 		// previous session. May be NULL.
 	uint32		debug_size;
@@ -103,17 +105,17 @@ typedef struct kernel_args {
 	arch_kernel_args arch_args;
 
 	// bootsplash data
-	FixedWidthPointer<uint8> boot_splash;
+	FixedWidthPointer boot_splash;
 
 	// optional microcode
-	FixedWidthPointer<void> ucode_data;
+	FixedWidthPointer ucode_data;
 	uint32	ucode_data_size;
 
 } _PACKED kernel_args;
 
 
 const size_t kernel_args_size_v1 = sizeof(kernel_args)
-	- sizeof(FixedWidthPointer<void>) - sizeof(uint32);
-
+	- sizeof(FixedWidthPointer) - sizeof(uint32);
+#endif
 
 #endif	/* KERNEL_BOOT_KERNEL_ARGS_H */

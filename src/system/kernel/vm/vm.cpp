@@ -4063,9 +4063,9 @@ create_preloaded_image_areas(struct preloaded_image* _image)
 	int32 length;
 
 	// use file name to create a good area name
-	char* fileName = strrchr(image->name, '/');
+	char* fileName = strrchr((const char*)image->name.ptr, '/');
 	if (fileName == NULL)
-		fileName = image->name;
+		fileName = (char*)image->name.ptr;
 	else
 		fileName++;
 
@@ -4385,10 +4385,11 @@ vm_init(kernel_args* args)
 
 	allocate_kernel_args(args);
 
-	create_preloaded_image_areas(args->kernel_image);
+	create_preloaded_image_areas((preloaded_image*)args->kernel_image.ptr);
 
 	// allocate areas for preloaded images
-	for (image = args->preloaded_images; image != NULL; image = image->next)
+	for (image = (preloaded_image*)args->preloaded_images.ptr;
+		image != NULL; image = (preloaded_image*)image->next.ptr)
 		create_preloaded_image_areas(image);
 
 	// allocate kernel stacks

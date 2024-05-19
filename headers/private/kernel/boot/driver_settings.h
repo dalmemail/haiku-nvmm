@@ -11,9 +11,9 @@
 
 
 struct driver_settings_file {
-	FixedWidthPointer<struct driver_settings_file> next;
+	FixedWidthPointer next;
 	char	name[B_OS_NAME_LENGTH];
-	FixedWidthPointer<char> buffer;
+	FixedWidthPointer buffer;
 	uint32	size;
 } _PACKED;
 

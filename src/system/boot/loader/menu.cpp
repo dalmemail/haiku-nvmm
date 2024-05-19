@@ -1038,7 +1038,7 @@ debug_menu_display_current_log(Menu* menu, MenuItem* item)
 static bool
 debug_menu_display_previous_syslog(Menu* menu, MenuItem* item)
 {
-	ring_buffer* buffer = (ring_buffer*)gKernelArgs.debug_output.Pointer();
+	ring_buffer* buffer = (ring_buffer*)gKernelArgs.debug_output.ptr;
 	if (buffer == NULL)
 		return true;
 
@@ -1100,7 +1100,7 @@ save_previous_syslog_to_volume(Directory* directory)
 	}
 
 	ring_buffer* syslogBuffer
-		= (ring_buffer*)gKernelArgs.debug_output.Pointer();
+		= (ring_buffer*)gKernelArgs.debug_output.ptr;
 	iovec vecs[2];
 	int32 vecCount = ring_buffer_get_vecs(syslogBuffer, vecs);
 	if (vecCount > 0) {
@@ -1457,7 +1457,7 @@ add_debug_menu()
     	"session that the boot loader will be able to access after rebooting.");
 
 	ring_buffer* syslogBuffer
-		= (ring_buffer*)gKernelArgs.debug_output.Pointer();
+		= (ring_buffer*)gKernelArgs.debug_output.ptr;
 	bool hasPreviousSyslog
 		= syslogBuffer != NULL && ring_buffer_readable(syslogBuffer) > 0;
 	if (hasPreviousSyslog) {

@@ -219,7 +219,7 @@ acpi_init()
 			TRACE(("acpi_init: found ACPI RSDP signature at %p\n", rsdp));
 
 		if (rsdp != NULL && acpi_check_rsdt(rsdp) == B_OK) {
-			gKernelArgs.arch_args.acpi_root = rsdp;
+			gKernelArgs.arch_args.acpi_root.ptr = rsdp;
 			arch_handle_acpi();
 			break;
 		}

@@ -99,7 +99,7 @@ _start(kernel_args *bootKernelArgs, int currentCPU)
 {
 	if (bootKernelArgs->version == CURRENT_KERNEL_ARGS_VERSION
 		&& bootKernelArgs->kernel_args_size == kernel_args_size_v1) {
-		sKernelArgs.ucode_data = NULL;
+		sKernelArgs.ucode_data.ptr = NULL;
 		sKernelArgs.ucode_data_size = 0;
 	} else if (bootKernelArgs->kernel_args_size != sizeof(kernel_args)
 		|| bootKernelArgs->version != CURRENT_KERNEL_ARGS_VERSION) {
@@ -297,7 +297,7 @@ main2(void* /*unused*/)
 	start_system_profiler(SYSTEM_PROFILE_SIZE, SYSTEM_PROFILE_STACK_DEPTH,
 		SYSTEM_PROFILE_INTERVAL);
 #endif
-	boot_splash_init(sKernelArgs.boot_splash);
+	boot_splash_init((uint8*)sKernelArgs.boot_splash.ptr);
 
 	commpage_init_post_cpus();
 #ifdef _COMPAT_MODE

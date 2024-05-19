@@ -160,27 +160,27 @@ video_display_splash(addr_t frameBuffer)
 	switch (gKernelArgs.frame_buffer.depth) {
 		case 8:
 			// pointer into the lower half of the icons image data
-			gKernelArgs.boot_splash
+			gKernelArgs.boot_splash.ptr
 				= (uint8*)kernel_args_malloc(uncompressedSize);
-			if (gKernelArgs.boot_splash == NULL)
+			if (gKernelArgs.boot_splash.ptr == NULL)
 				return B_NO_MEMORY;
 			uncompress(kSplashIcons8BitCompressedImage,
 				sizeof(kSplashIcons8BitCompressedImage),
-				gKernelArgs.boot_splash, uncompressedSize);
-			lowerHalfIconImage = (uint8 *)gKernelArgs.boot_splash
+				(uint8*)gKernelArgs.boot_splash.ptr, uncompressedSize);
+			lowerHalfIconImage = (uint8 *)gKernelArgs.boot_splash.ptr
 				+ (kSplashIconsWidth * iconsHalfHeight);
 		break;
 		default:	// 24bits is assumed here
 			uncompressedSize *= 3;
 			// pointer into the lower half of the icons image data
-			gKernelArgs.boot_splash
+			gKernelArgs.boot_splash.ptr
 				= (uint8*)kernel_args_malloc(uncompressedSize);
-			if (gKernelArgs.boot_splash == NULL)
+			if (gKernelArgs.boot_splash.ptr == NULL)
 				return B_NO_MEMORY;
 			uncompress(kSplashIcons24BitCompressedImage,
 				sizeof(kSplashIcons24BitCompressedImage),
-				gKernelArgs.boot_splash, uncompressedSize);
-			lowerHalfIconImage = (uint8 *)gKernelArgs.boot_splash
+				(uint8*)gKernelArgs.boot_splash.ptr, uncompressedSize);
+			lowerHalfIconImage = (uint8 *)gKernelArgs.boot_splash.ptr
 				+ (kSplashIconsWidth * iconsHalfHeight) * 3;
 		break;
 	}

@@ -483,14 +483,14 @@ frame_buffer_console_init(kernel_args* args)
 
 	sVesaModes = (vesa_mode*)malloc(args->vesa_modes_size);
 	if (sVesaModes != NULL && args->vesa_modes_size > 0) {
-		memcpy(sVesaModes, args->vesa_modes, args->vesa_modes_size);
+		memcpy(sVesaModes, args->vesa_modes.ptr, args->vesa_modes_size);
 		add_boot_item(VESA_MODES_BOOT_INFO, sVesaModes, args->vesa_modes_size);
 	}
 
-	if (args->edid_info != NULL) {
+	if (args->edid_info.ptr != NULL) {
 		edid1_info* info = (edid1_info*)malloc(sizeof(edid1_info));
 		if (info != NULL) {
-			memcpy(info, args->edid_info, sizeof(edid1_info));
+			memcpy(info, args->edid_info.ptr, sizeof(edid1_info));
 			add_boot_item(VESA_EDID_BOOT_INFO, info, sizeof(edid1_info));
 		}
 	}
