@@ -263,7 +263,7 @@ apic_set_lvt_timer_divide_config(uint32 config)
 status_t
 apic_init(kernel_args *args)
 {
-	if (args->arch_args.apic == NULL)
+	if (args->arch_args.apic.ptr == NULL)
 		return B_NO_INIT;
 
 	uint64 apic_base = x86_read_msr(IA32_MSR_APIC_BASE);
@@ -281,7 +281,7 @@ apic_init(kernel_args *args)
 		}
 	}
 
-	sLocalAPIC = args->arch_args.apic;
+	sLocalAPIC = args->arch_args.apic.ptr;
 	dprintf("mapping local apic at %p\n", sLocalAPIC);
 	if (vm_map_physical_memory(B_SYSTEM_TEAM, "local apic", &sLocalAPIC,
 			B_EXACT_ADDRESS, B_PAGE_SIZE,

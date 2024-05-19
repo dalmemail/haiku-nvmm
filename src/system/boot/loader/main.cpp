@@ -131,7 +131,7 @@ main(stage2_args *args)
 
 			load_modules(args, bootVolume);
 
-			gKernelArgs.ucode_data = NULL;
+			gKernelArgs.ucode_data.ptr = NULL;
 			gKernelArgs.ucode_data_size = 0;
 			platform_load_ucode(bootVolume);
 
@@ -144,7 +144,7 @@ main(stage2_args *args)
 			// set up kernel args version info
 			gKernelArgs.kernel_args_size = sizeof(kernel_args);
 			gKernelArgs.version = CURRENT_KERNEL_ARGS_VERSION;
-			if (gKernelArgs.ucode_data == NULL)
+			if (gKernelArgs.ucode_data.ptr == NULL)
 				gKernelArgs.kernel_args_size = kernel_args_size_v1;
 
 			// clone the boot_volume KMessage into kernel accessible memory
@@ -158,7 +158,7 @@ main(stage2_args *args)
 
 			buffer = (void*)(((addr_t)buffer + 7) & ~(addr_t)0x7);
 			memcpy(buffer, gBootVolume.Buffer(), gBootVolume.ContentSize());
-			gKernelArgs.boot_volume = buffer;
+			gKernelArgs.boot_volume.ptr = buffer;
 			gKernelArgs.boot_volume_size = gBootVolume.ContentSize();
 
 			platform_cleanup_devices();

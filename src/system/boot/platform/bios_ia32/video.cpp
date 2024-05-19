@@ -968,7 +968,7 @@ platform_init_video(void)
 			i++;
 		}
 
-		gKernelArgs.vesa_modes = modes;
+		gKernelArgs.vesa_modes.ptr = modes;
 		gKernelArgs.vesa_modes_size = sModeCount * sizeof(vesa_mode);
 	}
 
@@ -989,9 +989,9 @@ platform_init_video(void)
 			sDefaultMode = defaultMode;
 		}
 
-		gKernelArgs.edid_info = kernel_args_malloc(sizeof(edid1_info));
-		if (gKernelArgs.edid_info != NULL)
-			memcpy(gKernelArgs.edid_info, &info, sizeof(edid1_info));
+		gKernelArgs.edid_info.ptr = kernel_args_malloc(sizeof(edid1_info));
+		if (gKernelArgs.edid_info.ptr != NULL)
+			memcpy(gKernelArgs.edid_info.ptr, &info, sizeof(edid1_info));
 	}
 
 	sMode = sDefaultMode;

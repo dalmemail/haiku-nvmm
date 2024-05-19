@@ -218,11 +218,11 @@ hpet_init(struct kernel_args *args)
 	/* hpet_acpi_probe() through a similar "scan spots" table
 	   to that of smp.cpp.
 	   Seems to be the most elegant solution right now. */
-	if (args->arch_args.hpet == NULL)
+	if (args->arch_args.hpet.ptr == NULL)
 		return B_ERROR;
 
 	if (sHPETRegs == NULL) {
-		sHPETRegs = (struct hpet_regs *)args->arch_args.hpet.Pointer();
+		sHPETRegs = (struct hpet_regs *)args->arch_args.hpet.ptr;
 		if (vm_map_physical_memory(B_SYSTEM_TEAM, "hpet",
 			(void **)&sHPETRegs, B_EXACT_ADDRESS, B_PAGE_SIZE,
 			B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA,

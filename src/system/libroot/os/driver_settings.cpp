@@ -631,7 +631,7 @@ find_driver_settings(const char *name)
 status_t
 driver_settings_init(kernel_args *args)
 {
-	struct driver_settings_file *settings = args->driver_settings;
+	struct driver_settings_file *settings = (driver_settings_file*)args->driver_settings.ptr;
 
 	// Move the preloaded driver settings over to the kernel
 
@@ -650,7 +650,7 @@ driver_settings_init(kernel_args *args)
 				return B_NO_MEMORY;
 			}
 
-			memcpy(handle->text, settings->buffer, settings->size);
+			memcpy(handle->text, settings->buffer.ptr, settings->size);
 			handle->text[settings->size] = '\0';
 				// null terminate the buffer
 		} else
@@ -671,7 +671,7 @@ driver_settings_init(kernel_args *args)
 
 		list_add_item(&sHandles, handle);
 
-		settings = settings->next;
+		settings = (driver_settings_file*)settings->next.ptr;
 	}
 
 	return B_OK;
@@ -754,7 +754,7 @@ load_driver_settings(const char *driverName)
 #ifdef _BOOT_MODE
 	// see if we already have these settings loaded
 	{
-		struct driver_settings_file *settings = gKernelArgs.driver_settings;
+		struct driver_settings_file *settings = (struct driver_settings_file *)gKernelArgs.driver_settings.ptr;
 		while (settings != NULL) {
 			if (!strcmp(settings->name, driverName)) {
 				// we have it - since the buffer is clobbered, we have to
@@ -763,13 +763,13 @@ load_driver_settings(const char *driverName)
 				if (text == NULL)
 					return NULL;
 
-				memcpy(text, settings->buffer, settings->size + 1);
+				memcpy(text, settings->buffer.ptr, settings->size + 1);
 				settings_handle *handle =  new_settings(text, driverName);
 				if (handle == NULL)
 					free(text);
 				return handle;
 			}
-			settings = settings->next;
+			settings = (struct driver_settings_file *)settings->next.ptr;
 		}
 	}
 #endif	// _BOOT_MODE

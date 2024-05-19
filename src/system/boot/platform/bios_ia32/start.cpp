@@ -90,7 +90,7 @@ smp_start_kernel(void)
 	//TRACE(("smp_cpu_ready: entry cpu %ld\n", curr_cpu));
 
 	preloaded_elf32_image *image = static_cast<preloaded_elf32_image *>(
-		gKernelArgs.kernel_image.Pointer());
+		gKernelArgs.kernel_image.ptr);
 
 	// Important.  Make sure supervisor threads can fault on read only pages...
 	asm("movl %%eax, %%cr0" : : "a" ((1 << 31) | (1 << 16) | (1 << 5) | 1));
@@ -124,7 +124,7 @@ extern "C" void
 platform_start_kernel(void)
 {
 	// 64-bit kernel entry is all handled in long.cpp
-	if (gKernelArgs.kernel_image->elf_class == ELFCLASS64) {
+	if (((struct preloaded_image *)gKernelArgs.kernel_image.ptr)->elf_class == ELFCLASS64) {
 		long_start_kernel();
 		return;
 	}
@@ -137,7 +137,7 @@ platform_start_kernel(void)
 		= gKernelArgs.cpu_kstack[0].start + gKernelArgs.cpu_kstack[0].size;
 
 	preloaded_elf32_image *image = static_cast<preloaded_elf32_image *>(
-		gKernelArgs.kernel_image.Pointer());
+		gKernelArgs.kernel_image.ptr);
 
 	smp_init_other_cpus();
 	debug_cleanup();

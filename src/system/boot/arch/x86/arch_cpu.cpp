@@ -401,7 +401,7 @@ ucode_load(BootVolume& volume)
 			dprintf("ucode_load: couldn't read microcode file\n");
 			kernel_args_free(buffer);
 		} else {
-			gKernelArgs.ucode_data = buffer;
+			gKernelArgs.ucode_data.ptr = buffer;
 			gKernelArgs.ucode_data_size = length;
 			dprintf("ucode_load: microcode file read in memory\n");
 		}

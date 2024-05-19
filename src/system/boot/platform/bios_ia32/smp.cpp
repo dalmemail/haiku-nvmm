@@ -53,14 +53,14 @@ extern "C" void smp_trampoline_end(void);
 static uint32
 apic_read(uint32 offset)
 {
-	return *(volatile uint32 *)((addr_t)(void *)gKernelArgs.arch_args.apic + offset);
+	return *(volatile uint32 *)((addr_t)(void *)gKernelArgs.arch_args.apic.ptr + offset);
 }
 
 
 static void
 apic_write(uint32 offset, uint32 data)
 {
-	*(volatile uint32 *)((addr_t)(void *)gKernelArgs.arch_args.apic + offset) = data;
+	*(volatile uint32 *)((addr_t)(void *)gKernelArgs.arch_args.apic.ptr + offset) = data;
 }
 
 
@@ -359,7 +359,7 @@ calculate_apic_timer_conversion_factor(void)
 int
 smp_get_current_cpu(void)
 {
-	if (gKernelArgs.arch_args.apic == NULL)
+	if (gKernelArgs.arch_args.apic.ptr == NULL)
 		return 0;
 
 	uint8 apicID = apic_read(APIC_ID) >> 24;
@@ -397,10 +397,10 @@ smp_init_other_cpus(void)
 		(void *)gKernelArgs.arch_args.ioapic_phys));
 
 	// map in the apic
-	gKernelArgs.arch_args.apic = (void *)mmu_map_physical_memory(
+	gKernelArgs.arch_args.apic.ptr = (void *)mmu_map_physical_memory(
 		gKernelArgs.arch_args.apic_phys, B_PAGE_SIZE, kDefaultPageFlags);
 
-	TRACE(("smp: apic (mapped) = %p\n", (void *)gKernelArgs.arch_args.apic));
+	TRACE(("smp: apic (mapped) = %p\n", (void *)gKernelArgs.arch_args.apic.ptr));
 
 	// calculate how fast the apic timer is
 	calculate_apic_timer_conversion_factor();

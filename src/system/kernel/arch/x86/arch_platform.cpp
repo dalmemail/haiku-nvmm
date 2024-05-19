@@ -28,7 +28,7 @@ status_t
 arch_platform_init_post_vm(struct kernel_args *args)
 {
 	// Now we can add boot items; pass on the ACPI root pointer
-	sACPIRootPointer = args->arch_args.acpi_root.Get();
+	sACPIRootPointer = (phys_addr_t)args->arch_args.acpi_root.ptr;
 	add_boot_item("ACPI_ROOT_POINTER",
 		&sACPIRootPointer, sizeof(sACPIRootPointer));
 

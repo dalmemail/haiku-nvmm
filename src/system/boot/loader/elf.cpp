@@ -377,8 +377,8 @@ ELFLoader<Class>::Load(int fd, preloaded_image* _image)
 	image->elf_header.e_entry += image->text_region.delta;
 
 	image->num_debug_symbols = 0;
-	image->debug_symbols = NULL;
-	image->debug_string_table = NULL;
+	image->debug_symbols.ptr = NULL;
+	image->debug_string_table.ptr = NULL;
 
 	if (sLoadElfSymbols)
 		_LoadSymbolTable(fd, image);
@@ -409,17 +409,18 @@ ELFLoader<Class>::Relocate(preloaded_image* _image)
 		return status;
 
 	// deal with the rels first
-	if (image->rel) {
+	if (image->rel.ptr) {
 		TRACE(("total %i relocs\n",
 			(int)image->rel_len / (int)sizeof(RelType)));
 
-		status = boot_arch_elf_relocate_rel(image, image->rel, image->rel_len);
+		status = boot_arch_elf_relocate_rel(image, (RelType*)image->rel.ptr, image->rel_len);
+
 		if (status != B_OK)
 			return status;
 	}
 
-	if (image->pltrel) {
-		RelType* pltrel = image->pltrel;
+	if (image->pltrel.ptr) {
+		RelType* pltrel = (RelType*)image->pltrel.ptr;
 		if (image->pltrel_type == DT_REL) {
 			TRACE(("total %i plt-relocs\n",
 				(int)image->pltrel_len / (int)sizeof(RelType)));
@@ -437,11 +438,12 @@ ELFLoader<Class>::Relocate(preloaded_image* _image)
 			return status;
 	}
 
-	if (image->rela) {
+	if (image->rela.ptr) {
 		TRACE(("total %i rela relocs\n",
 			(int)image->rela_len / (int)sizeof(RelaType)));
-		status = boot_arch_elf_relocate_rela(image, image->rela,
+		status = boot_arch_elf_relocate_rela(image, (RelaType*)image->rela.ptr,
 			image->rela_len);
+
 		if (status != B_OK)
 			return status;
 	}
@@ -560,9 +562,9 @@ ELFLoader<Class>::_LoadSymbolTable(int fd, ImageType* image)
 	TRACE(("loaded %" B_PRIu32 " debug symbols\n", numSymbols));
 
 	// insert tables into image
-	image->debug_symbols = symbolTable;
+	image->debug_symbols.ptr = symbolTable;
 	image->num_debug_symbols = numSymbols;
-	image->debug_string_table = stringTable;
+	image->debug_string_table.ptr = stringTable;
 	image->debug_string_table_size = size;
 
 	free(sectionHeaders);
@@ -583,12 +585,12 @@ template<typename Class>
 /*static*/ status_t
 ELFLoader<Class>::_ParseDynamicSection(ImageType* image)
 {
-	image->syms = 0;
-	image->rel = 0;
+	image->syms.ptr = 0;
+	image->rel.ptr = 0;
 	image->rel_len = 0;
-	image->rela = 0;
+	image->rela.ptr = 0;
 	image->rela_len = 0;
-	image->pltrel = 0;
+	image->pltrel.ptr = 0;
 	image->pltrel_len = 0;
 	image->pltrel_type = 0;
 
@@ -603,25 +605,25 @@ ELFLoader<Class>::_ParseDynamicSection(ImageType* image)
 			case DT_STRTAB:
 				break;
 			case DT_SYMTAB:
-				image->syms = (SymType*)Class::Map(d[i].d_un.d_ptr
+				image->syms.ptr = (SymType*)Class::Map(d[i].d_un.d_ptr
 					+ image->text_region.delta);
 				break;
 			case DT_REL:
-				image->rel = (RelType*)Class::Map(d[i].d_un.d_ptr
+				image->rel.ptr = (RelType*)Class::Map(d[i].d_un.d_ptr
 					+ image->text_region.delta);
 				break;
 			case DT_RELSZ:
 				image->rel_len = d[i].d_un.d_val;
 				break;
 			case DT_RELA:
-				image->rela = (RelaType*)Class::Map(d[i].d_un.d_ptr
+				image->rela.ptr = (RelaType*)Class::Map(d[i].d_un.d_ptr
 					+ image->text_region.delta);
 				break;
 			case DT_RELASZ:
 				image->rela_len = d[i].d_un.d_val;
 				break;
 			case DT_JMPREL:
-				image->pltrel = (RelType*)Class::Map(d[i].d_un.d_ptr
+				image->pltrel.ptr = (RelType*)Class::Map(d[i].d_un.d_ptr
 					+ image->text_region.delta);
 				break;
 			case DT_PLTRELSZ:
@@ -637,7 +639,7 @@ ELFLoader<Class>::_ParseDynamicSection(ImageType* image)
 	}
 
 	// lets make sure we found all the required sections
-	if (image->syms == NULL)
+	if (image->syms.ptr == NULL)
 		return B_ERROR;
 
 	return B_OK;
@@ -669,8 +671,8 @@ elf_load_image(int fd, preloaded_image** _image)
 	TRACE(("elf_load_image(fd = %d, _image = %p)\n", fd, _image));
 
 #if BOOT_SUPPORT_ELF64
-	if (gKernelArgs.kernel_image == NULL
-		|| gKernelArgs.kernel_image->elf_class == ELFCLASS64) {
+	if (gKernelArgs.kernel_image.ptr == NULL ||
+		((struct preloaded_image*)gKernelArgs.kernel_image.ptr)->elf_class == ELFCLASS64) {
 		status = ELF64Loader::Create(fd, _image);
 		if (status == B_OK)
 			return ELF64Loader::Load(fd, *_image);
@@ -679,8 +681,8 @@ elf_load_image(int fd, preloaded_image** _image)
 	}
 #endif
 #if BOOT_SUPPORT_ELF32
-	if (gKernelArgs.kernel_image == NULL
-		|| gKernelArgs.kernel_image->elf_class == ELFCLASS32) {
+	if (gKernelArgs.kernel_image.ptr == NULL ||
+		((struct preloaded_image*)gKernelArgs.kernel_image.ptr)->elf_class == ELFCLASS32) {
 		status = ELF32Loader::Create(fd, _image);
 		if (status == B_OK)
 			return ELF32Loader::Load(fd, *_image);
@@ -708,8 +710,8 @@ elf_load_image(Directory* directory, const char* path)
 	if (fstat(fd, &stat) < 0)
 		return errno;
 
-	image = gKernelArgs.preloaded_images;
-	for (; image != NULL; image = image->next) {
+	image = (struct preloaded_image *)gKernelArgs.preloaded_images.ptr;
+	for (; image != NULL; image = (struct preloaded_image *)image->next.ptr) {
 		if (image->inode == stat.st_ino) {
 			// file has already been loaded, no need to load it twice!
 			close(fd);
@@ -721,12 +723,12 @@ elf_load_image(Directory* directory, const char* path)
 
 	status_t status = elf_load_image(fd, &image);
 	if (status == B_OK) {
-		image->name = kernel_args_strdup(path);
+		image->name.ptr = kernel_args_strdup(path);
 		image->inode = stat.st_ino;
 
 		// insert to kernel args
 		image->next = gKernelArgs.preloaded_images;
-		gKernelArgs.preloaded_images = image;
+		gKernelArgs.preloaded_images.ptr = image;
 	} else
 		kernel_args_free(image);
 

@@ -39,7 +39,7 @@ hpet_init(void)
 
 	// Clear hpet kernel args to known invalid state;
 	gKernelArgs.arch_args.hpet_phys = 0;
-	gKernelArgs.arch_args.hpet = NULL;
+	gKernelArgs.arch_args.hpet.ptr = NULL;
 
 	if (hpet == NULL) {
 		// No HPET table in the RSDT.
@@ -52,6 +52,6 @@ hpet_init(void)
 	TRACE("hpet_init: found HPET at 0x%" B_PRIx64 ".\n",
 		hpet->hpet_address.address);
 	gKernelArgs.arch_args.hpet_phys = hpet->hpet_address.address;
-	gKernelArgs.arch_args.hpet = (void *)mmu_map_physical_memory(
+	gKernelArgs.arch_args.hpet.ptr = (void *)mmu_map_physical_memory(
 		gKernelArgs.arch_args.hpet_phys, B_PAGE_SIZE, kDefaultPageFlags);
 }

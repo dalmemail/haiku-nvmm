@@ -1120,7 +1120,7 @@ register_preloaded_module_image(struct preloaded_image* image)
 		(void**)&moduleImage->dependencies);
 		// this is allowed to be NULL
 
-	moduleImage->path = strdup(image->name);
+	moduleImage->path = strdup((const char *)image->name.ptr);
 	if (moduleImage->path == NULL) {
 		status = B_NO_MEMORY;
 		goto error;
@@ -1814,10 +1814,11 @@ module_init(kernel_args* args)
 
 	// register preloaded images
 
-	for (image = args->preloaded_images; image != NULL; image = image->next) {
+	for (image = (preloaded_image*)args->preloaded_images.ptr;
+		image != NULL; image = (preloaded_image*)image->next.ptr) {
 		status_t status = register_preloaded_module_image(image);
 		if (status != B_OK && image->is_module) {
-			dprintf("Could not register image \"%s\": %s\n", (char *)image->name,
+			dprintf("Could not register image \"%s\": %s\n", (char *)image->name.ptr,
 				strerror(status));
 		}
 	}

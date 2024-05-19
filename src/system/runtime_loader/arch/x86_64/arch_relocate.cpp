@@ -25,7 +25,7 @@ relocate_rela(image_t* rootImage, image_t* image, Elf64_Rela* rel,
 
 		// Resolve the symbol, if any.
 		if (symIndex != 0) {
-			Elf64_Sym* sym = SYMBOL(image, symIndex);
+			Elf64_Sym* sym = &(image)->syms[symIndex];
 
 			status_t status = resolve_symbol(rootImage, image, sym, cache,
 				&symAddr, &symbolImage);

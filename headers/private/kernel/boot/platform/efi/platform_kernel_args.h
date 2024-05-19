@@ -35,7 +35,7 @@ typedef struct bios_drive {
 typedef struct {
 	uint16		serial_base_ports[MAX_SERIAL_PORTS];
 
-	FixedWidthPointer<bios_drive> drives;
+	FixedWidthPointer drives;
 		// this does not contain the boot drive
 	// seems to be ignored entirely?
 

@@ -159,7 +159,7 @@ debug_init_post_mmu(void)
 	sDebugSyslogBuffer = create_ring_buffer_etc(buffer, size,
 		recover ? RING_BUFFER_INIT_FROM_BUFFER : 0);
 
-	gKernelArgs.debug_output = sDebugSyslogBuffer;
+	gKernelArgs.debug_output.ptr = (void *)sDebugSyslogBuffer;
 	gKernelArgs.debug_size = sDebugSyslogBuffer->size;
 }
 
@@ -179,7 +179,7 @@ debug_cleanup(void)
 		if (bytesReadable != 0) {
 			if (uint8* buffer = (uint8*)kernel_args_malloc(bytesReadable)) {
 				ring_buffer_read(sDebugSyslogBuffer, buffer, bytesReadable);
-				gKernelArgs.previous_debug_output = buffer;
+				gKernelArgs.previous_debug_output.ptr = buffer;
 			} else
 				gKernelArgs.previous_debug_size = 0;
 		}
@@ -204,9 +204,9 @@ debug_cleanup(void)
 		gKernelArgs.keep_debug_output_buffer = false;
 
 	if (!gKernelArgs.keep_debug_output_buffer) {
-		gKernelArgs.debug_output = kernel_args_malloc(sBufferPosition);
-		if (gKernelArgs.debug_output != NULL) {
-			memcpy(gKernelArgs.debug_output, sBuffer, sBufferPosition);
+		gKernelArgs.debug_output.ptr = kernel_args_malloc(sBufferPosition);
+		if (gKernelArgs.debug_output.ptr != NULL) {
+			memcpy(gKernelArgs.debug_output.ptr, sBuffer, sBufferPosition);
 			gKernelArgs.debug_size = sBufferPosition;
 		}
 	}

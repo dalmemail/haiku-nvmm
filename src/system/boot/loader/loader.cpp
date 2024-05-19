@@ -127,15 +127,15 @@ load_kernel(stage2_args* args, BootVolume& volume)
 		return status;
 	}
 
-	gKernelArgs.kernel_image = image;
+	gKernelArgs.kernel_image.ptr = image;
 
-	status = elf_relocate_image(gKernelArgs.kernel_image);
+	status = elf_relocate_image((struct preloaded_image *)gKernelArgs.kernel_image.ptr);
 	if (status < B_OK) {
 		dprintf("relocating kernel failed: %" B_PRIx32 "!\n", status);
 		return status;
 	}
 
-	gKernelArgs.kernel_image->name = kernel_args_strdup(name);
+	((struct preloaded_image *)gKernelArgs.kernel_image.ptr)->name.ptr = kernel_args_strdup(name);
 
 	return B_OK;
 }

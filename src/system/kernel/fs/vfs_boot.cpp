@@ -470,7 +470,7 @@ void
 vfs_mount_boot_file_system(kernel_args* args)
 {
 	KMessage bootVolume;
-	bootVolume.SetTo(args->boot_volume, args->boot_volume_size);
+	bootVolume.SetTo(args->boot_volume.ptr, args->boot_volume_size);
 
 	PartitionStack partitions;
 	status_t status = get_boot_partitions(bootVolume, partitions);

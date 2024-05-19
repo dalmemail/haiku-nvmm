@@ -92,7 +92,7 @@ arch_elf_relocate_rel(struct elf_image_info *image,
 				Elf32_Sym *symbol;
 				status_t status;
 
-				symbol = SYMBOL(image, ELF32_R_SYM(rel[i].r_info));
+				symbol = SYMBOL(Elf32_Sym, image, ELF32_R_SYM(rel[i].r_info));
 
 #ifdef _BOOT_MODE
 				status = boot_elf_resolve_symbol(image, symbol, &S);
@@ -232,7 +232,11 @@ arch_elf_relocate_rela(struct elf_image_info *image,
 
 		// Resolve the symbol, if any.
 		if (symIndex != 0) {
-			Elf64_Sym* symbol = SYMBOL(image, symIndex);
+#ifdef _BOOT_MODE
+			Elf64_Sym* symbol = SYMBOL(Elf64_Sym, image, symIndex);
+#else
+			Elf64_Sym* symbol = &(image)->syms[symIndex];
+#endif
 
 			status_t status;
 #ifdef _BOOT_MODE

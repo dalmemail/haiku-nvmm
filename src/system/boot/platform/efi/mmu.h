@@ -67,12 +67,11 @@ fix_address(addr_t address)
 }
 
 
-template<typename Type>
 inline void
-fix_address(FixedWidthPointer<Type>& p)
+fix_address(FixedWidthPointer *p)
 {
-	if (p != NULL)
-		p.SetTo(fix_address(p.Get()));
+	if (p->ptr != NULL)
+		p->ptr = (void *)fix_address((addr_t)p->ptr);
 }
 
 

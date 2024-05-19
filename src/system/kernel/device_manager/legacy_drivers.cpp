@@ -1414,12 +1414,13 @@ legacy_driver_add_preloaded(kernel_args* args)
 	}
 
 	struct preloaded_image* image;
-	for (image = args->preloaded_images; image != NULL; image = image->next) {
+	for (image = (preloaded_image*)args->preloaded_images.ptr;
+		image != NULL; image = (preloaded_image*)image->next.ptr) {
 		if (image->is_module || image->id < 0)
 			continue;
 
 		KPath imagePath(basePath);
-		status = imagePath.Append(image->name);
+		status = imagePath.Append((const char *)image->name.ptr);
 
 		// try to add the driver
 		TRACE(("legacy_driver_add_preloaded: adding driver %s\n",
@@ -1429,7 +1430,7 @@ legacy_driver_add_preloaded(kernel_args* args)
 			status = add_driver(imagePath.Path(), image->id);
 		if (status != B_OK) {
 			dprintf("legacy_driver_add_preloaded: Failed to add \"%s\": %s\n",
-				(char*)image->name, strerror(status));
+				(char*)image->name.ptr, strerror(status));
 			unload_kernel_add_on(image->id);
 		}
 	}
