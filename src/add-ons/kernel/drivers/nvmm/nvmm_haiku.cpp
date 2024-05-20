@@ -6,15 +6,18 @@
 
 #include <Drivers.h>
 
+extern "C" {
 #include "nvmm.h"
 #include "nvmm_internal.h"
 #include "nvmm_os.h"
 #include "x86/nvmm_x86.h"
+}
 
 #include <OS.h>
 
 #include <arch/x86/arch_cpu.h>
 #include <kernel/heap.h>
+#include <kernel/smp.h>
 
 
 extern "C" void x86_get_cpuid(uint32_t eax, cpuid_desc_t *descriptors)
@@ -43,20 +46,16 @@ extern "C" int haiku_get_xsave_mask()
 	return 0;
 }
 
-extern "C" void *haiku_zalloc(size_t size)
+
+extern "C" int32 haiku_smp_get_current_cpu()
 {
-	void *ret = malloc_etc(size, 0);
-	if (ret == NULL)
-		return NULL;
-
-	// memset
-	unsigned char *it = (unsigned char *)ret;
-	for (size_t i = 0; i < size; i++)
-		it[i] = 0;
-
-	return ret;
+	return smp_get_current_cpu();
 }
 
+extern "C" int32 haiku_smp_get_num_cpus()
+{
+	return smp_get_num_cpus();
+}
 
 /*---------------------------------------------------------------------------------------*/
 

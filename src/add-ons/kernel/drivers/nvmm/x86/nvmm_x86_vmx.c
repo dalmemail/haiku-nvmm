@@ -27,7 +27,6 @@
  */
 
 #if defined(__HAIKU__)
-#include <kernel/smp.h>
 #else
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -3623,7 +3622,7 @@ vmx_init(void)
 	vmx_global_hstate.sfmask = rdmsr(MSR_SFMASK);
 
 #if defined(__HAIKU__)
-	vmxoncpu = os_mem_zalloc(sizeof(struct vmxoncpu) * smp_get_num_cpus());
+	vmxoncpu = os_mem_zalloc(sizeof(struct vmxoncpu) * haiku_smp_get_num_cpus());
 #else
 	memset(vmxoncpu, 0, sizeof(vmxoncpu));
 #endif

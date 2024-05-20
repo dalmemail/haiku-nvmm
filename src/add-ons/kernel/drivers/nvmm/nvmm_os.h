@@ -64,17 +64,11 @@
 #include <machine/cpufunc.h> /* ffsl, ffs, etc. */
 #elif defined(__HAIKU__)
 #include <arch/x86/arch_cpu.h>
-#include <boot/kernel_args.h>
 #include <Drivers.h>
 #include "include/sys/specialreg.h"
-#include <kernel/heap.h>
 #include <kernel/lock.h>
-#include <kernel/smp.h>
 #include <SupportDefs.h>
-#endif
-
-#if defined(__HAIKU__) && defined(__cplusplus)
-extern "C" {
+#include <stdlib.h>
 #endif
 
 /* CPU Registers */
@@ -224,9 +218,9 @@ MALLOC_DECLARE(M_NVMM);
 #define os_mem_zalloc(size)	kmalloc(size, M_NVMM, M_WAITOK | M_ZERO)
 #define os_mem_free(ptr, size)	kfree(ptr, M_NVMM)
 #elif defined(__HAIKU__)
-#define os_mem_alloc(size)	malloc_etc(size, 0)
-#define os_mem_zalloc(size)	haiku_zalloc(size)
-#define os_mem_free(ptr, size)  free_etc(ptr)
+#define os_mem_alloc(size)	malloc(size)
+#define os_mem_zalloc(size)	calloc(1, size)
+#define os_mem_free(ptr, size)  free(ptr)
 #endif
 
 /* Printf. */
@@ -293,15 +287,13 @@ typedef struct globaldata	os_cpu_t;
 #define os_curcpu_gdt()		mdcpu->gd_gdt
 #define os_curcpu_idt()		r_idt_arr[mycpuid].rd_base
 #elif defined(__HAIKU__)
-typedef uint64			os_cpu_t;
-#define OS_MAXCPUS		SMP_MAX_CPUS
-// We don't do any error checking here, but _ncpus could be -1..
+typedef int32			os_cpu_t;
 #define OS_CPU_FOREACH(cpu)	\
-	uint64 _ncpus = smp_get_num_cpus(); \
+	int32 _ncpus = haiku_smp_get_num_cpus(); \
 	for (cpu = 0; cpu < _ncpus; cpu++)
-#define os_cpu_number(cpu)	(uint64)cpu
-#define os_curcpu()		smp_get_current_cpu
-#define os_curcpu_number()	smp_get_current_cpu
+#define os_cpu_number(cpu)	(int32)cpu
+#define os_curcpu()		haiku_smp_get_current_cpu
+#define os_curcpu_number()	haiku_smp_get_current_cpu
 #endif
 
 /* Cpusets. */
@@ -414,7 +406,8 @@ extern "C" {
 #endif
 int haiku_get_xsave_mask();
 
-void *haiku_zalloc(size_t size);
+int32 haiku_smp_get_current_cpu();
+int32 haiku_smp_get_num_cpus();
 
 #ifdef __cplusplus
 };
@@ -487,10 +480,5 @@ os_ipi_broadcast(void (*func)(void *), void *arg)
 #define curlwp_bindx(bound)	/* nothing */
 
 #endif /* __NetBSD__ */
-
-// close extern "C" {
-#if defined(__HAIKU__) && defined(__cplusplus)
-}
-#endif
 
 #endif /* _NVMM_OS_H_ */

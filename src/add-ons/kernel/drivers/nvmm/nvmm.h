@@ -65,10 +65,6 @@ typedef uint32_t	nvmm_cpuid_t;
 #endif
 #endif /* __x86_64__ */
 
-#if defined(__HAIKU__) && defined(__cplusplus)
-extern "C" {
-#endif
-
 #define NVMM_KERN_VERSION		3
 
 struct nvmm_capability {
@@ -110,9 +106,5 @@ struct nvmm_comm_page {
 	struct nvmm_vcpu_event event;
 	#endif
 };
-
-#if defined(__HAIKU__) && defined(__cplusplus)
-}
-#endif
 
 #endif

@@ -41,10 +41,6 @@
 
 #include "nvmm_os.h"
 
-#if defined(__HAIKU__) && defined(__cplusplus)
-extern "C" {
-#endif
-
 #define NVMM_MAX_MACHINES	128
 #define NVMM_MAX_VCPUS		128
 #define NVMM_MAX_HMAPPINGS	32
@@ -162,9 +158,5 @@ int	nvmm_init(void);
 void	nvmm_fini(void);
 int	nvmm_ioctl(struct nvmm_owner *, unsigned long, void *);
 void	nvmm_kill_machines(struct nvmm_owner *);
-
-#if defined(__HAIKU__) && defined(__cplusplus)
-}
-#endif
 
 #endif /* _NVMM_INTERNAL_H_ */
