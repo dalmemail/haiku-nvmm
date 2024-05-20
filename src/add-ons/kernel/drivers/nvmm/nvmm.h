@@ -49,9 +49,11 @@ typedef uint32_t	nvmm_cpuid_t;
 #undef CTASSERT
 #define CTASSERT(x)		NVMM_CTASSERT(x, __LINE__)
 #define NVMM_CTASSERT(x, y)	NVMM__CTASSERT(x, y)
-//#define NVMM__CTASSERT(x, y)	typedef char __assert ## y[(x) ? 1 : -1] __unused
-//temporary
-#define NVMM__CTASSERT(x, y)
+#if defined(__HAIKU__)
+#define NVMM__CTASSERT(x, y)	STATIC_ASSERT(x)
+#else
+#define NVMM__CTASSERT(x, y)	typedef char __assert ## y[(x) ? 1 : -1] __unused
+#endif
 
 #if defined(__x86_64__)
 #if defined(__NetBSD__)
@@ -62,6 +64,10 @@ typedef uint32_t	nvmm_cpuid_t;
 //#include "x86/nvmm_x86.h"
 #endif
 #endif /* __x86_64__ */
+
+#if defined(__HAIKU__) && defined(__cplusplus)
+extern "C" {
+#endif
 
 #define NVMM_KERN_VERSION		3
 
@@ -104,5 +110,9 @@ struct nvmm_comm_page {
 	struct nvmm_vcpu_event event;
 	#endif
 };
+
+#if defined(__HAIKU__) && defined(__cplusplus)
+}
+#endif
 
 #endif

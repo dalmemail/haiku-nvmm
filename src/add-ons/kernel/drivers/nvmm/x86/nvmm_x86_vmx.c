@@ -26,7 +26,9 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __HAIKU__
+#if defined(__HAIKU__)
+#include <kernel/smp.h>
+#else
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -603,7 +605,6 @@ static void vmx_vcpu_state_commit(struct nvmm_cpu *);
  * These host values are static, they do not change at runtime and are the same
  * on all CPUs. We save them here because they are not saved in the VMCS.
  */
-#if 0
 static struct {
 	uint64_t xcr0;
 	uint64_t star;
@@ -611,7 +612,6 @@ static struct {
 	uint64_t cstar;
 	uint64_t sfmask;
 } vmx_global_hstate __cacheline_aligned;
-#endif
 
 #define VMX_MSRLIST_STAR		0
 #define VMX_MSRLIST_LSTAR		1
@@ -624,7 +624,6 @@ static struct {
 /* On entry, we may do +1 to include L1DFLUSH. */
 static size_t vmx_msrlist_entry_nmsr __read_mostly = VMX_MSRLIST_EXIT_NMSR;
 
-#if 0
 struct vmxon {
 	uint32_t ident;
 #define VMXON_IDENT_REVISION	__BITS(30,0)
@@ -639,7 +638,11 @@ struct vmxoncpu {
 	paddr_t pa;
 };
 
+#if defined(__HAIKU__)
+static struct vmxoncpu *vmxoncpu;
+#else
 static struct vmxoncpu vmxoncpu[OS_MAXCPUS];
+#endif
 
 struct vmcs {
 	uint32_t ident;
@@ -659,10 +662,9 @@ struct msr_entry {
 } __packed;
 
 #define VPID_MAX	0xFFFF
-#endif // 0
 
 /* Make sure we never run out of VPIDs. */
-/*CTASSERT(VPID_MAX-1 >= NVMM_MAX_MACHINES * NVMM_MAX_VCPUS);*/
+CTASSERT(VPID_MAX-1 >= NVMM_MAX_MACHINES * NVMM_MAX_VCPUS);
 
 static uint64_t vmx_tlb_flush_op __read_mostly;
 static uint64_t vmx_ept_flush_op __read_mostly;
@@ -918,7 +920,6 @@ static const struct {
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 static uint64_t
 vmx_get_revision(void)
 {
@@ -930,6 +931,7 @@ vmx_get_revision(void)
 	return msr;
 }
 
+#if 0
 static
 OS_IPI_FUNC(vmx_vmclear_ipi)
 {
@@ -1245,6 +1247,7 @@ vmx_exit_exc_nmi(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 error:
 	vmx_exit_invalid(exit, VMCS_EXITCODE_EXC_NMI);
 }
+#endif // 0
 
 #define VMX_CPUID_MAX_BASIC		0x16
 #define VMX_CPUID_MAX_HYPERVISOR	0x40000000
@@ -1252,6 +1255,7 @@ error:
 static uint32_t vmx_cpuid_max_basic __read_mostly;
 static uint32_t vmx_cpuid_max_extended __read_mostly;
 
+#if 0
 static void
 vmx_inkernel_exec_cpuid(struct vmx_cpudata *cpudata, uint32_t eax, uint32_t ecx)
 {
@@ -2163,7 +2167,6 @@ vmx_vcpu_guest_misc_leave(struct nvmm_cpu *vcpu)
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 #define VMX_INVVPID_ADDRESS		0
 #define VMX_INVVPID_CONTEXT		1
 #define VMX_INVVPID_ALL			2
@@ -2172,6 +2175,7 @@ vmx_vcpu_guest_misc_leave(struct nvmm_cpu *vcpu)
 #define VMX_INVEPT_CONTEXT		1
 #define VMX_INVEPT_ALL			2
 
+#if 0
 static inline void
 vmx_gtlb_catchup(struct nvmm_cpu *vcpu, int hcpu)
 {
@@ -3485,7 +3489,6 @@ vmx_ident(void)
 	return true;
 }
 
-#if 0
 static void
 vmx_init_asid(uint32_t maxasid)
 {
@@ -3501,6 +3504,7 @@ vmx_init_asid(uint32_t maxasid)
 	vmx_asidmap[0] |= __BIT(0);
 }
 
+#if 0
 static
 OS_IPI_FUNC(vmx_change_cpu)
 {
@@ -3562,7 +3566,6 @@ vmx_init_l1tf(void)
 	}
 }
 
-#if 0
 static void
 vmx_init(void)
 {
@@ -3619,7 +3622,11 @@ vmx_init(void)
 	vmx_global_hstate.cstar = rdmsr(MSR_CSTAR);
 	vmx_global_hstate.sfmask = rdmsr(MSR_SFMASK);
 
+#if defined(__HAIKU__)
+	vmxoncpu = os_mem_zalloc(sizeof(struct vmxoncpu) * smp_get_num_cpus());
+#else
 	memset(vmxoncpu, 0, sizeof(vmxoncpu));
+#endif
 	revision = vmx_get_revision();
 
 	OS_CPU_FOREACH(cpu) {
@@ -3633,10 +3640,10 @@ vmx_init(void)
 		vmxon = (struct vmxon *)vmxoncpu[os_cpu_number(cpu)].va;
 		vmxon->ident = __SHIFTIN(revision, VMXON_IDENT_REVISION);
 	}
-
+#if 0
 	os_ipi_broadcast(vmx_change_cpu, (void *)true);
-}
 #endif
+}
 
 #if 0
 static void
@@ -3665,6 +3672,9 @@ vmx_fini(void)
 	}
 
 	vmx_fini_asid();
+#if defined(__HAIKU__)
+	os_mem_free(vmxoncpu);
+#endif
 }
 #endif
 
@@ -3684,8 +3694,8 @@ vmx_capability(struct nvmm_capability *cap)
 
 const struct nvmm_impl nvmm_x86_vmx = {
 	.name = "x86-vmx",
-	.ident = vmx_ident/*,
-	.init = vmx_init,
+	.ident = vmx_ident,
+	.init = vmx_init/*,
 	.fini = vmx_fini,
 	.capability = vmx_capability,
 	.mach_conf_max = NVMM_X86_MACH_NCONF,
