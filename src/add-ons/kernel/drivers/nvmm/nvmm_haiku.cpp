@@ -13,8 +13,11 @@
 
 #include <OS.h>
 
+#include <arch/x86/arch_cpu.h>
+#include <kernel/heap.h>
 
-void x86_get_cpuid(uint32_t eax, cpuid_desc_t *descriptors)
+
+extern "C" void x86_get_cpuid(uint32_t eax, cpuid_desc_t *descriptors)
 {
 	cpuid_info info;
 	if (get_cpuid(&info, eax, 0) != B_OK) {
@@ -30,6 +33,32 @@ void x86_get_cpuid(uint32_t eax, cpuid_desc_t *descriptors)
 		descriptors->edx = info.regs.edx;
 	}
 }
+
+
+extern "C" int haiku_get_xsave_mask()
+{
+	if (x86_check_feature(IA32_FEATURE_EXT_XSAVE, FEATURE_EXT))
+		return IA32_XCR0_X87 | IA32_XCR0_SSE;
+
+	return 0;
+}
+
+extern "C" void *haiku_zalloc(size_t size)
+{
+	void *ret = malloc_etc(size, 0);
+	if (ret == NULL)
+		return NULL;
+
+	// memset
+	unsigned char *it = (unsigned char *)ret;
+	for (size_t i = 0; i < size; i++)
+		it[i] = 0;
+
+	return ret;
+}
+
+
+/*---------------------------------------------------------------------------------------*/
 
 
 int32 api_version = B_CUR_DRIVER_API_VERSION;

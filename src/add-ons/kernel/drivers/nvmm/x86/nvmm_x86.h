@@ -901,6 +901,8 @@ x86_set_xcr(uint32_t xcr, uint64_t val)
 #if defined(__DragonFly__)
 #define x86_xsave_features	npx_xcr0_mask
 #define x86_fpu_mxcsr_mask	npx_mxcsr_mask
+#elif defined(__HAIKU__)
+#define x86_xsave_features	haiku_get_xsave_mask()
 #endif
 
 #endif /* _KERNEL */
