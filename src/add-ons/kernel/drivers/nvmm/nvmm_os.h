@@ -95,8 +95,8 @@ typedef vm_offset_t		voff_t;
 typedef vm_size_t		vsize_t;
 typedef vm_paddr_t		paddr_t;
 #elif defined(__HAIKU__)
-typedef uint64			paddr_t;
-typedef uint64			vaddr_t;
+typedef phys_addr_t		paddr_t;
+typedef addr_t			vaddr_t;
 typedef rw_lock			os_rwl_t;
 typedef mutex			os_mtx_t;
 #endif
@@ -371,10 +371,12 @@ void		os_pagemem_free(void *, size_t);
 
 paddr_t		os_pa_zalloc(void);
 void		os_pa_free(paddr_t);
+#endif
 
 int		os_contigpa_zalloc(paddr_t *, vaddr_t *, size_t);
 void		os_contigpa_free(paddr_t, vaddr_t, size_t);
 
+#ifndef __HAIKU__
 static inline bool
 os_return_needed(void)
 {

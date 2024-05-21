@@ -18,6 +18,9 @@ extern "C" {
 #include <arch/x86/arch_cpu.h>
 #include <kernel/heap.h>
 #include <kernel/smp.h>
+#include <kernel/vm/vm.h>
+
+#define __unused __attribute__ ((unused))
 
 
 extern "C" void x86_get_cpuid(uint32_t eax, cpuid_desc_t *descriptors)
@@ -56,6 +59,38 @@ extern "C" int32 haiku_smp_get_num_cpus()
 {
 	return smp_get_num_cpus();
 }
+
+
+/*---------------------------------------------------------------------------------------*/
+
+extern "C"
+int
+os_contigpa_zalloc(paddr_t *pa, vaddr_t *va, size_t npages)
+{
+	area_id area = create_area(NULL, (void **)va, B_ANY_KERNEL_ADDRESS,
+		npages * PAGE_SIZE, B_CONTIGUOUS, B_READ_AREA | B_WRITE_AREA);
+
+	if (area < 0)
+		return area;
+
+	memset(va, 0, npages * PAGE_SIZE);
+
+	status_t status = vm_get_page_mapping(0, *va, pa);
+	if (status < 0) {
+		delete_area(area);
+		return status;
+	}
+
+	return 0;
+}
+
+extern "C"
+void
+os_contigpa_free(paddr_t pa __unused, vaddr_t va, size_t npages __unused)
+{
+	delete_area(area_for((void *)va));
+}
+
 
 /*---------------------------------------------------------------------------------------*/
 
