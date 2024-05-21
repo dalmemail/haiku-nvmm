@@ -29,7 +29,9 @@
 #ifndef _NVMM_IOCTL_H_
 #define _NVMM_IOCTL_H_
 
-#ifndef __HAIKU__
+#if defined(__HAIKU__)
+#include "include/sys/ioccom.h"
+#else
 #include <sys/ioccom.h>
 #endif
 
@@ -150,28 +152,6 @@ struct nvmm_ioc_ctl {
 	size_t size;
 };
 
-#if defined(__HAIKU__)
-// These ioctl opcodes are not unique in Haiku
-// (that's what the _IOXX() macros try to achive)
-enum {
-	NVMM_IOC_CAPABILITY = B_DEVICE_OP_CODES_END + 1,
-	NVMM_IOC_MACHINE_CREATE,
-	NVMM_IOC_MACHINE_DESTROY,
-	NVMM_IOC_MACHINE_CONFIGURE,
-	NVMM_IOC_VCPU_CREATE,
-	NVMM_IOC_VCPU_DESTROY,
-	NVMM_IOC_VCPU_CONFIGURE,
-	NVMM_IOC_VCPU_SETSTATE,
-	NVMM_IOC_VCPU_GETSTATE,
-	NVMM_IOC_VCPU_INJECT,
-	NVMM_IOC_VCPU_RUN,
-	NVMM_IOC_GPA_MAP,
-	NVMM_IOC_GPA_UNMAP,
-	NVMM_IOC_HVA_MAP,
-	NVMM_IOC_HVA_UNMAP,
-	NVMM_IOC_CTL
-};
-#else
 #define NVMM_IOC_CAPABILITY		_IOR ('N',  0, struct nvmm_ioc_capability)
 #define NVMM_IOC_MACHINE_CREATE		_IOWR('N',  1, struct nvmm_ioc_machine_create)
 #define NVMM_IOC_MACHINE_DESTROY	_IOW ('N',  2, struct nvmm_ioc_machine_destroy)
@@ -188,6 +168,5 @@ enum {
 #define NVMM_IOC_HVA_MAP		_IOW ('N', 13, struct nvmm_ioc_hva_map)
 #define NVMM_IOC_HVA_UNMAP		_IOW ('N', 14, struct nvmm_ioc_hva_unmap)
 #define NVMM_IOC_CTL			_IOW ('N', 20, struct nvmm_ioc_ctl)
-#endif
 
 #endif /* _NVMM_IOCTL_H_ */
