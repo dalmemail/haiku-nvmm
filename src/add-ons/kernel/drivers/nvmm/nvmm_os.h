@@ -71,13 +71,6 @@
 #include <stdlib.h>
 #endif
 
-/* CPU Registers */
-#if defined(__HAIKU__)
-#define rdmsr		x86_read_msr
-#define x86_get_cr0	x86_read_cr0
-#define x86_get_cr4	x86_read_cr4
-#endif
-
 /* Types. */
 #if defined(__NetBSD__)
 typedef struct vmspace		os_vmspace_t;
@@ -292,8 +285,8 @@ typedef int32			os_cpu_t;
 	int32 _ncpus = haiku_smp_get_num_cpus(); \
 	for (cpu = 0; cpu < _ncpus; cpu++)
 #define os_cpu_number(cpu)	(int32)cpu
-#define os_curcpu()		haiku_smp_get_current_cpu
-#define os_curcpu_number()	haiku_smp_get_current_cpu
+#define os_curcpu()		haiku_smp_get_current_cpu()
+#define os_curcpu_number()	haiku_smp_get_current_cpu()
 #endif
 
 /* Cpusets. */
@@ -482,6 +475,17 @@ os_ipi_broadcast(void (*func)(void *), void *arg)
  */
 #define curlwp_bind()		((int)0)
 #define curlwp_bindx(bound)	/* nothing */
+
+#elif defined(__HAIKU__)
+
+#include <drivers/KernelExport.h>
+#define OS_IPI_FUNC(func)	void func(void *arg, int unused)
+
+static inline void
+os_ipi_broadcast(void (*func)(void *, int), void *arg)
+{
+	call_all_cpus_sync(func, arg);
+}
 
 #endif /* __NetBSD__ */
 

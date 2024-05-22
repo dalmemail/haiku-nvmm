@@ -748,13 +748,7 @@ typedef struct {
 #define x86_get_cpuid(l, d)	do_cpuid(l, (uint32_t *)d)
 #define x86_get_cpuid2(l, c, d)	cpuid_count(l, c, (uint32_t *)d)
 #elif defined(__HAIKU__)
-#ifdef __cplusplus
-extern "C" {
-#endif
 void x86_get_cpuid(uint32_t eax, cpuid_desc_t *descriptors);
-#ifdef __cplusplus
-}
-#endif
 #endif
 
 /* Control registers. */
@@ -774,6 +768,17 @@ void x86_get_cpuid(uint32_t eax, cpuid_desc_t *descriptors);
 #define x86_set_cr0(v)		load_cr0(v)
 #define x86_set_cr2(v)		load_cr2(v)
 #define x86_set_cr4(v)		load_cr4(v)
+#elif defined(__HAIKU__)
+#define x86_get_cr0()		x86_read_cr0()
+#define x86_get_cr2()		x86_read_cr2()
+#define x86_get_cr3()		x86_read_cr3()
+#define x86_get_cr4()		x86_read_cr4()
+#define x86_set_cr0(v)		x86_write_cr0(v)
+#define x86_set_cr2(v)		x86_write_cr2(v)
+#define x86_set_cr4(v)		x86_write_cr4(v)
+/* MSR registers */
+#define rdmsr(msr)		x86_read_msr(msr)
+#define wrmsr(msr, value)	x86_write_msr(msr, value)
 #endif
 
 /* Debug registers. */

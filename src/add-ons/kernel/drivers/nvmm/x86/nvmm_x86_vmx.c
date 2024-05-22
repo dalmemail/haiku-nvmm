@@ -27,6 +27,7 @@
  */
 
 #if defined(__HAIKU__)
+#include "../nvmm_os.h"
 #else
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -3640,9 +3641,7 @@ vmx_init(void)
 		vmxon->ident = __SHIFTIN(revision, VMXON_IDENT_REVISION);
 	}
 
-#if 0
 	os_ipi_broadcast(vmx_change_cpu, (void *)true);
-#endif
 }
 
 #if 0
