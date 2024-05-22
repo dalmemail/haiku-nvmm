@@ -221,6 +221,7 @@ struct nvmm_cap_md {
 
 #ifndef ASM_NVMM
 
+#ifndef __HAIKU__
 #include <sys/types.h>
 #include <sys/bitops.h>
 #if defined(__DragonFly__)
@@ -230,7 +231,8 @@ struct nvmm_cap_md {
 #undef  __BITS
 #define __BITS(__m, __n)	__BITS64(__m, __n)
 #endif /* __x86_64__ */
-#endif
+#endif /* __HAIKU__ */
+#endif /* ASM_NVMM */
 
 /* Segment state. */
 struct nvmm_x64_state_seg {
@@ -657,7 +659,7 @@ struct nvmm_vcpu_conf_tpr {
  * Register defines. We mainly rely on the already-existing OS definitions.
  */
 
-#if defined(__DragonFly__)
+#if defined(__DragonFly__) || defined(__HAIKU__)
 
 #define XCR0_X87		CPU_XFEATURE_X87	/* 0x00000001 */
 #define XCR0_SSE		CPU_XFEATURE_SSE	/* 0x00000002 */
@@ -745,6 +747,14 @@ typedef struct {
 #elif defined(__DragonFly__)
 #define x86_get_cpuid(l, d)	do_cpuid(l, (uint32_t *)d)
 #define x86_get_cpuid2(l, c, d)	cpuid_count(l, c, (uint32_t *)d)
+#elif defined(__HAIKU__)
+#ifdef __cplusplus
+extern "C" {
+#endif
+void x86_get_cpuid(uint32_t eax, cpuid_desc_t *descriptors);
+#ifdef __cplusplus
+}
+#endif
 #endif
 
 /* Control registers. */

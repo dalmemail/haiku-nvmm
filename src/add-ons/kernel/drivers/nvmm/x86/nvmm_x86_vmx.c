@@ -26,15 +26,18 @@
  * SUCH DAMAGE.
  */
 
+#ifndef __HAIKU__
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/mman.h>
+#endif
 
 #include "../nvmm.h"
 #include "../nvmm_internal.h"
 #include "nvmm_x86.h"
 
+#if 0
 int vmx_vmlaunch(uint64_t *gprs);
 int vmx_vmresume(uint64_t *gprs);
 void vmx_resume_rip(void);
@@ -183,6 +186,7 @@ vmx_sti(void)
 {
 	__asm volatile ("sti" ::: "memory");
 }
+#endif
 
 #define MSR_IA32_FEATURE_CONTROL	0x003A
 #define		IA32_FEATURE_CONTROL_LOCK	__BIT(0)
@@ -590,13 +594,16 @@ vmx_sti(void)
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static void vmx_vcpu_state_provide(struct nvmm_cpu *, uint64_t);
 static void vmx_vcpu_state_commit(struct nvmm_cpu *);
+#endif
 
 /*
  * These host values are static, they do not change at runtime and are the same
  * on all CPUs. We save them here because they are not saved in the VMCS.
  */
+#if 0
 static struct {
 	uint64_t xcr0;
 	uint64_t star;
@@ -604,6 +611,7 @@ static struct {
 	uint64_t cstar;
 	uint64_t sfmask;
 } vmx_global_hstate __cacheline_aligned;
+#endif
 
 #define VMX_MSRLIST_STAR		0
 #define VMX_MSRLIST_LSTAR		1
@@ -616,6 +624,7 @@ static struct {
 /* On entry, we may do +1 to include L1DFLUSH. */
 static size_t vmx_msrlist_entry_nmsr __read_mostly = VMX_MSRLIST_EXIT_NMSR;
 
+#if 0
 struct vmxon {
 	uint32_t ident;
 #define VMXON_IDENT_REVISION	__BITS(30,0)
@@ -650,9 +659,10 @@ struct msr_entry {
 } __packed;
 
 #define VPID_MAX	0xFFFF
+#endif // 0
 
 /* Make sure we never run out of VPIDs. */
-CTASSERT(VPID_MAX-1 >= NVMM_MAX_MACHINES * NVMM_MAX_VCPUS);
+/*CTASSERT(VPID_MAX-1 >= NVMM_MAX_MACHINES * NVMM_MAX_VCPUS);*/
 
 static uint64_t vmx_tlb_flush_op __read_mostly;
 static uint64_t vmx_ept_flush_op __read_mostly;
@@ -773,6 +783,7 @@ static uint64_t vmx_xcr0_mask __read_mostly;
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 struct vmx_machdata {
 	volatile uint64_t mach_htlb_gen;
 };
@@ -903,9 +914,11 @@ static const struct {
 		VMCS_GUEST_TR_BASE
 	}
 };
+#endif // 0
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static uint64_t
 vmx_get_revision(void)
 {
@@ -1008,9 +1021,11 @@ vmx_vmcs_destroy(struct nvmm_cpu *vcpu)
 	vmx_vmclear(&cpudata->vmcs_pa);
 	os_preempt_enable();
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static void
 vmx_event_waitexit_enable(struct nvmm_cpu *vcpu, bool nmi)
 {
@@ -1586,6 +1601,7 @@ vmx_exit_hlt(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 #define VMX_QUAL_CR_LMSW_OPMEM	__BIT(6)
 #define VMX_QUAL_CR_GPR		__BITS(11,8)
 #define VMX_QUAL_CR_LMSW_SRC	__BIT(31,16)
+#endif // 0
 
 static inline int
 vmx_check_cr(uint64_t crval, uint64_t fixed0, uint64_t fixed1)
@@ -1601,6 +1617,7 @@ vmx_check_cr(uint64_t crval, uint64_t fixed0, uint64_t fixed1)
 	return 0;
 }
 
+#if 0
 static int
 vmx_inkernel_handle_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
     uint64_t qual)
@@ -2040,9 +2057,11 @@ vmx_exit_epf(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	    NVMM_X64_STATE_GPRS | NVMM_X64_STATE_SEGS |
 	    NVMM_X64_STATE_CRS | NVMM_X64_STATE_MSRS);
 }
+#endif // 0
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static void
 vmx_vcpu_guest_fpu_enter(struct nvmm_cpu *vcpu)
 {
@@ -2140,9 +2159,11 @@ vmx_vcpu_guest_misc_leave(struct nvmm_cpu *vcpu)
 	/* Restore the percpu host state. */
 	wrmsr(MSR_KERNELGSBASE, cpudata->hstate.kernelgsbase);
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 #define VMX_INVVPID_ADDRESS		0
 #define VMX_INVVPID_CONTEXT		1
 #define VMX_INVVPID_ALL			2
@@ -2461,9 +2482,11 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 	return error;
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static void
 vmx_vcpu_msr_allow(uint8_t *bitmap, uint64_t msr, bool read, bool write)
 {
@@ -2871,9 +2894,11 @@ vmx_vcpu_state_commit(struct nvmm_cpu *vcpu)
 	vcpu->comm->state_commit = 0;
 	vmx_vcpu_setstate(vcpu);
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static void
 vmx_asid_alloc(struct nvmm_cpu *vcpu)
 {
@@ -3109,9 +3134,11 @@ vmx_vcpu_destroy(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    1);
 	os_pagemem_free(cpudata, sizeof(*cpudata));
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static int
 vmx_vcpu_configure_cpuid(struct vmx_cpudata *cpudata, void *data)
 {
@@ -3190,9 +3217,11 @@ vmx_vcpu_configure(struct nvmm_cpu *vcpu, uint64_t op, void *data)
 		return EINVAL;
 	}
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 #ifdef __NetBSD__
 static void
 vmx_tlb_flush(struct pmap *pm)
@@ -3244,6 +3273,7 @@ vmx_machine_configure(struct nvmm_machine *mach, uint64_t op, void *data)
 {
 	panic("%s: impossible", __func__);
 }
+#endif // 0
 
 /* -------------------------------------------------------------------------- */
 
@@ -3455,6 +3485,7 @@ vmx_ident(void)
 	return true;
 }
 
+#if 0
 static void
 vmx_init_asid(uint32_t maxasid)
 {
@@ -3502,6 +3533,7 @@ OS_IPI_FUNC(vmx_change_cpu)
 		vmx_vmxon(&vmxoncpu[os_curcpu_number()].pa);
 	}
 }
+#endif
 
 static void
 vmx_init_l1tf(void)
@@ -3530,6 +3562,7 @@ vmx_init_l1tf(void)
 	}
 }
 
+#if 0
 static void
 vmx_init(void)
 {
@@ -3603,7 +3636,9 @@ vmx_init(void)
 
 	os_ipi_broadcast(vmx_change_cpu, (void *)true);
 }
+#endif
 
+#if 0
 static void
 vmx_fini_asid(void)
 {
@@ -3614,7 +3649,9 @@ vmx_fini_asid(void)
 
 	os_mtx_destroy(&vmx_asidlock);
 }
+#endif
 
+#if 0
 static void
 vmx_fini(void)
 {
@@ -3629,7 +3666,9 @@ vmx_fini(void)
 
 	vmx_fini_asid();
 }
+#endif
 
+#if 0
 static void
 vmx_capability(struct nvmm_capability *cap)
 {
@@ -3641,10 +3680,11 @@ vmx_capability(struct nvmm_capability *cap)
 	cap->arch.mxcsr_mask = x86_fpu_mxcsr_mask;
 	cap->arch.conf_cpuid_maxops = VMX_NCPUIDS;
 }
+#endif
 
 const struct nvmm_impl nvmm_x86_vmx = {
 	.name = "x86-vmx",
-	.ident = vmx_ident,
+	.ident = vmx_ident/*,
 	.init = vmx_init,
 	.fini = vmx_fini,
 	.capability = vmx_capability,
@@ -3662,5 +3702,5 @@ const struct nvmm_impl nvmm_x86_vmx = {
 	.vcpu_setstate = vmx_vcpu_setstate,
 	.vcpu_getstate = vmx_vcpu_getstate,
 	.vcpu_inject = vmx_vcpu_inject,
-	.vcpu_run = vmx_vcpu_run
+	.vcpu_run = vmx_vcpu_run*/
 };

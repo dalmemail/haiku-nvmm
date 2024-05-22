@@ -26,11 +26,13 @@
  * SUCH DAMAGE.
  */
 
+#ifndef __HAIKU__
 #include <sys/param.h>
 #include <sys/systm.h>
 
 #include <sys/kernel.h>
 #include <sys/mman.h>
+#endif
 
 #include "nvmm.h"
 #include "nvmm_internal.h"
@@ -51,7 +53,7 @@ const struct nvmm_impl *nvmm_impl __read_mostly = NULL;
 struct nvmm_owner nvmm_root_owner;
 
 /* -------------------------------------------------------------------------- */
-
+#if 0
 static int
 nvmm_machine_alloc(struct nvmm_machine **ret)
 {
@@ -121,9 +123,11 @@ nvmm_machine_put(struct nvmm_machine *mach)
 {
 	os_rwl_unlock(&mach->lock);
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static int
 nvmm_vcpu_alloc(struct nvmm_machine *mach, nvmm_cpuid_t cpuid,
     struct nvmm_cpu **ret)
@@ -190,9 +194,11 @@ nvmm_vcpu_put(struct nvmm_cpu *vcpu)
 {
 	os_mtx_unlock(&vcpu->lock);
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 void
 nvmm_kill_machines(struct nvmm_owner *owner)
 {
@@ -235,9 +241,11 @@ nvmm_kill_machines(struct nvmm_owner *owner)
 		os_rwl_unlock(&mach->lock);
 	}
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static int
 nvmm_capability(struct nvmm_owner *owner, struct nvmm_ioc_capability *args)
 {
@@ -620,9 +628,11 @@ out:
 	nvmm_machine_put(mach);
 	return error;
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static os_vmobj_t *
 nvmm_hmapping_getvmobj(struct nvmm_machine *mach, uintptr_t hva, size_t size,
    size_t *off)
@@ -787,9 +797,11 @@ nvmm_hva_unmap(struct nvmm_owner *owner, struct nvmm_ioc_hva_unmap *args)
 	nvmm_machine_put(mach);
 	return error;
 }
+#endif // 0
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static int
 nvmm_gpa_map(struct nvmm_owner *owner, struct nvmm_ioc_gpa_map *args)
 {
@@ -898,9 +910,11 @@ out:
 	nvmm_machine_put(mach);
 	return error;
 }
+#endif // 0
 
 /* -------------------------------------------------------------------------- */
 
+#if 0
 static int
 nvmm_ctl_mach_info(struct nvmm_owner *owner, struct nvmm_ioc_ctl *args)
 {
@@ -950,6 +964,7 @@ nvmm_ctl(struct nvmm_owner *owner, struct nvmm_ioc_ctl *args)
 		return EINVAL;
 	}
 }
+#endif // 0
 
 /* -------------------------------------------------------------------------- */
 
@@ -1011,7 +1026,7 @@ nvmm_fini(void)
 int
 nvmm_ioctl(struct nvmm_owner *owner, unsigned long cmd, void *data)
 {
-	switch (cmd) {
+/*	switch (cmd) {
 	case NVMM_IOC_CAPABILITY:
 		return nvmm_capability(owner, data);
 	case NVMM_IOC_MACHINE_CREATE:
@@ -1046,5 +1061,6 @@ nvmm_ioctl(struct nvmm_owner *owner, unsigned long cmd, void *data)
 		return nvmm_ctl(owner, data);
 	default:
 		return EINVAL;
-	}
+	}*/
+	return EINVAL;
 }

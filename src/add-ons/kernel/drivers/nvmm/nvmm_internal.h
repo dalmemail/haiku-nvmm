@@ -29,6 +29,12 @@
 #ifndef _NVMM_INTERNAL_H_
 #define _NVMM_INTERNAL_H_
 
+#if defined(__HAIKU__)
+#ifdef _KERNEL_MODE
+#define _KERNEL
+#endif
+#endif
+
 #ifndef _KERNEL
 #error "This file should not be included by userland programs."
 #endif
@@ -43,6 +49,8 @@
 #define NVMM_MAX_RAM		(128ULL * (1 << 30))
 #elif defined(__DragonFly__)
 #define NVMM_MAX_RAM		(127ULL * 1024ULL * (1 << 30))
+#elif defined(__HAIKU__)
+/* Empty for now */
 #else
 #error "OS dependency for NVMM_MAX_RAM required"
 #endif
@@ -74,7 +82,9 @@ struct nvmm_hmapping {
 	bool present;
 	uintptr_t hva;
 	size_t size;
+	#ifndef __HAIKU__ // Not supported yet by our port
 	os_vmobj_t *vmobj;
+	#endif
 };
 
 struct nvmm_machine {
@@ -85,7 +95,9 @@ struct nvmm_machine {
 	os_rwl_t lock;
 
 	/* Comm */
+	#ifndef __HAIKU__ // Not supported yet by our port
 	os_vmobj_t *commvmobj;
+	#endif
 
 	/* Kernel */
 	struct vmspace *vm;
@@ -141,10 +153,16 @@ extern struct nvmm_owner nvmm_root_owner;
 extern volatile unsigned int nmachines;
 extern const struct nvmm_impl *nvmm_impl;
 
+#if defined(__HAIKU__) && defined(__cplusplus)
+extern "C" {
+#endif
 const struct nvmm_impl *nvmm_ident(void);
 int	nvmm_init(void);
 void	nvmm_fini(void);
 int	nvmm_ioctl(struct nvmm_owner *, unsigned long, void *);
 void	nvmm_kill_machines(struct nvmm_owner *);
+#if defined(__HAIKU__) && defined(__cplusplus)
+}
+#endif
 
 #endif /* _NVMM_INTERNAL_H_ */

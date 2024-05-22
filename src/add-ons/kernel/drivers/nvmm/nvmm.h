@@ -36,6 +36,10 @@
 #include <stdbool.h>
 #endif
 
+#if defined(__HAIKU__)
+#include <stdint.h>
+#endif
+
 typedef uint64_t	gpaddr_t;
 typedef uint64_t	gvaddr_t;
 
@@ -45,13 +49,17 @@ typedef uint32_t	nvmm_cpuid_t;
 #undef CTASSERT
 #define CTASSERT(x)		NVMM_CTASSERT(x, __LINE__)
 #define NVMM_CTASSERT(x, y)	NVMM__CTASSERT(x, y)
-#define NVMM__CTASSERT(x, y)	typedef char __assert ## y[(x) ? 1 : -1] __unused
+//#define NVMM__CTASSERT(x, y)	typedef char __assert ## y[(x) ? 1 : -1] __unused
+//temporary
+#define NVMM__CTASSERT(x, y)
 
 #if defined(__x86_64__)
 #if defined(__NetBSD__)
 #include <dev/nvmm/x86/nvmm_x86.h>
 #elif defined(__DragonFly__)
 #include <dev/virtual/nvmm/x86/nvmm_x86.h>
+#elif defined(__HAIKU__)
+//#include "x86/nvmm_x86.h"
 #endif
 #endif /* __x86_64__ */
 
@@ -64,7 +72,9 @@ struct nvmm_capability {
 	uint32_t max_machines;
 	uint32_t max_vcpus;
 	uint64_t max_ram;
+	#ifndef __HAIKU__ // We only support a toy x86 backend so far
 	struct nvmm_cap_md arch;
+	#endif
 };
 
 /* Machine configuration slots. */
@@ -84,11 +94,15 @@ struct nvmm_comm_page {
 	uint64_t state_wanted;
 	uint64_t state_cached;
 	uint64_t state_commit;
+	#ifndef __HAIKU__ // Not supported yet
 	struct nvmm_vcpu_state state;
+	#endif
 
 	/* Event. */
 	bool event_commit;
+	#ifndef __HAIKU__ // Not supported yet
 	struct nvmm_vcpu_event event;
+	#endif
 };
 
 #endif
