@@ -55,6 +55,7 @@ extern "C" int32 haiku_smp_get_current_cpu()
 	return smp_get_current_cpu();
 }
 
+
 extern "C" int32 haiku_smp_get_num_cpus()
 {
 	return smp_get_num_cpus();
@@ -62,6 +63,33 @@ extern "C" int32 haiku_smp_get_num_cpus()
 
 
 /*---------------------------------------------------------------------------------------*/
+
+
+extern "C"
+void *
+os_pagemem_zalloc(size_t size)
+{
+	void *ptr;
+	size_t alloc_size = roundup(size, PAGE_SIZE);
+	area_id area = create_area(NULL, &ptr, B_ANY_KERNEL_ADDRESS,
+		alloc_size, B_FULL_LOCK, B_READ_AREA | B_WRITE_AREA);
+
+	if (area < 0)
+		return area;
+
+	memset(ptr, 0, alloc_size);
+
+	return ptr;
+}
+
+
+extern "C"
+void
+os_pagemem_free(void *ptr, size_t size __unused)
+{
+	delete_area(area_for(ptr));
+}
+
 
 extern "C"
 int
@@ -85,6 +113,7 @@ os_contigpa_zalloc(paddr_t *pa, vaddr_t *va, size_t npages)
 
 	return 0;
 }
+
 
 extern "C"
 void

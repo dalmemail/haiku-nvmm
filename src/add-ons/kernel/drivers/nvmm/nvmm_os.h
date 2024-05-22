@@ -365,10 +365,12 @@ void		os_vmobj_rel(os_vmobj_t *);
 int		os_vmobj_map(struct vm_map *, vaddr_t *, vsize_t, os_vmobj_t *,
 		    voff_t, bool, bool, bool, int, int);
 void		os_vmobj_unmap(struct vm_map *map, vaddr_t, vaddr_t, bool);
+#endif
 
 void *		os_pagemem_zalloc(size_t);
 void		os_pagemem_free(void *, size_t);
 
+#ifndef __HAIKU__ // Haiku won't need this ones
 paddr_t		os_pa_zalloc(void);
 void		os_pa_free(paddr_t);
 #endif

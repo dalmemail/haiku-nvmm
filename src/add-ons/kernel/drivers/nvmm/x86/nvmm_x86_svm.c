@@ -499,9 +499,16 @@ static struct {
 
 struct svm_hsave {
 	paddr_t pa;
+#if defined(__HAIKU__)
+	vaddr_t va;
+#endif
 };
 
+#if defined(__HAIKU__)
+static struct svm_hsave *hsave;
+#else
 static struct svm_hsave hsave[OS_MAXCPUS];
+#endif
 
 static uint8_t *svm_asidmap __read_mostly;
 static uint32_t svm_maxasid __read_mostly;
@@ -2647,9 +2654,23 @@ svm_init(void)
 	svm_global_hstate.cstar = rdmsr(MSR_CSTAR);
 	svm_global_hstate.sfmask = rdmsr(MSR_SFMASK);
 
+#if defined(__HAIKU__)
+	hsave = os_mem_zalloc(sizeof(struct svm_hsave) * haiku_smp_get_num_cpus());
+#else
 	memset(hsave, 0, sizeof(hsave));
+#endif
 	OS_CPU_FOREACH(cpu) {
+#if defined(__HAIKU__)
+		int32 cpu_index = os_cpu_number(cpu);
+		paddr_t *pa = &hsave[cpu_index].pa;
+		vaddr_t *va = &hsave[cpu_index].va;
+		int error = os_contigpa_zalloc(pa, va, 1);
+		if (error) {
+			panic("%s: out of memory", __func__);
+		}
+#else
 		hsave[os_cpu_number(cpu)].pa = os_pa_zalloc();
+#endif
 	}
 
 	os_ipi_broadcast(svm_change_cpu, (void *)true);
@@ -2675,10 +2696,17 @@ svm_fini(void)
 
 	for (i = 0; i < OS_MAXCPUS; i++) {
 		if (hsave[i].pa != 0)
+#if defined(__HAIKU__)
+			os_contigpa_free(hsave[i].pa, hsave[i].va, 1);
+#else
 			os_pa_free(hsave[i].pa);
+#endif
 	}
 
 	svm_fini_asid();
+#if defined(__HAIKU__)
+	os_mem_free(hsave);
+#endif
 }
 
 static void

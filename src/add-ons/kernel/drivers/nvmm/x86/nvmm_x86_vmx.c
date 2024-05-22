@@ -52,6 +52,7 @@ struct vpid_desc {
 	uint64_t vpid;
 	uint64_t addr;
 } __packed;
+#endif
 
 static inline void
 vmx_vmxon(paddr_t *pa)
@@ -79,6 +80,7 @@ vmx_vmxoff(void)
 	);
 }
 
+#if 0
 static inline void
 vmx_invept(uint64_t op, struct ept_desc *desc)
 {
@@ -3503,7 +3505,6 @@ vmx_init_asid(uint32_t maxasid)
 	vmx_asidmap[0] |= __BIT(0);
 }
 
-#if 0
 static
 OS_IPI_FUNC(vmx_change_cpu)
 {
@@ -3536,7 +3537,6 @@ OS_IPI_FUNC(vmx_change_cpu)
 		vmx_vmxon(&vmxoncpu[os_curcpu_number()].pa);
 	}
 }
-#endif
 
 static void
 vmx_init_l1tf(void)
@@ -3639,6 +3639,7 @@ vmx_init(void)
 		vmxon = (struct vmxon *)vmxoncpu[os_cpu_number(cpu)].va;
 		vmxon->ident = __SHIFTIN(revision, VMXON_IDENT_REVISION);
 	}
+
 #if 0
 	os_ipi_broadcast(vmx_change_cpu, (void *)true);
 #endif
