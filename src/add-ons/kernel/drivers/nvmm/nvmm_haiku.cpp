@@ -13,12 +13,12 @@ extern "C" {
 #include "x86/nvmm_x86.h"
 }
 
+#include <drivers/KernelExport.h>
 #include <OS.h>
 
 #include <arch/x86/arch_cpu.h>
 #include <kernel/heap.h>
 #include <kernel/smp.h>
-#include <kernel/vm/vm.h>
 
 #define __unused __attribute__ ((unused))
 
@@ -75,11 +75,13 @@ os_contigpa_zalloc(paddr_t *pa, vaddr_t *va, size_t npages)
 
 	memset(va, 0, npages * PAGE_SIZE);
 
-	status_t status = vm_get_page_mapping(0, *va, pa);
-	if (status < 0) {
+	physical_entry entry;
+	status_t status = get_memory_map((void *)va, 1, &entry, 1);
+	if (status < B_OK) {
 		delete_area(area);
 		return status;
 	}
+	*pa = entry.address;
 
 	return 0;
 }
