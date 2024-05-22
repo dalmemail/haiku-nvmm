@@ -29,11 +29,7 @@
 #ifndef _NVMM_IOCTL_H_
 #define _NVMM_IOCTL_H_
 
-#if defined(__HAIKU__)
-#include "include/sys/ioccom.h"
-#else
 #include <sys/ioccom.h>
-#endif
 
 #if defined(__NetBSD__)
 #include <dev/nvmm/nvmm.h>

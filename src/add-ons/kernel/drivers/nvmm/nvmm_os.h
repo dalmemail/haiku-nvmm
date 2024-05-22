@@ -65,7 +65,7 @@
 #elif defined(__HAIKU__)
 #include <arch/x86/arch_cpu.h>
 #include <Drivers.h>
-#include "include/sys/specialreg.h"
+#include <sys/specialreg.h>
 #include <kernel/lock.h>
 #include <SupportDefs.h>
 #include <stdlib.h>
