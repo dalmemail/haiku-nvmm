@@ -38,6 +38,9 @@
 #define _C_LABEL(x)	x
 #include <machine/asmacros.h>
 #include "assym.s"
+#elif defined(__HAIKU__)
+#define _C_LABEL(x)	x
+#include <machine/asmacros.h>
 #endif
 
 #define ASM_NVMM
@@ -204,18 +207,20 @@ ENTRY(vmx_resume_rip)
 END(vmx_resume_rip)
 
 ENTRY(vmx_insn_failvalid)
-	movq	$.Lvmx_validstr,%rdi
-	call	_C_LABEL(panic)
+//	movq	$.Lvmx_validstr,%rdi
+//	call	_C_LABEL(panic)
+	nop
 END(vmx_insn_failvalid)
 
 ENTRY(vmx_insn_failinvalid)
-	movq	$.Lvmx_invalidstr,%rdi
-	call	_C_LABEL(panic)
+//	movq	$.Lvmx_invalidstr,%rdi
+//	call	_C_LABEL(panic)
+	nop
 END(vmx_insn_failinvalid)
 
-	.section ".rodata"
+/*	.section ".rodata"
 
 .Lvmx_validstr:
 	.string	"VMX fail valid\0"
 .Lvmx_invalidstr:
-	.string "VMX fail invalid\0"
+	.string "VMX fail invalid\0"*/
