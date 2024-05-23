@@ -74,9 +74,8 @@ os_pagemem_zalloc(size_t size)
 	area_id area = create_area(NULL, &ptr, B_ANY_KERNEL_ADDRESS,
 		alloc_size, B_FULL_LOCK, B_READ_AREA | B_WRITE_AREA);
 
-	if (area < 0) {
-		panic("%s: %s", __func__, strerror(-area));
-	}
+	if (area < 0)
+		return NULL;
 
 	memset(ptr, 0, alloc_size);
 
