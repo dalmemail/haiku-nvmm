@@ -55,6 +55,18 @@ struct vpid_desc {
 } __packed;
 #endif
 
+#if defined(__HAIKU__)
+void vmx_insn_failvalid()
+{
+	panic("VMX fail valid");
+}
+
+void vmx_insn_failinvalid()
+{
+	panic("VMX fail invalid");
+}
+#endif
+
 static inline void
 vmx_vmxon(paddr_t *pa)
 {
