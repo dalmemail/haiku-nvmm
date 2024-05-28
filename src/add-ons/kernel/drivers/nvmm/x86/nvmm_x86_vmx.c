@@ -3644,7 +3644,6 @@ vmx_init(void)
 	os_ipi_broadcast(vmx_change_cpu, (void *)true);
 }
 
-#if 0
 static void
 vmx_fini_asid(void)
 {
@@ -3655,9 +3654,7 @@ vmx_fini_asid(void)
 
 	os_mtx_destroy(&vmx_asidlock);
 }
-#endif
 
-#if 0
 static void
 vmx_fini(void)
 {
@@ -3665,17 +3662,21 @@ vmx_fini(void)
 
 	os_ipi_broadcast(vmx_change_cpu, (void *)false);
 
+#if defined(__HAIKU__)
+	size_t n_cpus = haiku_smp_get_num_cpus();
+	for (i = 0; i < n_cpus; i++) {
+#else
 	for (i = 0; i < OS_MAXCPUS; i++) {
+#endif
 		if (vmxoncpu[i].pa != 0)
 			os_contigpa_free(vmxoncpu[i].pa, vmxoncpu[i].va, 1);
 	}
 
 	vmx_fini_asid();
 #if defined(__HAIKU__)
-	os_mem_free(vmxoncpu);
+	os_mem_free(vmxoncpu, sizeof(struct vmxoncpu) * n_cpus);
 #endif
 }
-#endif
 
 #if 0
 static void
@@ -3694,8 +3695,8 @@ vmx_capability(struct nvmm_capability *cap)
 const struct nvmm_impl nvmm_x86_vmx = {
 	.name = "x86-vmx",
 	.ident = vmx_ident,
-	.init = vmx_init/*,
-	.fini = vmx_fini,
+	.init = vmx_init,
+	.fini = vmx_fini/*,
 	.capability = vmx_capability,
 	.mach_conf_max = NVMM_X86_MACH_NCONF,
 	.mach_conf_sizes = NULL,

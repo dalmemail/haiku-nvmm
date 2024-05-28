@@ -128,6 +128,21 @@ os_contigpa_free(paddr_t pa __unused, vaddr_t va, size_t npages __unused)
 
 int32 api_version = B_CUR_DRIVER_API_VERSION;
 
+static const char *sNVMMDevice = "nvmm";
+static const char *sDevices[] = { sNVMMDevice, NULL };
+
+status_t nvmm_control_hook(void *cookie, uint32 op, void *data, size_t len);
+static device_hooks sHooks = {
+	.control = nvmm_control_hook,
+};
+
+
+status_t
+nvmm_control_hook(void *cookie, uint32 op, void *data, size_t len)
+{
+	struct nvmm_owner owner = { .pid = getpid(), };
+	return nvmm_ioctl(&owner, op, data);
+}
 
 status_t
 init_hardware(void)
@@ -144,7 +159,7 @@ const char**
 publish_devices(void)
 {
 	TRACE_ALWAYS("nvmm: publish_devices\n");
-	return NULL;
+	return sDevices;
 }
 
 
@@ -152,14 +167,17 @@ device_hooks*
 find_device(const char* name)
 {
 	TRACE_ALWAYS("nvmm: find_device\n");
-	return NULL;
+	return &sHooks;
 }
 
 
 status_t
 init_driver(void)
 {
-	TRACE_ALWAYS("nvmm: init_driver\n");
+	if (nvmm_init())
+		return B_ERROR;
+
+	TRACE_ALWAYS("nvmm: init_driver OK\n");
 	return B_OK;
 }
 
@@ -167,5 +185,5 @@ init_driver(void)
 void
 uninit_driver(void)
 {
-	TRACE_ALWAYS("nvmm: uninit_driver\n");
+	nvmm_fini();
 }
