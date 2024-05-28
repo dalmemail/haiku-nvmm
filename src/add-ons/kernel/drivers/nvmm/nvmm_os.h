@@ -126,7 +126,7 @@ typedef mutex			os_mtx_t;
 #define __SHIFTOUT(__x, __mask) (((__x) & (__mask)) / __LOWEST_SET_BIT(__mask))
 #define	__SHIFTIN(__x, __mask) ((__x) * __LOWEST_SET_BIT(__mask))
 
-#define PAGE_SIZE		PAGESIZE
+#define PAGE_SIZE		B_PAGE_SIZE
 #endif
 
 /* Bitops. */

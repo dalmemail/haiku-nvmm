@@ -71,8 +71,8 @@ os_pagemem_zalloc(size_t size)
 {
 	void *ptr;
 	size_t alloc_size = roundup(size, PAGE_SIZE);
-	area_id area = create_area(NULL, &ptr, B_ANY_KERNEL_ADDRESS,
-		alloc_size, B_FULL_LOCK, B_READ_AREA | B_WRITE_AREA);
+	area_id area = create_area("os_pagemem_zalloc_area", &ptr, B_ANY_KERNEL_ADDRESS,
+		alloc_size, B_FULL_LOCK, B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA);
 
 	if (area < 0)
 		return NULL;
@@ -95,16 +95,16 @@ extern "C"
 int
 os_contigpa_zalloc(paddr_t *pa, vaddr_t *va, size_t npages)
 {
-	area_id area = create_area(NULL, (void **)va, B_ANY_KERNEL_ADDRESS,
-		npages * PAGE_SIZE, B_CONTIGUOUS, B_READ_AREA | B_WRITE_AREA);
+	area_id area = create_area("os_contigpa_zalloc_area", (void **)va, B_ANY_KERNEL_ADDRESS,
+		npages * PAGE_SIZE, B_CONTIGUOUS, B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA);
 
 	if (area < 0)
 		return area;
 
-	memset(va, 0, npages * PAGE_SIZE);
+	memset((void *)*va, 0, npages * PAGE_SIZE);
 
 	physical_entry entry;
-	status_t status = get_memory_map((void *)va, 1, &entry, 1);
+	status_t status = get_memory_map((void *)*va, 1, &entry, 1);
 	if (status < B_OK) {
 		delete_area(area);
 		return status;
