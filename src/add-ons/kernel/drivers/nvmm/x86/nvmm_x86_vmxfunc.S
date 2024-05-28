@@ -206,23 +206,21 @@ ENTRY(vmx_resume_rip)
 	retq
 END(vmx_resume_rip)
 
-#if defined(__HAIKU__)
-#else
 ENTRY(vmx_insn_failvalid)
-	movq	$.Lvmx_validstr,%rdi
-	call	_C_LABEL(panic)
+//	movq	$.Lvmx_validstr,%rdi
+//	call	_C_LABEL(panic)
+	nop
 END(vmx_insn_failvalid)
 
 ENTRY(vmx_insn_failinvalid)
-	movq	$.Lvmx_invalidstr,%rdi
-	call	_C_LABEL(panic)
+//	movq	$.Lvmx_invalidstr,%rdi
+//	call	_C_LABEL(panic)
+	nop
 END(vmx_insn_failinvalid)
 
-	.section ".rodata"
+/*	.section ".rodata"
 
 .Lvmx_validstr:
 	.string	"VMX fail valid\0"
 .Lvmx_invalidstr:
-	.string "VMX fail invalid\0"
-#endif
-
+	.string "VMX fail invalid\0"*/
