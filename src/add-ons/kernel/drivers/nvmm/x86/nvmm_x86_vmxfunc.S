@@ -207,20 +207,28 @@ ENTRY(vmx_resume_rip)
 END(vmx_resume_rip)
 
 ENTRY(vmx_insn_failvalid)
-//	movq	$.Lvmx_validstr,%rdi
-//	call	_C_LABEL(panic)
-	nop
+// this is a (hopefully) temporary workaround
+#ifdef __HAIKU__
+	movq	0,%rdi
+#else
+	movq	$.Lvmx_validstr,%rdi
+#endif
+	call	_C_LABEL(panic)
 END(vmx_insn_failvalid)
 
 ENTRY(vmx_insn_failinvalid)
-//	movq	$.Lvmx_invalidstr,%rdi
-//	call	_C_LABEL(panic)
-	nop
+// this is a (hopefully) temporary workaround
+#ifdef __HAIKU__
+	movq	0,%rdi
+#else
+	movq	$.Lvmx_invalidstr,%rdi
+#endif
+	call	_C_LABEL(panic)
 END(vmx_insn_failinvalid)
 
-/*	.section ".rodata"
+	.section ".rodata"
 
 .Lvmx_validstr:
 	.string	"VMX fail valid\0"
 .Lvmx_invalidstr:
-	.string "VMX fail invalid\0"*/
+	.string "VMX fail invalid\0"
