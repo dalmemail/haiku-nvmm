@@ -3674,7 +3674,8 @@ vmx_fini(void)
 
 	vmx_fini_asid();
 #if defined(__HAIKU__)
-	os_mem_free(vmxoncpu, sizeof(struct vmxoncpu) * n_cpus);
+	// second argument is ignored
+	os_mem_free(vmxoncpu, 0);
 #endif
 }
 
