@@ -128,21 +128,71 @@ os_contigpa_free(paddr_t pa __unused, vaddr_t va, size_t npages __unused)
 
 int32 api_version = B_CUR_DRIVER_API_VERSION;
 
-static const char *sNVMMDevice = "nvmm";
-static const char *sDevices[] = { sNVMMDevice, NULL };
+static const char *sNVMMDevice = "nvmm/nvmm";
+static const char *sDevices[] = { NULL, NULL };
 
-status_t nvmm_control_hook(void *cookie, uint32 op, void *data, size_t len);
+static status_t nvmm_open_hook(const char *name, uint32 flags, void **cookie);
+static status_t nvmm_close_hook(void *cookie);
+static status_t nvmm_free_hook(void* cookie);
+static status_t nvmm_control_hook(void *cookie, uint32 op, void *data, size_t len);
+
 static device_hooks sHooks = {
+	.open = nvmm_open_hook,
+	.close = nvmm_close_hook,
+	.free = nvmm_free_hook,
 	.control = nvmm_control_hook,
 };
 
 
-status_t
+static status_t
+nvmm_open_hook(const char *name, uint32 flags, void **cookie)
+{
+	//TODO: Root owner not supported yet
+	struct nvmm_owner *owner;
+	owner = (struct nvmm_owner *)os_mem_alloc(sizeof(*owner));
+	if (owner == NULL)
+		return B_NO_MEMORY;
+
+	owner->pid = getpid();
+	*cookie = owner;
+
+	return B_OK;
+}
+
+
+static status_t
+nvmm_close_hook(void *cookie)
+{
+	if (cookie == NULL)
+		return B_NO_INIT;
+
+	struct nvmm_owner *owner = (struct nvmm_owner *)cookie;
+	nvmm_kill_machines(owner);
+	TRACE_ALWAYS("%d\n", owner->pid);
+
+	return B_OK;
+}
+
+
+static status_t
+nvmm_free_hook(void* cookie)
+{
+	if (cookie == NULL)
+		return B_NO_INIT;
+
+	os_mem_free(cookie, sizeof(struct nvmm_owner));
+
+	return B_OK;
+}
+
+
+static status_t
 nvmm_control_hook(void *cookie, uint32 op, void *data, size_t len)
 {
 	struct nvmm_owner owner = { .pid = getpid(), };
 	return nvmm_ioctl(&owner, op, data);
 }
+
 
 status_t
 init_hardware(void)
@@ -159,6 +209,7 @@ const char**
 publish_devices(void)
 {
 	TRACE_ALWAYS("nvmm: publish_devices\n");
+	sDevices[0] = (const char*)sNVMMDevice;
 	return sDevices;
 }
 
@@ -185,5 +236,6 @@ init_driver(void)
 void
 uninit_driver(void)
 {
+	TRACE_ALWAYS("nvmm: uninit_driver\n");
 	nvmm_fini();
 }
