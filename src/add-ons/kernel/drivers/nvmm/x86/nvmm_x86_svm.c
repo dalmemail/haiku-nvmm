@@ -26,7 +26,9 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __HAIKU__
+#if defined(__HAIKU__)
+#include "../nvmm_os.h"
+#else
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -238,7 +240,6 @@ svm_stgi(void)
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 struct vmcb_ctrl {
 	uint32_t intercept_cr;
 #define VMCB_CTRL_INTERCEPT_RCR(x)	__BIT( 0 + x)
@@ -477,11 +478,9 @@ struct vmcb {
 
 CTASSERT(sizeof(struct vmcb) == PAGE_SIZE);
 CTASSERT(offsetof(struct vmcb, state) == 0x400);
-#endif
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 static void svm_vcpu_state_provide(struct nvmm_cpu *, uint64_t);
 static void svm_vcpu_state_commit(struct nvmm_cpu *);
 
@@ -499,17 +498,22 @@ static struct {
 
 struct svm_hsave {
 	paddr_t pa;
+#if defined(__HAIKU__)
+	vaddr_t va;
+#endif
 };
 
+#if defined(__HAIKU__)
+static struct svm_hsave *hsave;
+#else
 static struct svm_hsave hsave[OS_MAXCPUS];
+#endif
 
 static uint8_t *svm_asidmap __read_mostly;
 static uint32_t svm_maxasid __read_mostly;
 static os_mtx_t svm_asidlock __cacheline_aligned;
-#endif // 0
 
 static bool svm_decode_assist __read_mostly;
-#if 0
 static uint32_t svm_ctrl_tlb_flush __read_mostly;
 
 #define SVM_XCR0_MASK_DEFAULT	(XCR0_X87|XCR0_SSE)
@@ -536,7 +540,6 @@ static uint64_t svm_xcr0_mask __read_mostly;
 #define CR4_TLB_FLUSH \
 	(CR4_PSE|CR4_PAE|CR4_PGE|CR4_PCIDE|CR4_SMEP)
 
-#endif
 /* -------------------------------------------------------------------------- */
 
 #if 0
@@ -830,11 +833,13 @@ svm_inkernel_advance(struct vmcb *vmcb)
 	vmcb->ctrl.intr &= ~VMCB_CTRL_INTR_SHADOW;
 }
 
+#endif
 #define SVM_CPUID_MAX_BASIC		0xD
 #define SVM_CPUID_MAX_HYPERVISOR	0x40000000
 #define SVM_CPUID_MAX_EXTENDED		0x8000001F
 static uint32_t svm_cpuid_max_basic __read_mostly;
 static uint32_t svm_cpuid_max_extended __read_mostly;
+#if 0
 
 static void
 svm_inkernel_exec_cpuid(struct svm_cpudata *cpudata, uint32_t eax, uint32_t ecx)
@@ -2557,7 +2562,6 @@ svm_ident(void)
 	return true;
 }
 
-#if 0
 static void
 svm_init_asid(uint32_t maxasid)
 {
@@ -2647,9 +2651,23 @@ svm_init(void)
 	svm_global_hstate.cstar = rdmsr(MSR_CSTAR);
 	svm_global_hstate.sfmask = rdmsr(MSR_SFMASK);
 
+#if defined(__HAIKU__)
+	hsave = os_mem_zalloc(sizeof(struct svm_hsave) * haiku_smp_get_num_cpus());
+#else
 	memset(hsave, 0, sizeof(hsave));
+#endif
 	OS_CPU_FOREACH(cpu) {
+#if defined(__HAIKU__)
+		int32 cpu_index = os_cpu_number(cpu);
+		paddr_t *pa = &hsave[cpu_index].pa;
+		vaddr_t *va = &hsave[cpu_index].va;
+		int error = os_contigpa_zalloc(pa, va, 1);
+		if (error) {
+			panic("%s: out of memory", __func__);
+		}
+#else
 		hsave[os_cpu_number(cpu)].pa = os_pa_zalloc();
+#endif
 	}
 
 	os_ipi_broadcast(svm_change_cpu, (void *)true);
@@ -2673,14 +2691,28 @@ svm_fini(void)
 
 	os_ipi_broadcast(svm_change_cpu, (void *)false);
 
+#if defined(__HAIKU__)
+	size_t n_cpus = haiku_smp_get_num_cpus();
+	for (i = 0; i < n_cpus; i++) {
+#else
 	for (i = 0; i < OS_MAXCPUS; i++) {
+#endif
 		if (hsave[i].pa != 0)
+#if defined(__HAIKU__)
+			os_contigpa_free(hsave[i].pa, hsave[i].va, 1);
+#else
 			os_pa_free(hsave[i].pa);
+#endif
 	}
 
 	svm_fini_asid();
+#if defined(__HAIKU__)
+	// second argument is ignored
+	os_mem_free(hsave, 0);
+#endif
 }
 
+#if 0
 static void
 svm_capability(struct nvmm_capability *cap)
 {
@@ -2695,9 +2727,9 @@ svm_capability(struct nvmm_capability *cap)
 
 const struct nvmm_impl nvmm_x86_svm = {
 	.name = "x86-svm",
-	.ident = svm_ident/*,
+	.ident = svm_ident,
 	.init = svm_init,
-	.fini = svm_fini,
+	.fini = svm_fini/*,
 	.capability = svm_capability,
 	.mach_conf_max = NVMM_X86_MACH_NCONF,
 	.mach_conf_sizes = NULL,

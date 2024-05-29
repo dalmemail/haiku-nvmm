@@ -65,16 +65,10 @@
 #elif defined(__HAIKU__)
 #include <arch/x86/arch_cpu.h>
 #include <Drivers.h>
-#include "include/sys/specialreg.h"
+#include <machine/specialreg.h>
 #include <kernel/lock.h>
 #include <SupportDefs.h>
-#endif
-
-/* CPU Registers */
-#if defined(__HAIKU__)
-#define rdmsr		x86_read_msr
-#define x86_get_cr0	x86_read_cr0
-#define x86_get_cr4	x86_read_cr4
+#include <stdlib.h>
 #endif
 
 /* Types. */
@@ -94,6 +88,8 @@ typedef vm_offset_t		voff_t;
 typedef vm_size_t		vsize_t;
 typedef vm_paddr_t		paddr_t;
 #elif defined(__HAIKU__)
+typedef phys_addr_t		paddr_t;
+typedef addr_t			vaddr_t;
 typedef rw_lock			os_rwl_t;
 typedef mutex			os_mtx_t;
 #endif
@@ -105,6 +101,7 @@ typedef mutex			os_mtx_t;
 #elif defined(__HAIKU__)
 #define __cacheline_aligned
 #define __read_mostly
+#define __packed		_PACKED
 #endif
 
 /* Macros. */
@@ -127,6 +124,9 @@ typedef mutex			os_mtx_t;
 
 #define __LOWEST_SET_BIT(__mask) ((((__mask) - 1) & (__mask)) ^ (__mask))
 #define __SHIFTOUT(__x, __mask) (((__x) & (__mask)) / __LOWEST_SET_BIT(__mask))
+#define	__SHIFTIN(__x, __mask) ((__x) * __LOWEST_SET_BIT(__mask))
+
+#define PAGE_SIZE		B_PAGE_SIZE
 #endif
 
 /* Bitops. */
@@ -210,6 +210,10 @@ MALLOC_DECLARE(M_NVMM);
 #define os_mem_alloc(size)	kmalloc(size, M_NVMM, M_WAITOK)
 #define os_mem_zalloc(size)	kmalloc(size, M_NVMM, M_WAITOK | M_ZERO)
 #define os_mem_free(ptr, size)	kfree(ptr, M_NVMM)
+#elif defined(__HAIKU__)
+#define os_mem_alloc(size)	malloc(size)
+#define os_mem_zalloc(size)	calloc(1, size)
+#define os_mem_free(ptr, size)  free(ptr)
 #endif
 
 /* Printf. */
@@ -275,6 +279,14 @@ typedef struct globaldata	os_cpu_t;
 #define os_curcpu_tss()		&mycpu->gd_prvspace->common_tss
 #define os_curcpu_gdt()		mdcpu->gd_gdt
 #define os_curcpu_idt()		r_idt_arr[mycpuid].rd_base
+#elif defined(__HAIKU__)
+typedef int32			os_cpu_t;
+#define OS_CPU_FOREACH(cpu)	\
+	int32 _ncpus = haiku_smp_get_num_cpus(); \
+	for (cpu = 0; cpu < _ncpus; cpu++)
+#define os_cpu_number(cpu)	(int32)cpu
+#define os_curcpu()		haiku_smp_get_current_cpu()
+#define os_curcpu_number()	haiku_smp_get_current_cpu()
 #endif
 
 /* Cpusets. */
@@ -328,7 +340,7 @@ typedef cpumask_t		os_cpuset_t;
 #endif
 
 /* Misc. */
-#if defined(__DragonFly__)
+#if defined(__DragonFly__) || defined(__HAIKU__)
 #define uimin(a, b)		((u_int)a < (u_int)b ? (u_int)a : (u_int)b)
 #endif
 
@@ -346,16 +358,20 @@ void		os_vmobj_rel(os_vmobj_t *);
 int		os_vmobj_map(struct vm_map *, vaddr_t *, vsize_t, os_vmobj_t *,
 		    voff_t, bool, bool, bool, int, int);
 void		os_vmobj_unmap(struct vm_map *map, vaddr_t, vaddr_t, bool);
+#endif
 
 void *		os_pagemem_zalloc(size_t);
 void		os_pagemem_free(void *, size_t);
 
+#ifndef __HAIKU__ // Haiku won't need this ones
 paddr_t		os_pa_zalloc(void);
 void		os_pa_free(paddr_t);
+#endif
 
 int		os_contigpa_zalloc(paddr_t *, vaddr_t *, size_t);
 void		os_contigpa_free(paddr_t, vaddr_t, size_t);
 
+#ifndef __HAIKU__
 static inline bool
 os_return_needed(void)
 {
@@ -379,6 +395,21 @@ os_return_needed(void)
 }
 
 #endif // #ifndef __HAIKU__
+
+// Haiku auxiliary functions
+#if defined(__HAIKU__)
+#ifdef __cplusplus
+extern "C" {
+#endif
+int haiku_get_xsave_mask();
+
+int32 haiku_smp_get_current_cpu();
+int32 haiku_smp_get_num_cpus();
+
+#ifdef __cplusplus
+};
+#endif
+#endif
 
 /* -------------------------------------------------------------------------- */
 
@@ -444,6 +475,17 @@ os_ipi_broadcast(void (*func)(void *), void *arg)
  */
 #define curlwp_bind()		((int)0)
 #define curlwp_bindx(bound)	/* nothing */
+
+#elif defined(__HAIKU__)
+
+#include <drivers/KernelExport.h>
+#define OS_IPI_FUNC(func)	void func(void *arg, int unused)
+
+static inline void
+os_ipi_broadcast(void (*func)(void *, int), void *arg)
+{
+	call_all_cpus_sync(func, arg);
+}
 
 #endif /* __NetBSD__ */
 

@@ -153,16 +153,10 @@ extern struct nvmm_owner nvmm_root_owner;
 extern volatile unsigned int nmachines;
 extern const struct nvmm_impl *nvmm_impl;
 
-#if defined(__HAIKU__) && defined(__cplusplus)
-extern "C" {
-#endif
 const struct nvmm_impl *nvmm_ident(void);
 int	nvmm_init(void);
 void	nvmm_fini(void);
 int	nvmm_ioctl(struct nvmm_owner *, unsigned long, void *);
 void	nvmm_kill_machines(struct nvmm_owner *);
-#if defined(__HAIKU__) && defined(__cplusplus)
-}
-#endif
 
 #endif /* _NVMM_INTERNAL_H_ */

@@ -198,10 +198,10 @@ nvmm_vcpu_put(struct nvmm_cpu *vcpu)
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 void
 nvmm_kill_machines(struct nvmm_owner *owner)
 {
+#if 0
 	struct nvmm_machine *mach;
 	struct nvmm_cpu *vcpu;
 	size_t i, j;
@@ -240,8 +240,8 @@ nvmm_kill_machines(struct nvmm_owner *owner)
 
 		os_rwl_unlock(&mach->lock);
 	}
-}
 #endif
+}
 
 /* -------------------------------------------------------------------------- */
 

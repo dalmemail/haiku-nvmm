@@ -6,15 +6,24 @@
 
 #include <Drivers.h>
 
+extern "C" {
 #include "nvmm.h"
 #include "nvmm_internal.h"
 #include "nvmm_os.h"
 #include "x86/nvmm_x86.h"
+}
 
+#include <drivers/KernelExport.h>
 #include <OS.h>
 
+#include <arch/x86/arch_cpu.h>
+#include <kernel/heap.h>
+#include <kernel/smp.h>
 
-void x86_get_cpuid(uint32_t eax, cpuid_desc_t *descriptors)
+#define __unused __attribute__ ((unused))
+
+
+extern "C" void x86_get_cpuid(uint32_t eax, cpuid_desc_t *descriptors)
 {
 	cpuid_info info;
 	if (get_cpuid(&info, eax, 0) != B_OK) {
@@ -32,7 +41,157 @@ void x86_get_cpuid(uint32_t eax, cpuid_desc_t *descriptors)
 }
 
 
+extern "C" int haiku_get_xsave_mask()
+{
+	if (x86_check_feature(IA32_FEATURE_EXT_XSAVE, FEATURE_EXT))
+		return IA32_XCR0_X87 | IA32_XCR0_SSE;
+
+	return 0;
+}
+
+
+extern "C" int32 haiku_smp_get_current_cpu()
+{
+	return smp_get_current_cpu();
+}
+
+
+extern "C" int32 haiku_smp_get_num_cpus()
+{
+	return smp_get_num_cpus();
+}
+
+
+/*---------------------------------------------------------------------------------------*/
+
+
+extern "C"
+void *
+os_pagemem_zalloc(size_t size)
+{
+	void *ptr;
+	size_t alloc_size = roundup(size, PAGE_SIZE);
+	area_id area = create_area("os_pagemem_zalloc_area", &ptr, B_ANY_KERNEL_ADDRESS,
+		alloc_size, B_FULL_LOCK, B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA);
+
+	if (area < 0)
+		return NULL;
+
+	memset(ptr, 0, alloc_size);
+
+	return ptr;
+}
+
+
+extern "C"
+void
+os_pagemem_free(void *ptr, size_t size __unused)
+{
+	delete_area(area_for(ptr));
+}
+
+
+extern "C"
+int
+os_contigpa_zalloc(paddr_t *pa, vaddr_t *va, size_t npages)
+{
+	area_id area = create_area("os_contigpa_zalloc_area", (void **)va, B_ANY_KERNEL_ADDRESS,
+		npages * PAGE_SIZE, B_CONTIGUOUS, B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA);
+
+	if (area < 0)
+		return area;
+
+	memset((void *)*va, 0, npages * PAGE_SIZE);
+
+	physical_entry entry;
+	status_t status = get_memory_map((void *)*va, 1, &entry, 1);
+	if (status < B_OK) {
+		delete_area(area);
+		return status;
+	}
+	*pa = entry.address;
+
+	return 0;
+}
+
+
+extern "C"
+void
+os_contigpa_free(paddr_t pa __unused, vaddr_t va, size_t npages __unused)
+{
+	delete_area(area_for((void *)va));
+}
+
+
+/*---------------------------------------------------------------------------------------*/
+
+
 int32 api_version = B_CUR_DRIVER_API_VERSION;
+
+static const char *sNVMMDevice = "nvmm/nvmm";
+static const char *sDevices[] = { NULL, NULL };
+
+static status_t nvmm_open_hook(const char *name, uint32 flags, void **cookie);
+static status_t nvmm_close_hook(void *cookie);
+static status_t nvmm_free_hook(void* cookie);
+static status_t nvmm_control_hook(void *cookie, uint32 op, void *data, size_t len);
+
+static device_hooks sHooks = {
+	.open = nvmm_open_hook,
+	.close = nvmm_close_hook,
+	.free = nvmm_free_hook,
+	.control = nvmm_control_hook,
+};
+
+
+static status_t
+nvmm_open_hook(const char *name, uint32 flags, void **cookie)
+{
+	//TODO: Root owner not supported yet
+	struct nvmm_owner *owner;
+	owner = (struct nvmm_owner *)os_mem_alloc(sizeof(*owner));
+	if (owner == NULL)
+		return B_NO_MEMORY;
+
+	owner->pid = getpid();
+	*cookie = owner;
+
+	return B_OK;
+}
+
+
+static status_t
+nvmm_close_hook(void *cookie)
+{
+	if (cookie == NULL)
+		return B_NO_INIT;
+
+	struct nvmm_owner *owner = (struct nvmm_owner *)cookie;
+	nvmm_kill_machines(owner);
+	TRACE_ALWAYS("%d\n", owner->pid);
+
+	return B_OK;
+}
+
+
+static status_t
+nvmm_free_hook(void* cookie)
+{
+	if (cookie == NULL)
+		return B_NO_INIT;
+
+	os_mem_free(cookie, sizeof(struct nvmm_owner));
+
+	return B_OK;
+}
+
+
+static status_t
+nvmm_control_hook(void *cookie, uint32 op, void *data, size_t len)
+{
+	struct nvmm_owner owner = { .pid = getpid(), };
+	return nvmm_ioctl(&owner, op, data);
+}
 
 
 status_t
@@ -50,7 +209,8 @@ const char**
 publish_devices(void)
 {
 	TRACE_ALWAYS("nvmm: publish_devices\n");
-	return NULL;
+	sDevices[0] = (const char*)sNVMMDevice;
+	return sDevices;
 }
 
 
@@ -58,14 +218,17 @@ device_hooks*
 find_device(const char* name)
 {
 	TRACE_ALWAYS("nvmm: find_device\n");
-	return NULL;
+	return &sHooks;
 }
 
 
 status_t
 init_driver(void)
 {
-	TRACE_ALWAYS("nvmm: init_driver\n");
+	if (nvmm_init())
+		return B_ERROR;
+
+	TRACE_ALWAYS("nvmm: init_driver OK\n");
 	return B_OK;
 }
 
@@ -74,4 +237,5 @@ void
 uninit_driver(void)
 {
 	TRACE_ALWAYS("nvmm: uninit_driver\n");
+	nvmm_fini();
 }
