@@ -33,12 +33,6 @@
 #ifndef _NVMM_OS_H_
 #define _NVMM_OS_H_
 
-#if defined(__HAIKU__)
-#ifdef _KERNEL_MODE
-#define _KERNEL
-#endif
-#endif
-
 #ifndef _KERNEL
 #error "This file should not be included by userland programs."
 #endif
@@ -113,18 +107,8 @@ typedef mutex			os_mtx_t;
 // roundup() taken from headers/private/firewire/fwglue.h
 #define roundup(x, y)   ((((x)+((y)-1))/(y))*(y))  /* to any y */
 #define __aligned(bytes) __attribute__((__aligned__(bytes)))
-// bitops macros taken from sys/cdefs.h (NetBSD)
-#define NBBY 8 // (Number of Bits in a BYte)
-#define __BIT(__n)      \
-	(((uintmax_t)(__n) >= NBBY * sizeof(uintmax_t)) ? 0 : \
-	((uintmax_t)1 << (uintmax_t)((__n) & (NBBY * sizeof(uintmax_t) - 1))))
 
-#define __BITS(__m, __n)        \
-	((__BIT(max_c((__m), (__n)) + 1) - 1) ^ (__BIT(min_c((__m), (__n))) - 1))
-
-#define __LOWEST_SET_BIT(__mask) ((((__mask) - 1) & (__mask)) ^ (__mask))
-#define __SHIFTOUT(__x, __mask) (((__x) & (__mask)) / __LOWEST_SET_BIT(__mask))
-#define	__SHIFTIN(__x, __mask) ((__x) * __LOWEST_SET_BIT(__mask))
+#include "nvmm_bitops.h"
 
 #define PAGE_SIZE		B_PAGE_SIZE
 #endif

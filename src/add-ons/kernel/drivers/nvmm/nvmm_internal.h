@@ -29,12 +29,6 @@
 #ifndef _NVMM_INTERNAL_H_
 #define _NVMM_INTERNAL_H_
 
-#if defined(__HAIKU__)
-#ifdef _KERNEL_MODE
-#define _KERNEL
-#endif
-#endif
-
 #ifndef _KERNEL
 #error "This file should not be included by userland programs."
 #endif

@@ -38,6 +38,12 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#if defined(__HAIKU__)
+#define __aligned(bytes) __attribute__((__aligned__(bytes)))
+#include <machine/specialreg.h>
+#include <nvmm_bitops.h>
+#endif
+
 #include "nvmm.h"
 
 static struct nvmm_capability __capability;

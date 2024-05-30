@@ -38,6 +38,9 @@
 #elif defined(__DragonFly__)
 #include <dev/virtual/nvmm/nvmm.h>
 #include <dev/virtual/nvmm/nvmm_ioctl.h>
+#elif defined(__HAIKU__)
+#include <nvmm.h>
+#include <nvmm_ioctl.h>
 #else
 #error "Unsupported OS."
 #endif

@@ -38,6 +38,7 @@
 
 #if defined(__HAIKU__)
 #include <stdint.h>
+#include <stdbool.h>
 #endif
 
 typedef uint64_t	gpaddr_t;
@@ -49,11 +50,11 @@ typedef uint32_t	nvmm_cpuid_t;
 #undef CTASSERT
 #define CTASSERT(x)		NVMM_CTASSERT(x, __LINE__)
 #define NVMM_CTASSERT(x, y)	NVMM__CTASSERT(x, y)
-#if defined(__HAIKU__)
-#define NVMM__CTASSERT(x, y)	STATIC_ASSERT(x)
-#else
+//#if defined(__HAIKU__)
+//#define NVMM__CTASSERT(x, y)	STATIC_ASSERT(x)
+//#else
 #define NVMM__CTASSERT(x, y)	typedef char __assert ## y[(x) ? 1 : -1] __unused
-#endif
+//#endif
 
 #if defined(__x86_64__)
 #if defined(__NetBSD__)
@@ -61,7 +62,7 @@ typedef uint32_t	nvmm_cpuid_t;
 #elif defined(__DragonFly__)
 #include <dev/virtual/nvmm/x86/nvmm_x86.h>
 #elif defined(__HAIKU__)
-//#include "x86/nvmm_x86.h"
+#include "x86/nvmm_x86.h"
 #endif
 #endif /* __x86_64__ */
 
@@ -96,15 +97,11 @@ struct nvmm_comm_page {
 	uint64_t state_wanted;
 	uint64_t state_cached;
 	uint64_t state_commit;
-	#ifndef __HAIKU__ // Not supported yet
 	struct nvmm_vcpu_state state;
-	#endif
 
 	/* Event. */
 	bool event_commit;
-	#ifndef __HAIKU__ // Not supported yet
 	struct nvmm_vcpu_event event;
-	#endif
 };
 
 #endif

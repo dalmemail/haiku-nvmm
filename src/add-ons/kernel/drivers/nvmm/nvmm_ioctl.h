@@ -97,9 +97,7 @@ struct nvmm_ioc_vcpu_run {
 	nvmm_machid_t machid;
 	nvmm_cpuid_t cpuid;
 	/* output */
-	#ifndef __HAIKU__ // Not supported by our port yet
 	struct nvmm_vcpu_exit exit;
-	#endif
 };
 
 struct nvmm_ioc_hva_map {
