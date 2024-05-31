@@ -536,8 +536,6 @@ error_description(int error)
 			return "State not recoverable";
 		case EOWNERDEAD:
 			return "Previous owner died";
-		case EPROGMISMATCH:
-			return "Program version wrong";
 
 		default:
 			return NULL;

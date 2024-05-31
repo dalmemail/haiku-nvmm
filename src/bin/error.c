@@ -273,9 +273,6 @@ struct error_pair {
 #ifdef EPROTO
 	E(EPROTO),
 #endif
-#ifdef EPROGMISMATCH
-	E(EPROGMISMATCH),
-#endif
 	E(EPROTONOSUPPORT),
 	E(EPROTOTYPE),
 	E(ERANGE),
