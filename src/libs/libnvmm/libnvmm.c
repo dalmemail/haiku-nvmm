@@ -177,7 +177,11 @@ nvmm_init(void)
 	if (__capability.version != NVMM_KERN_VERSION) {
 		close(nvmm_fd);
 		nvmm_fd = -1;
+#if defined(__HAIKU__)
+		errno = EPERM;
+#else
 		errno = EPROGMISMATCH;
+#endif
 		return -1;
 	}
 
@@ -200,7 +204,11 @@ nvmm_root_init(void)
 	if (__capability.version != NVMM_KERN_VERSION) {
 		close(nvmm_fd);
 		nvmm_fd = -1;
+#if defined(__HAIKU__)
+		errno = EPERM;
+#else
 		errno = EPROGMISMATCH;
+#endif
 		return -1;
 	}
 
