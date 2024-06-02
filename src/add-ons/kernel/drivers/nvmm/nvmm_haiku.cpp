@@ -147,6 +147,9 @@ static device_hooks sHooks = {
 static status_t
 nvmm_open_hook(const char *name, uint32 flags, void **cookie)
 {
+	if (!(flags & O_CLOEXEC))
+		return B_BAD_VALUE;
+
 	//TODO: Root owner not supported yet
 	struct nvmm_owner *owner;
 	owner = (struct nvmm_owner *)os_mem_alloc(sizeof(*owner));
