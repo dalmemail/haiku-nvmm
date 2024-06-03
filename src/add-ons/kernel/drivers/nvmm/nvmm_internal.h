@@ -44,7 +44,7 @@
 #elif defined(__DragonFly__)
 #define NVMM_MAX_RAM		(127ULL * 1024ULL * (1 << 30))
 #elif defined(__HAIKU__)
-/* Empty for now */
+#define NVMM_MAX_RAM            (128ULL * (1 << 30))
 #else
 #error "OS dependency for NVMM_MAX_RAM required"
 #endif

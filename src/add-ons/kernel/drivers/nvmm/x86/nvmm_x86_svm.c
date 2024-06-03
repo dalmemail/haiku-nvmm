@@ -2712,7 +2712,6 @@ svm_fini(void)
 #endif
 }
 
-#if 0
 static void
 svm_capability(struct nvmm_capability *cap)
 {
@@ -2723,14 +2722,13 @@ svm_capability(struct nvmm_capability *cap)
 	cap->arch.mxcsr_mask = x86_fpu_mxcsr_mask;
 	cap->arch.conf_cpuid_maxops = SVM_NCPUIDS;
 }
-#endif
 
 const struct nvmm_impl nvmm_x86_svm = {
 	.name = "x86-svm",
 	.ident = svm_ident,
 	.init = svm_init,
-	.fini = svm_fini/*,
-	.capability = svm_capability,
+	.fini = svm_fini,
+	.capability = svm_capability/*,
 	.mach_conf_max = NVMM_X86_MACH_NCONF,
 	.mach_conf_sizes = NULL,
 	.vcpu_conf_max = NVMM_X86_VCPU_NCONF,

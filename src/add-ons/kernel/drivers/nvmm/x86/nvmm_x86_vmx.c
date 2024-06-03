@@ -3679,7 +3679,6 @@ vmx_fini(void)
 #endif
 }
 
-#if 0
 static void
 vmx_capability(struct nvmm_capability *cap)
 {
@@ -3691,14 +3690,13 @@ vmx_capability(struct nvmm_capability *cap)
 	cap->arch.mxcsr_mask = x86_fpu_mxcsr_mask;
 	cap->arch.conf_cpuid_maxops = VMX_NCPUIDS;
 }
-#endif
 
 const struct nvmm_impl nvmm_x86_vmx = {
 	.name = "x86-vmx",
 	.ident = vmx_ident,
 	.init = vmx_init,
-	.fini = vmx_fini/*,
-	.capability = vmx_capability,
+	.fini = vmx_fini,
+	.capability = vmx_capability/*,
 	.mach_conf_max = NVMM_X86_MACH_NCONF,
 	.mach_conf_sizes = NULL,
 	.vcpu_conf_max = NVMM_X86_VCPU_NCONF,

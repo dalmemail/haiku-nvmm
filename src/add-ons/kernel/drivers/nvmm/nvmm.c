@@ -245,7 +245,6 @@ nvmm_kill_machines(struct nvmm_owner *owner)
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 static int
 nvmm_capability(struct nvmm_owner *owner, struct nvmm_ioc_capability *args)
 {
@@ -261,6 +260,7 @@ nvmm_capability(struct nvmm_owner *owner, struct nvmm_ioc_capability *args)
 	return 0;
 }
 
+# if 0
 static int
 nvmm_machine_create(struct nvmm_owner *owner,
     struct nvmm_ioc_machine_create *args)
@@ -1026,10 +1026,10 @@ nvmm_fini(void)
 int
 nvmm_ioctl(struct nvmm_owner *owner, unsigned long cmd, void *data)
 {
-/*	switch (cmd) {
+	switch (cmd) {
 	case NVMM_IOC_CAPABILITY:
 		return nvmm_capability(owner, data);
-	case NVMM_IOC_MACHINE_CREATE:
+/*	case NVMM_IOC_MACHINE_CREATE:
 		return nvmm_machine_create(owner, data);
 	case NVMM_IOC_MACHINE_DESTROY:
 		return nvmm_machine_destroy(owner, data);
@@ -1058,9 +1058,8 @@ nvmm_ioctl(struct nvmm_owner *owner, unsigned long cmd, void *data)
 	case NVMM_IOC_HVA_UNMAP:
 		return nvmm_hva_unmap(owner, data);
 	case NVMM_IOC_CTL:
-		return nvmm_ctl(owner, data);
+		return nvmm_ctl(owner, data);*/
 	default:
 		return EINVAL;
-	}*/
-	return EINVAL;
+	}
 }

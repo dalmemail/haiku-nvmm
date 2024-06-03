@@ -75,9 +75,7 @@ struct nvmm_capability {
 	uint32_t max_machines;
 	uint32_t max_vcpus;
 	uint64_t max_ram;
-	#ifndef __HAIKU__ // We only support a toy x86 backend so far
 	struct nvmm_cap_md arch;
-	#endif
 };
 
 /* Machine configuration slots. */

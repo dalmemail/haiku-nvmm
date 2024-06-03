@@ -908,6 +908,7 @@ x86_set_xcr(uint32_t xcr, uint64_t val)
 #define x86_fpu_mxcsr_mask	npx_mxcsr_mask
 #elif defined(__HAIKU__)
 #define x86_xsave_features	haiku_get_xsave_mask()
+#define x86_fpu_mxcsr_mask	gFPUMXCSRDefault
 #endif
 
 #endif /* _KERNEL */
