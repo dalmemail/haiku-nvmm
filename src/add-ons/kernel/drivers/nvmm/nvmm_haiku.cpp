@@ -20,6 +20,8 @@ extern "C" {
 #include <kernel/heap.h>
 #include <kernel/smp.h>
 
+#include <sys/ioccom.h>
+
 #define __unused __attribute__ ((unused))
 
 
@@ -143,6 +145,11 @@ static device_hooks sHooks = {
 	.control = nvmm_control_hook,
 };
 
+// According to ioctl() man page IO* macros set 13 bits for size
+#define MAX_IOCTL_DATA_SIZE (1 << 13)
+
+void *kernel_data;
+
 
 static status_t
 nvmm_open_hook(const char *name, uint32 flags, void **cookie)
@@ -192,8 +199,23 @@ nvmm_free_hook(void* cookie)
 static status_t
 nvmm_control_hook(void *cookie, uint32 op, void *data, size_t len)
 {
+	len = IOCPARM_LEN(op);
+	// Shouldn't happen. kernel_data should have enough space
+	if (len > MAX_IOCTL_DATA_SIZE)
+		return B_NO_MEMORY;
+
 	struct nvmm_owner owner = { .pid = getpid(), };
-	return nvmm_ioctl(&owner, op, data);
+	status_t status = user_memcpy(kernel_data, data, len);
+	if (status < 0)
+		return status;
+
+	status_t ioctl_status = nvmm_ioctl(&owner, op, kernel_data);
+
+	status = user_memcpy(data, kernel_data, len);
+	if (status < 0)
+		return status;
+
+	return ioctl_status;
 }
 
 
@@ -231,6 +253,12 @@ init_driver(void)
 	if (nvmm_init())
 		return B_ERROR;
 
+	kernel_data = malloc(MAX_IOCTL_DATA_SIZE);
+	if (!kernel_data) {
+		nvmm_fini();
+		return B_NO_MEMORY;
+	}
+
 	TRACE_ALWAYS("nvmm: init_driver OK\n");
 	return B_OK;
 }
@@ -241,4 +269,5 @@ uninit_driver(void)
 {
 	TRACE_ALWAYS("nvmm: uninit_driver\n");
 	nvmm_fini();
+	free(kernel_data);
 }
