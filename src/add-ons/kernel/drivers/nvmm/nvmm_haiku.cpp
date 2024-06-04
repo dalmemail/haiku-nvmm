@@ -22,6 +22,8 @@ extern "C" {
 
 #include <sys/ioccom.h>
 
+#include <StackOrHeapArray.h>
+
 #define __unused __attribute__ ((unused))
 
 
@@ -145,11 +147,6 @@ static device_hooks sHooks = {
 	.control = nvmm_control_hook,
 };
 
-// According to ioctl() man page IO* macros set 13 bits for size
-#define MAX_IOCTL_DATA_SIZE (1 << 13)
-
-static void *sKernelData;
-
 
 static status_t
 nvmm_open_hook(const char *name, uint32 flags, void **cookie)
@@ -200,18 +197,16 @@ static status_t
 nvmm_control_hook(void *cookie, uint32 op, void *data, size_t len)
 {
 	len = IOCPARM_LEN(op);
-	// Shouldn't happen. sKernelData should have enough space
-	if (len > MAX_IOCTL_DATA_SIZE)
-		return B_NO_MEMORY;
+	BStackOrHeapArray<char, 128> kernel_data(len);
 
 	struct nvmm_owner owner = { .pid = getpid(), };
-	status_t status = user_memcpy(sKernelData, data, len);
+	status_t status = user_memcpy(kernel_data, data, len);
 	if (status < 0)
 		return status;
 
-	status_t ioctl_status = nvmm_ioctl(&owner, op, sKernelData);
+	status_t ioctl_status = nvmm_ioctl(&owner, op, kernel_data);
 
-	status = user_memcpy(data, sKernelData, len);
+	status = user_memcpy(data, kernel_data, len);
 	if (status < 0)
 		return status;
 
@@ -253,12 +248,6 @@ init_driver(void)
 	if (nvmm_init())
 		return B_ERROR;
 
-	sKernelData = malloc(MAX_IOCTL_DATA_SIZE);
-	if (!sKernelData) {
-		nvmm_fini();
-		return B_NO_MEMORY;
-	}
-
 	TRACE_ALWAYS("nvmm: init_driver OK\n");
 	return B_OK;
 }
@@ -269,5 +258,4 @@ uninit_driver(void)
 {
 	TRACE_ALWAYS("nvmm: uninit_driver\n");
 	nvmm_fini();
-	free(sKernelData);
 }
