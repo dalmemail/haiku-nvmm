@@ -148,7 +148,7 @@ static device_hooks sHooks = {
 // According to ioctl() man page IO* macros set 13 bits for size
 #define MAX_IOCTL_DATA_SIZE (1 << 13)
 
-void *kernel_data;
+static void *sKernelData;
 
 
 static status_t
@@ -200,18 +200,18 @@ static status_t
 nvmm_control_hook(void *cookie, uint32 op, void *data, size_t len)
 {
 	len = IOCPARM_LEN(op);
-	// Shouldn't happen. kernel_data should have enough space
+	// Shouldn't happen. sKernelData should have enough space
 	if (len > MAX_IOCTL_DATA_SIZE)
 		return B_NO_MEMORY;
 
 	struct nvmm_owner owner = { .pid = getpid(), };
-	status_t status = user_memcpy(kernel_data, data, len);
+	status_t status = user_memcpy(sKernelData, data, len);
 	if (status < 0)
 		return status;
 
-	status_t ioctl_status = nvmm_ioctl(&owner, op, kernel_data);
+	status_t ioctl_status = nvmm_ioctl(&owner, op, sKernelData);
 
-	status = user_memcpy(data, kernel_data, len);
+	status = user_memcpy(data, sKernelData, len);
 	if (status < 0)
 		return status;
 
@@ -253,8 +253,8 @@ init_driver(void)
 	if (nvmm_init())
 		return B_ERROR;
 
-	kernel_data = malloc(MAX_IOCTL_DATA_SIZE);
-	if (!kernel_data) {
+	sKernelData = malloc(MAX_IOCTL_DATA_SIZE);
+	if (!sKernelData) {
 		nvmm_fini();
 		return B_NO_MEMORY;
 	}
@@ -269,5 +269,5 @@ uninit_driver(void)
 {
 	TRACE_ALWAYS("nvmm: uninit_driver\n");
 	nvmm_fini();
-	free(kernel_data);
+	free(sKernelData);
 }
