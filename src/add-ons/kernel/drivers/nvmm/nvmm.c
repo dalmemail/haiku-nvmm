@@ -575,7 +575,7 @@ static int
 nvmm_do_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
     struct nvmm_vcpu_exit *exit)
 {
-	struct vmspace *vm = mach->vm;
+	os_vmspace_t *vm = mach->vm;
 	int ret;
 
 	while (1) {

@@ -82,6 +82,7 @@ typedef vm_offset_t		voff_t;
 typedef vm_size_t		vsize_t;
 typedef vm_paddr_t		paddr_t;
 #elif defined(__HAIKU__)
+typedef struct vmspace		os_vmspace_t;
 typedef phys_addr_t		paddr_t;
 typedef addr_t			vaddr_t;
 typedef rw_lock			os_rwl_t;
@@ -347,7 +348,7 @@ void		os_vmobj_unmap(struct vm_map *map, vaddr_t, vaddr_t, bool);
 void *		os_pagemem_zalloc(size_t);
 void		os_pagemem_free(void *, size_t);
 
-#ifndef __HAIKU__ // Haiku won't need this ones
+#if defined(__DragonFly__) || defined(__NetBSD__)
 paddr_t		os_pa_zalloc(void);
 void		os_pa_free(paddr_t);
 #endif
