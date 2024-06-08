@@ -24,6 +24,8 @@ extern "C" {
 
 #include <StackOrHeapArray.h>
 
+#include <vm/VMCache.h>
+
 #define __unused __attribute__ ((unused))
 
 
@@ -67,6 +69,12 @@ extern "C" int32 haiku_smp_get_num_cpus()
 
 
 /*---------------------------------------------------------------------------------------*/
+
+// aka os_vmobj_t
+extern "C" struct haiku_vmobj {
+	VMCache *cache;
+	int32	ref_count;
+};
 
 
 extern "C"
@@ -124,6 +132,46 @@ void
 os_contigpa_free(paddr_t pa __unused, vaddr_t va, size_t npages __unused)
 {
 	delete_area(area_for((void *)va));
+}
+
+
+os_vmobj_t *
+os_vmobj_create(voff_t size)
+{
+	os_vmobj_t *ret = (os_vmobj_t *)os_mem_alloc(sizeof(os_vmobj_t));
+	if (ret == NULL)
+		return NULL;
+
+	int32 numPages = size / PAGE_SIZE;
+	if (size % PAGE_SIZE != 0)
+		numPages++;
+
+	status_t status = VMCacheFactory::CreateAnonymousCache(ret->cache, false, numPages, 0, true, 0);
+	if (status != B_OK) {
+		os_mem_free(ret, sizeof(os_vmobj_t));
+		return NULL;
+	}
+	ret->ref_count = 0;
+
+	return ret;
+}
+
+
+void
+os_vmobj_ref(os_vmobj_t *vmobj)
+{
+	atomic_add(&vmobj->ref_count, 1);
+}
+
+
+void
+os_vmobj_rel(os_vmobj_t *vmobj)
+{
+	int32 previous = atomic_add(&vmobj->ref_count, -1);
+	if (previous == 0) {
+		vmobj->cache->Delete();
+		os_mem_free(vmobj, sizeof(os_vmobj_t));
+	}
 }
 
 

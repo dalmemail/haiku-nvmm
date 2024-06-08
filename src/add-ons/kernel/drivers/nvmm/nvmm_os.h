@@ -83,8 +83,10 @@ typedef vm_size_t		vsize_t;
 typedef vm_paddr_t		paddr_t;
 #elif defined(__HAIKU__)
 typedef struct vmspace		os_vmspace_t;
+typedef struct haiku_vmobj	os_vmobj_t;
 typedef phys_addr_t		paddr_t;
 typedef addr_t			vaddr_t;
+typedef off_t			voff_t;
 typedef rw_lock			os_rwl_t;
 typedef mutex			os_mtx_t;
 #endif
@@ -335,11 +337,13 @@ typedef cpumask_t		os_cpuset_t;
 os_vmspace_t *	os_vmspace_create(vaddr_t, vaddr_t);
 void		os_vmspace_destroy(os_vmspace_t *);
 int		os_vmspace_fault(os_vmspace_t *, vaddr_t, vm_prot_t);
+#endif
 
 os_vmobj_t *	os_vmobj_create(voff_t);
 void		os_vmobj_ref(os_vmobj_t *);
 void		os_vmobj_rel(os_vmobj_t *);
 
+#ifndef __HAIKU__
 int		os_vmobj_map(struct vm_map *, vaddr_t *, vsize_t, os_vmobj_t *,
 		    voff_t, bool, bool, bool, int, int);
 void		os_vmobj_unmap(struct vm_map *map, vaddr_t, vaddr_t, bool);
