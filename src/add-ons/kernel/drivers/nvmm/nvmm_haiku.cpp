@@ -25,6 +25,7 @@ extern "C" {
 #include <StackOrHeapArray.h>
 
 #include <vm/VMCache.h>
+#include <vm/VMAddressSpace.h>
 
 #define __unused __attribute__ ((unused))
 
@@ -69,6 +70,12 @@ extern "C" int32 haiku_smp_get_num_cpus()
 
 
 /*---------------------------------------------------------------------------------------*/
+
+// aka os_vmspace_t
+extern "C" struct haiku_vmspace {
+	VMAddressSpace *address_space;
+};
+
 
 // aka os_vmobj_t
 extern "C" struct haiku_vmobj {
@@ -135,6 +142,57 @@ os_contigpa_free(paddr_t pa __unused, vaddr_t va, size_t npages __unused)
 }
 
 
+extern "C"
+os_vmspace_t *
+os_vmspace_create(vaddr_t vmin, vaddr_t vmax)
+{
+	if (vmax < vmin)
+		return NULL;
+
+	os_vmspace_t *ret = (os_vmspace_t *)os_mem_alloc(sizeof(os_vmspace_t));
+	if (ret == NULL)
+		return NULL;
+
+	status_t status;
+	status = VMAddressSpace::Create(0, vmin, vmax - vmin + 1, false, &ret->address_space);
+	if (status != B_OK) {
+		os_mem_free(ret, sizeof(os_vmspace_t));
+		return NULL;
+	}
+
+	return ret;
+}
+
+
+extern "C"
+void
+os_vmspace_destroy(os_vmspace_t *vm)
+{
+	if (vm) {
+		VMAddressSpace::Delete(vm->address_space);
+		os_mem_free(vm, sizeof(os_vmspace_t));
+	}
+}
+
+
+extern "C"
+int
+os_vmspace_fault(os_vmspace_t *vm, vaddr_t va, vm_prot_t prot)
+{
+	VMArea *area = vm->address_space->LookupArea(va);
+	if (area == NULL)
+		return 1;
+
+	if ((area->protection && prot) != prot)
+		return 1;
+
+	// TODO: Page could be swapped out to disk?
+
+	return 0;
+}
+
+
+extern "C"
 os_vmobj_t *
 os_vmobj_create(voff_t size)
 {
@@ -157,6 +215,7 @@ os_vmobj_create(voff_t size)
 }
 
 
+extern "C"
 void
 os_vmobj_ref(os_vmobj_t *vmobj)
 {
@@ -164,6 +223,7 @@ os_vmobj_ref(os_vmobj_t *vmobj)
 }
 
 
+extern "C"
 void
 os_vmobj_rel(os_vmobj_t *vmobj)
 {

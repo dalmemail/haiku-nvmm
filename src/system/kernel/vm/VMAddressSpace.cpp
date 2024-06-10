@@ -302,6 +302,19 @@ VMAddressSpace::DebugGet(team_id teamID)
 
 
 /*static*/ void
+VMAddressSpace::Delete(VMAddressSpace* addressSpace)
+{
+	if (addressSpace == NULL)
+		return;
+
+	rw_lock_write_lock(&sAddressSpaceTableLock);
+	sAddressSpaceTable.Remove(addressSpace);
+	rw_lock_write_unlock(&sAddressSpaceTableLock);
+	delete addressSpace;
+}
+
+
+/*static*/ void
 VMAddressSpace::_DeleteIfUnreferenced(team_id id)
 {
 	rw_lock_write_lock(&sAddressSpaceTableLock);

@@ -82,11 +82,12 @@ typedef vm_offset_t		voff_t;
 typedef vm_size_t		vsize_t;
 typedef vm_paddr_t		paddr_t;
 #elif defined(__HAIKU__)
-typedef struct vmspace		os_vmspace_t;
+typedef struct haiku_vmspace	os_vmspace_t;
 typedef struct haiku_vmobj	os_vmobj_t;
 typedef phys_addr_t		paddr_t;
 typedef addr_t			vaddr_t;
 typedef off_t			voff_t;
+typedef uint32			vm_prot_t;
 typedef rw_lock			os_rwl_t;
 typedef mutex			os_mtx_t;
 #endif
