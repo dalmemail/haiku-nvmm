@@ -71,8 +71,8 @@ extern "C" int32 haiku_smp_get_num_cpus()
 
 /*---------------------------------------------------------------------------------------*/
 
-// aka os_vmspace_t
-extern "C" struct haiku_vmspace {
+// aka os_vmmap_t
+extern "C" struct haiku_map {
 	VMAddressSpace *address_space;
 };
 
@@ -81,6 +81,12 @@ extern "C" struct haiku_vmspace {
 extern "C" struct haiku_vmobj {
 	VMCache *cache;
 	int32	ref_count;
+};
+
+
+// aka os_vmspace_t
+extern "C" struct haiku_vmspace {
+	VMCache *cache;
 };
 
 
@@ -153,10 +159,10 @@ os_vmspace_create(vaddr_t vmin, vaddr_t vmax)
 	if (ret == NULL)
 		return NULL;
 
-	status_t status;
-	status = VMAddressSpace::Create(0, vmin, vmax - vmin + 1, false, &ret->address_space);
+	status_t status = VMCacheFactory::CreateAnonymousCache(ret->cache, false,
+				0, 0, true, 0);
 	if (status != B_OK) {
-		os_mem_free(ret, sizeof(os_vmspace_t));
+		os_mem_free(ret, sizeof(os_vmobj_t));
 		return NULL;
 	}
 
@@ -169,7 +175,7 @@ void
 os_vmspace_destroy(os_vmspace_t *vm)
 {
 	if (vm) {
-		VMAddressSpace::Delete(vm->address_space);
+		vm->cache->Delete();
 		os_mem_free(vm, sizeof(os_vmspace_t));
 	}
 }
@@ -179,12 +185,13 @@ extern "C"
 int
 os_vmspace_fault(os_vmspace_t *vm, vaddr_t va, vm_prot_t prot)
 {
-	VMArea *area = vm->address_space->LookupArea(va);
-	if (area == NULL)
+	vm_page *page = vm->cache->LookupPage(va);
+	if (page == NULL)
 		return 1;
 
-	if ((area->protection & prot) != prot)
-		return 1;
+	// TODO: Probably through page->cache_ref->cache
+	//if ((area->protection & prot) != prot)
+	//	return 1;
 
 	// TODO: Page could be swapped out to disk?
 
@@ -204,7 +211,8 @@ os_vmobj_create(voff_t size)
 	if (size % PAGE_SIZE != 0)
 		numPages++;
 
-	status_t status = VMCacheFactory::CreateAnonymousCache(ret->cache, false, numPages, 0, true, 0);
+	status_t status = VMCacheFactory::CreateAnonymousCache(ret->cache, false,
+				numPages, 0, true, 0);
 	if (status != B_OK) {
 		os_mem_free(ret, sizeof(os_vmobj_t));
 		return NULL;
@@ -237,7 +245,7 @@ os_vmobj_rel(os_vmobj_t *vmobj)
 
 extern "C"
 int
-os_vmobj_map(os_vmspace_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
+os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 	voff_t offset, bool wired, bool fixed, bool shared, int prot, int maxprot)
 {
 	if (!vmobj->cache->Lock())
@@ -275,7 +283,7 @@ os_vmobj_map(os_vmspace_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 
 extern "C"
 void
-os_vmobj_unmap(os_vmspace_t *map __unused, vaddr_t start, vaddr_t end __unused,
+os_vmobj_unmap(os_vmmap_t *map __unused, vaddr_t start, vaddr_t end __unused,
 	bool wired __unused)
 {
 	delete_area(area_for((void *)start));

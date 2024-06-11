@@ -67,11 +67,13 @@
 
 /* Types. */
 #if defined(__NetBSD__)
+typedef struct vm_map		os_vmmap_t;
 typedef struct vmspace		os_vmspace_t;
 typedef struct uvm_object	os_vmobj_t;
 typedef krwlock_t		os_rwl_t;
 typedef kmutex_t		os_mtx_t;
 #elif defined(__DragonFly__)
+typedef struct vm_map		os_vmmap_t;
 typedef struct vmspace		os_vmspace_t;
 typedef struct vm_object	os_vmobj_t;
 typedef struct lock		os_rwl_t;
@@ -82,6 +84,7 @@ typedef vm_offset_t		voff_t;
 typedef vm_size_t		vsize_t;
 typedef vm_paddr_t		paddr_t;
 #elif defined(__HAIKU__)
+typedef struct haiku_map	os_vmmap_t;
 typedef struct haiku_vmspace	os_vmspace_t;
 typedef struct haiku_vmobj	os_vmobj_t;
 typedef phys_addr_t		paddr_t;
@@ -343,15 +346,9 @@ os_vmobj_t *	os_vmobj_create(voff_t);
 void		os_vmobj_ref(os_vmobj_t *);
 void		os_vmobj_rel(os_vmobj_t *);
 
-#if defined(__HAIKU__)
-int		os_vmobj_map(os_vmspace_t *, vaddr_t *, vsize_t, os_vmobj_t *,
+int		os_vmobj_map(os_vmmap_t *, vaddr_t *, vsize_t, os_vmobj_t *,
 		    voff_t, bool, bool, bool, int, int);
-void		os_vmobj_unmap(os_vmspace_t *map, vaddr_t, vaddr_t, bool);
-#else
-int		os_vmobj_map(struct vm_map *, vaddr_t *, vsize_t, os_vmobj_t *,
-		    voff_t, bool, bool, bool, int, int);
-void		os_vmobj_unmap(struct vm_map *map, vaddr_t, vaddr_t, bool);
-#endif
+void		os_vmobj_unmap(os_vmmap_t *map, vaddr_t, vaddr_t, bool);
 
 void *		os_pagemem_zalloc(size_t);
 void		os_pagemem_free(void *, size_t);
