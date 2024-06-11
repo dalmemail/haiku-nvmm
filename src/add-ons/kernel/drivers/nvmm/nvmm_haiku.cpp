@@ -183,7 +183,7 @@ os_vmspace_fault(os_vmspace_t *vm, vaddr_t va, vm_prot_t prot)
 	if (area == NULL)
 		return 1;
 
-	if ((area->protection && prot) != prot)
+	if ((area->protection & prot) != prot)
 		return 1;
 
 	// TODO: Page could be swapped out to disk?
@@ -232,6 +232,53 @@ os_vmobj_rel(os_vmobj_t *vmobj)
 		vmobj->cache->Delete();
 		os_mem_free(vmobj, sizeof(os_vmobj_t));
 	}
+}
+
+
+extern "C"
+int
+os_vmobj_map(os_vmspace_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
+	voff_t offset, bool wired, bool fixed, bool shared, int prot, int maxprot)
+{
+	if (!vmobj->cache->Lock())
+		return B_ERROR;
+
+	status_t status = map->address_space->WriteLock();
+	if (status != B_OK)
+		return status;
+
+	addr_t cache_size = vmobj->cache->virtual_end - vmobj->cache->virtual_base + 1;
+	uint32 wiring = wired ? B_FULL_LOCK : B_NO_LOCK;
+	int mapping = REGION_NO_PRIVATE_MAP;
+	uint32 flags = fixed ? CREATE_AREA_UNMAP_ADDRESS_RANGE : 0;
+	bool kernel = false;
+//TODO:
+//	if (map->address_space == sKernelAddressSpace)
+//		kernel = true;
+
+	virtual_address_restrictions addressRestrictions = {
+		.address = addr,
+		.address_specification = fixed ? B_EXACT_ADDRESS : B_ANY_ADDRESS,
+		// .alignment is ignored at map_backing_store()
+	};
+	VMArea *area;
+	status = map_backing_store(map->address_space, vmobj->cache, vmobj->cache->virtual_base,
+		"nvmm_vmobj_area", cache_size, wiring, prot, maxprot, mapping, flags,
+		&addressRestrictions, kernel, &area, (void **)&addr);
+
+	map->address_space->WriteUnlock();
+	vmobj->cache->Unlock();
+
+	return status;
+}
+
+
+extern "C"
+void
+os_vmobj_unmap(os_vmspace_t *map __unused, vaddr_t start, vaddr_t end __unused,
+	bool wired __unused)
+{
+	delete_area(area_for((void *)start));
 }
 
 

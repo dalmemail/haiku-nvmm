@@ -87,6 +87,7 @@ typedef struct haiku_vmobj	os_vmobj_t;
 typedef phys_addr_t		paddr_t;
 typedef addr_t			vaddr_t;
 typedef off_t			voff_t;
+typedef size_t			vsize_t;
 typedef uint32			vm_prot_t;
 typedef rw_lock			os_rwl_t;
 typedef mutex			os_mtx_t;
@@ -334,17 +335,19 @@ typedef cpumask_t		os_cpuset_t;
 
 /* -------------------------------------------------------------------------- */
 
-#ifndef __HAIKU__ // Not supported yet by our port
 os_vmspace_t *	os_vmspace_create(vaddr_t, vaddr_t);
 void		os_vmspace_destroy(os_vmspace_t *);
 int		os_vmspace_fault(os_vmspace_t *, vaddr_t, vm_prot_t);
-#endif
 
 os_vmobj_t *	os_vmobj_create(voff_t);
 void		os_vmobj_ref(os_vmobj_t *);
 void		os_vmobj_rel(os_vmobj_t *);
 
-#ifndef __HAIKU__
+#if defined(__HAIKU__)
+int		os_vmobj_map(os_vmspace_t *, vaddr_t *, vsize_t, os_vmobj_t *,
+		    voff_t, bool, bool, bool, int, int);
+void		os_vmobj_unmap(os_vmspace_t *map, vaddr_t, vaddr_t, bool);
+#else
 int		os_vmobj_map(struct vm_map *, vaddr_t *, vsize_t, os_vmobj_t *,
 		    voff_t, bool, bool, bool, int, int);
 void		os_vmobj_unmap(struct vm_map *map, vaddr_t, vaddr_t, bool);
