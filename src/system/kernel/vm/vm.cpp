@@ -274,11 +274,6 @@ static void delete_area(VMAddressSpace* addressSpace, VMArea* area,
 	bool addressSpaceCleanup);
 static status_t vm_soft_fault(VMAddressSpace* addressSpace, addr_t address,
 	bool isWrite, bool isExecute, bool isUser, vm_page** wirePage);
-static status_t map_backing_store(VMAddressSpace* addressSpace,
-	VMCache* cache, off_t offset, const char* areaName, addr_t size, int wiring,
-	int protection, int protectionMax, int mapping, uint32 flags,
-	const virtual_address_restrictions* addressRestrictions, bool kernel,
-	VMArea** _area, void** _virtualAddress);
 static void fix_protection(uint32* protection);
 
 
@@ -1047,7 +1042,7 @@ discard_address_range(VMAddressSpace* addressSpace, addr_t address, addr_t size,
 	that no part of the specified address range (base \c *_virtualAddress, size
 	\a size) is wired. The cache will also be temporarily unlocked.
 */
-static status_t
+status_t
 map_backing_store(VMAddressSpace* addressSpace, VMCache* cache, off_t offset,
 	const char* areaName, addr_t size, int wiring, int protection,
 	int protectionMax, int mapping,
