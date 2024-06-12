@@ -69,6 +69,12 @@ extern "C" int32 haiku_smp_get_num_cpus()
 }
 
 
+extern "C" thread_id haiku_get_current_thread_id()
+{
+	return thread_get_current_thread_id();
+}
+
+
 /*---------------------------------------------------------------------------------------*/
 
 // aka os_vmmap_t

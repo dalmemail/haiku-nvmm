@@ -160,7 +160,7 @@ typedef mutex			os_mtx_t;
 #define os_rwl_destroy(lock)	rw_lock_destroy(lock)
 #define os_rwl_rlock(lock)	rw_lock_read_lock(lock)
 #define os_rwl_wlock(lock)	rw_lock_write_lock(lock)
-#define os_rwl_wheld(lock)	(lock->holder == thread_get_current_thread_id())
+#define os_rwl_wheld(lock)	((lock)->holder == haiku_get_current_thread_id())
 #define os_rwl_unlock(lock)     (os_rwl_wheld(lock) \
 				? rw_lock_write_unlock(lock) : rw_lock_read_unlock(lock))
 #endif
@@ -231,6 +231,11 @@ MALLOC_DECLARE(M_NVMM);
 #define os_atomic_dec_uint(x)	atomic_subtract_int(x, 1)
 #define os_atomic_load_uint(x)	atomic_load_acq_int(x)
 #define os_atomic_inc_64(x)	atomic_add_64(x, 1)
+#elif defined(__HAIKU__)
+#define os_atomic_inc_uint(x)	atomic_add(x, 1)
+#define os_atomic_dec_uint(x)	atomic_add(x, -1)
+#define os_atomic_load_uint(x)	atomic_get(x)
+#define os_atomic_inc_64(x)	atomic_add64(x, 1)
 #endif
 
 /* Pmap. */
@@ -388,17 +393,12 @@ os_return_needed(void)
 
 // Haiku auxiliary functions
 #if defined(__HAIKU__)
-#ifdef __cplusplus
-extern "C" {
-#endif
 int haiku_get_xsave_mask();
 
 int32 haiku_smp_get_current_cpu();
 int32 haiku_smp_get_num_cpus();
 
-#ifdef __cplusplus
-};
-#endif
+thread_id haiku_get_current_thread_id();
 #endif
 
 /* -------------------------------------------------------------------------- */

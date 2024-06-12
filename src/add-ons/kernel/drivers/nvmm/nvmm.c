@@ -53,7 +53,6 @@ const struct nvmm_impl *nvmm_impl __read_mostly = NULL;
 struct nvmm_owner nvmm_root_owner;
 
 /* -------------------------------------------------------------------------- */
-#if 0
 static int
 nvmm_machine_alloc(struct nvmm_machine **ret)
 {
@@ -70,7 +69,11 @@ nvmm_machine_alloc(struct nvmm_machine **ret)
 		}
 
 		mach->present = true;
+#if defined(__HAIKU__)
+		time(&mach->time);
+#else
 		mach->time = time_second;
+#endif
 		*ret = mach;
 		os_atomic_inc_uint(&nmachines);
 		return 0;
@@ -79,6 +82,7 @@ nvmm_machine_alloc(struct nvmm_machine **ret)
 	return ENOBUFS;
 }
 
+#if 0
 static void
 nvmm_machine_free(struct nvmm_machine *mach)
 {
@@ -117,13 +121,13 @@ nvmm_machine_get(struct nvmm_owner *owner, nvmm_machid_t machid,
 
 	return 0;
 }
+#endif
 
 static void
 nvmm_machine_put(struct nvmm_machine *mach)
 {
 	os_rwl_unlock(&mach->lock);
 }
-#endif
 
 /* -------------------------------------------------------------------------- */
 
@@ -260,7 +264,6 @@ nvmm_capability(struct nvmm_owner *owner, struct nvmm_ioc_capability *args)
 	return 0;
 }
 
-# if 0
 static int
 nvmm_machine_create(struct nvmm_owner *owner,
     struct nvmm_ioc_machine_create *args)
@@ -295,6 +298,7 @@ nvmm_machine_create(struct nvmm_owner *owner,
 	return 0;
 }
 
+#if 0
 static int
 nvmm_machine_destroy(struct nvmm_owner *owner,
     struct nvmm_ioc_machine_destroy *args)
@@ -1029,9 +1033,9 @@ nvmm_ioctl(struct nvmm_owner *owner, unsigned long cmd, void *data)
 	switch (cmd) {
 	case NVMM_IOC_CAPABILITY:
 		return nvmm_capability(owner, data);
-/*	case NVMM_IOC_MACHINE_CREATE:
+	case NVMM_IOC_MACHINE_CREATE:
 		return nvmm_machine_create(owner, data);
-	case NVMM_IOC_MACHINE_DESTROY:
+/*	case NVMM_IOC_MACHINE_DESTROY:
 		return nvmm_machine_destroy(owner, data);
 	case NVMM_IOC_MACHINE_CONFIGURE:
 		return nvmm_machine_configure(owner, data);

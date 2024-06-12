@@ -89,9 +89,7 @@ struct nvmm_machine {
 	os_rwl_t lock;
 
 	/* Comm */
-	#ifndef __HAIKU__ // Not supported yet by our port
 	os_vmobj_t *commvmobj;
-	#endif
 
 	/* Kernel */
 	os_vmspace_t *vm;
