@@ -96,6 +96,8 @@ extern "C" struct haiku_vmspace {
 	struct pmap pmap;
 };
 
+os_vmmap_t *os_kernel_map;
+
 
 extern "C"
 void *
@@ -277,9 +279,8 @@ os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 	int mapping = REGION_NO_PRIVATE_MAP;
 	uint32 flags = fixed ? CREATE_AREA_UNMAP_ADDRESS_RANGE : 0;
 	bool kernel = false;
-//TODO:
-//	if (map->address_space == sKernelAddressSpace)
-//		kernel = true;
+	if (map->address_space == VMAddressSpace::Kernel())
+		kernel = true;
 
 	virtual_address_restrictions addressRestrictions = {
 		.address = addr,
@@ -304,6 +305,14 @@ os_vmobj_unmap(os_vmmap_t *map __unused, vaddr_t start, vaddr_t end __unused,
 	bool wired __unused)
 {
 	delete_area(area_for((void *)start));
+}
+
+
+extern "C"
+os_vmmap_t
+os_curproc_map()
+{
+	return { .address_space = VMAddressSpace::Get(VMAddressSpace::CurrentID()) };
 }
 
 
@@ -428,6 +437,14 @@ init_driver(void)
 	if (nvmm_init())
 		return B_ERROR;
 
+	os_kernel_map = (os_vmmap_t *)malloc(sizeof(os_vmmap_t));
+	if (os_kernel_map == NULL) {
+		nvmm_fini();
+		return B_NO_MEMORY;
+	}
+
+	os_kernel_map->address_space = VMAddressSpace::Kernel();
+
 	TRACE_ALWAYS("nvmm: init_driver OK\n");
 	return B_OK;
 }
@@ -438,4 +455,5 @@ uninit_driver(void)
 {
 	TRACE_ALWAYS("nvmm: uninit_driver\n");
 	nvmm_fini();
+	free(os_kernel_map);
 }

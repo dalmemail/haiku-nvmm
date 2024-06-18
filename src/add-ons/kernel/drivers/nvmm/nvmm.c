@@ -92,6 +92,7 @@ nvmm_machine_free(struct nvmm_machine *mach)
 	os_atomic_dec_uint(&nmachines);
 }
 
+#endif
 static int
 nvmm_machine_get(struct nvmm_owner *owner, nvmm_machid_t machid,
     struct nvmm_machine **ret, bool writer)
@@ -121,7 +122,6 @@ nvmm_machine_get(struct nvmm_owner *owner, nvmm_machid_t machid,
 
 	return 0;
 }
-#endif
 
 static void
 nvmm_machine_put(struct nvmm_machine *mach)
@@ -131,7 +131,6 @@ nvmm_machine_put(struct nvmm_machine *mach)
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 static int
 nvmm_vcpu_alloc(struct nvmm_machine *mach, nvmm_cpuid_t cpuid,
     struct nvmm_cpu **ret)
@@ -159,7 +158,9 @@ nvmm_vcpu_alloc(struct nvmm_machine *mach, nvmm_cpuid_t cpuid,
 static void
 nvmm_vcpu_free(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 {
+#if !defined(__HAIKU__)
 	OS_ASSERT(os_mtx_owned(&vcpu->lock));
+#endif
 	vcpu->present = false;
 	if (vcpu->comm != NULL) {
 		os_vmobj_unmap(os_kernel_map, (vaddr_t)vcpu->comm,
@@ -172,6 +173,7 @@ nvmm_vcpu_free(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	}
 }
 
+#if 0
 static int
 nvmm_vcpu_get(struct nvmm_machine *mach, nvmm_cpuid_t cpuid,
     struct nvmm_cpu **ret)
@@ -192,13 +194,13 @@ nvmm_vcpu_get(struct nvmm_machine *mach, nvmm_cpuid_t cpuid,
 
 	return 0;
 }
+#endif
 
 static void
 nvmm_vcpu_put(struct nvmm_cpu *vcpu)
 {
 	os_mtx_unlock(&vcpu->lock);
 }
-#endif
 
 /* -------------------------------------------------------------------------- */
 
@@ -377,6 +379,7 @@ out:
 	os_mem_free(data, allocsz);
 	return error;
 }
+#endif
 
 static int
 nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
@@ -393,12 +396,21 @@ nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 	if (error)
 		goto out;
 
+#if defined(__HAIKU__)
+	/* Map the comm page on the kernel side, as wired. */
+	error = os_vmobj_map(os_kernel_map, (vaddr_t *)&vcpu->comm,
+	    NVMM_COMM_PAGE_SIZE, mach->commvmobj,
+	    args->cpuid * NVMM_COMM_PAGE_SIZE, true /* wired */,
+	    false /* !fixed */, true /* shared */, B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA,
+	    B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA);
+#else
 	/* Map the comm page on the kernel side, as wired. */
 	error = os_vmobj_map(os_kernel_map, (vaddr_t *)&vcpu->comm,
 	    NVMM_COMM_PAGE_SIZE, mach->commvmobj,
 	    args->cpuid * NVMM_COMM_PAGE_SIZE, true /* wired */,
 	    false /* !fixed */, true /* shared */, PROT_READ | PROT_WRITE,
 	    PROT_READ | PROT_WRITE);
+#endif
 	if (error) {
 		nvmm_vcpu_free(mach, vcpu);
 		nvmm_vcpu_put(vcpu);
@@ -406,6 +418,12 @@ nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 	}
 
 	memset(vcpu->comm, 0, NVMM_COMM_PAGE_SIZE);
+
+#if defined(__HAIKU)
+	os_vmmap_t *os_curproc_map;
+	os_vmmap_t curproc_map = os_curproc_map();
+	os_curproc_map = &curproc_map;
+#endif
 
 	/* Map the comm page on the user side, as pageable. */
 	error = os_vmobj_map(os_curproc_map, (vaddr_t *)&args->comm,
@@ -434,6 +452,7 @@ out:
 	return error;
 }
 
+#if 0
 static int
 nvmm_vcpu_destroy(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_destroy *args)
 {
@@ -1038,9 +1057,9 @@ nvmm_ioctl(struct nvmm_owner *owner, unsigned long cmd, void *data)
 /*	case NVMM_IOC_MACHINE_DESTROY:
 		return nvmm_machine_destroy(owner, data);
 	case NVMM_IOC_MACHINE_CONFIGURE:
-		return nvmm_machine_configure(owner, data);
+		return nvmm_machine_configure(owner, data);*/
 	case NVMM_IOC_VCPU_CREATE:
-		return nvmm_vcpu_create(owner, data);
+		return nvmm_vcpu_create(owner, data);/*
 	case NVMM_IOC_VCPU_DESTROY:
 		return nvmm_vcpu_destroy(owner, data);
 	case NVMM_IOC_VCPU_CONFIGURE:

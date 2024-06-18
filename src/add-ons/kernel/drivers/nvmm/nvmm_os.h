@@ -138,6 +138,9 @@ typedef mutex			os_mtx_t;
 #if defined(__NetBSD__) || defined(__DragonFly__)
 #define os_kernel_map		kernel_map
 #define os_curproc_map		&curproc->p_vmspace->vm_map
+#elif defined(__HAIKU__)
+extern os_vmmap_t *os_kernel_map;
+os_vmmap_t os_curproc_map();
 #endif
 
 /* R/W locks. */
@@ -183,11 +186,6 @@ typedef mutex			os_mtx_t;
 #define os_mtx_destroy(lock)	mutex_destroy(lock)
 #define os_mtx_lock(lock)	mutex_lock(lock)
 #define os_mtx_unlock(lock)	mutex_unlock(lock)
-/* #define os_mtx_owned(lock) ...
- * As far as I know there is no os_mtx_owned() equivalent in kernel/lock.h
- * since holder is not stored unless KDEBUG is defined. This is only used
- * once in the whole NVMM so we'll wait until we need it
- */
 #endif
 
 /* Malloc. */
@@ -342,11 +340,19 @@ typedef cpumask_t		os_cpuset_t;
 #define OS_ASSERT		KASSERT
 #elif defined(__DragonFly__)
 #define OS_ASSERT		KKASSERT
+#elif defined(__HAIKU__)
+#define OS_ASSERT		ASSERT
 #endif
 
 /* Misc. */
 #if defined(__DragonFly__) || defined(__HAIKU__)
 #define uimin(a, b)		((u_int)a < (u_int)b ? (u_int)a : (u_int)b)
+#endif
+
+/* Memory protection */
+#if defined(__HAIKU__)
+#define PROT_READ	B_READ_AREA
+#define PROT_WRITE	B_WRITE_AREA
 #endif
 
 /* -------------------------------------------------------------------------- */
