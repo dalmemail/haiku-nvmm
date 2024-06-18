@@ -787,11 +787,11 @@ static uint64_t vmx_xcr0_mask __read_mostly;
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 struct vmx_machdata {
 	volatile uint64_t mach_htlb_gen;
 };
 
+#if 0
 static const size_t vmx_vcpu_conf_sizes[NVMM_X86_VCPU_NCONF] = {
 	[NVMM_VCPU_CONF_MD(NVMM_VCPU_CONF_CPUID)] =
 	    sizeof(struct nvmm_vcpu_conf_cpuid),
@@ -3227,7 +3227,6 @@ vmx_vcpu_configure(struct nvmm_cpu *vcpu, uint64_t op, void *data)
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 #ifdef __NetBSD__
 static void
 vmx_tlb_flush(struct pmap *pm)
@@ -3268,6 +3267,7 @@ vmx_machine_create(struct nvmm_machine *mach)
 	machdata->mach_htlb_gen = 1;
 }
 
+#if 0
 static void
 vmx_machine_destroy(struct nvmm_machine *mach)
 {
@@ -3696,13 +3696,13 @@ const struct nvmm_impl nvmm_x86_vmx = {
 	.ident = vmx_ident,
 	.init = vmx_init,
 	.fini = vmx_fini,
-	.capability = vmx_capability/*,
+	.capability = vmx_capability,/*
 	.mach_conf_max = NVMM_X86_MACH_NCONF,
 	.mach_conf_sizes = NULL,
 	.vcpu_conf_max = NVMM_X86_VCPU_NCONF,
 	.vcpu_conf_sizes = vmx_vcpu_conf_sizes,
-	.state_size = sizeof(struct nvmm_x64_state),
-	.machine_create = vmx_machine_create,
+	.state_size = sizeof(struct nvmm_x64_state),*/
+	.machine_create = vmx_machine_create,/*
 	.machine_destroy = vmx_machine_destroy,
 	.machine_configure = vmx_machine_configure,
 	.vcpu_create = vmx_vcpu_create,

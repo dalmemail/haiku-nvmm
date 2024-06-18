@@ -247,6 +247,14 @@ extern bool pmap_ept_has_ad;
 #elif defined(__DragonFly__)
 #define os_vmspace_pmap(vm)	vmspace_pmap(vm)
 #define os_vmspace_pdirpa(vm)	(vtophys(vmspace_pmap(vm)->pm_pml4))
+#elif defined(__HAIKU__)
+// contains a subset of the fields
+// present at struct pmap from DragonFlyBSD
+// see sys/platform/pc64/include/pmap.h
+struct pmap {
+	uint64_t pm_invgen;
+};
+struct pmap *os_vmspace_pmap(os_vmspace_t *vm);
 #endif
 
 /* CPU. */

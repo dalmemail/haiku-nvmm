@@ -93,6 +93,7 @@ extern "C" struct haiku_vmobj {
 // aka os_vmspace_t
 extern "C" struct haiku_vmspace {
 	VMCache *cache;
+	struct pmap pmap;
 };
 
 
@@ -172,6 +173,8 @@ os_vmspace_create(vaddr_t vmin, vaddr_t vmax)
 		return NULL;
 	}
 
+	ret->pmap.pm_invgen = 0;
+
 	return ret;
 }
 
@@ -202,6 +205,14 @@ os_vmspace_fault(os_vmspace_t *vm, vaddr_t va, vm_prot_t prot)
 	// TODO: Page could be swapped out to disk?
 
 	return 0;
+}
+
+
+extern "C"
+struct pmap*
+os_vmspace_pmap(os_vmspace_t *vm)
+{
+	return &vm->pmap;
 }
 
 
