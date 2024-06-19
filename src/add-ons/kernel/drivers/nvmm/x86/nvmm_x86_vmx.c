@@ -39,7 +39,7 @@
 #include "../nvmm_internal.h"
 #include "nvmm_x86.h"
 
-#if 0
+
 int vmx_vmlaunch(uint64_t *gprs);
 int vmx_vmresume(uint64_t *gprs);
 void vmx_resume_rip(void);
@@ -53,7 +53,6 @@ struct vpid_desc {
 	uint64_t vpid;
 	uint64_t addr;
 } __packed;
-#endif
 
 static inline void
 vmx_vmxon(paddr_t *pa)
@@ -81,7 +80,6 @@ vmx_vmxoff(void)
 	);
 }
 
-#if 0
 static inline void
 vmx_invept(uint64_t op, struct ept_desc *desc)
 {
@@ -190,7 +188,6 @@ vmx_sti(void)
 {
 	__asm volatile ("sti" ::: "memory");
 }
-#endif
 
 #define MSR_IA32_FEATURE_CONTROL	0x003A
 #define		IA32_FEATURE_CONTROL_LOCK	__BIT(0)
@@ -791,7 +788,6 @@ struct vmx_machdata {
 	volatile uint64_t mach_htlb_gen;
 };
 
-#if 0
 static const size_t vmx_vcpu_conf_sizes[NVMM_X86_VCPU_NCONF] = {
 	[NVMM_VCPU_CONF_MD(NVMM_VCPU_CONF_CPUID)] =
 	    sizeof(struct nvmm_vcpu_conf_cpuid),
@@ -918,7 +914,6 @@ static const struct {
 		VMCS_GUEST_TR_BASE
 	}
 };
-#endif // 0
 
 /* -------------------------------------------------------------------------- */
 
@@ -933,7 +928,6 @@ vmx_get_revision(void)
 	return msr;
 }
 
-#if 0
 static
 OS_IPI_FUNC(vmx_vmclear_ipi)
 {
@@ -1025,11 +1019,9 @@ vmx_vmcs_destroy(struct nvmm_cpu *vcpu)
 	vmx_vmclear(&cpudata->vmcs_pa);
 	os_preempt_enable();
 }
-#endif
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 static void
 vmx_event_waitexit_enable(struct nvmm_cpu *vcpu, bool nmi)
 {
@@ -1249,7 +1241,6 @@ vmx_exit_exc_nmi(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 error:
 	vmx_exit_invalid(exit, VMCS_EXITCODE_EXC_NMI);
 }
-#endif // 0
 
 #define VMX_CPUID_MAX_BASIC		0x16
 #define VMX_CPUID_MAX_HYPERVISOR	0x40000000
@@ -2492,7 +2483,6 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 static void
 vmx_vcpu_msr_allow(uint8_t *bitmap, uint64_t msr, bool read, bool write)
 {
@@ -2900,11 +2890,9 @@ vmx_vcpu_state_commit(struct nvmm_cpu *vcpu)
 	vcpu->comm->state_commit = 0;
 	vmx_vcpu_setstate(vcpu);
 }
-#endif
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 static void
 vmx_asid_alloc(struct nvmm_cpu *vcpu)
 {
@@ -3120,6 +3108,7 @@ error:
 	os_pagemem_free(cpudata, sizeof(*cpudata));
 	return error;
 }
+#if 0
 
 static void
 vmx_vcpu_destroy(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
@@ -3704,8 +3693,8 @@ const struct nvmm_impl nvmm_x86_vmx = {
 	.state_size = sizeof(struct nvmm_x64_state),*/
 	.machine_create = vmx_machine_create,/*
 	.machine_destroy = vmx_machine_destroy,
-	.machine_configure = vmx_machine_configure,
-	.vcpu_create = vmx_vcpu_create,
+	.machine_configure = vmx_machine_configure,*/
+	.vcpu_create = vmx_vcpu_create,/*
 	.vcpu_destroy = vmx_vcpu_destroy,
 	.vcpu_configure = vmx_vcpu_configure,
 	.vcpu_setstate = vmx_vcpu_setstate,

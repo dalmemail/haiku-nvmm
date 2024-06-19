@@ -19,6 +19,7 @@ extern "C" {
 #include <arch/x86/arch_cpu.h>
 #include <kernel/heap.h>
 #include <kernel/smp.h>
+#include <kernel/thread.h>
 
 #include <sys/ioccom.h>
 
@@ -75,6 +76,31 @@ extern "C" thread_id haiku_get_current_thread_id()
 }
 
 
+extern "C"
+void
+os_ipi_unicast(os_cpu_t *cpu, void (*func)(void *, int), void *arg)
+{
+	call_single_cpu_sync(*cpu, func, arg);
+}
+
+
+extern "C"
+int
+haiku_thread_bind()
+{
+	thread_pin_to_current_cpu(thread_get_current_thread());
+	// curlwp_bind() returns int
+	return 0;
+}
+
+
+extern "C"
+void
+haiku_thread_unbind()
+{
+	thread_unpin_from_current_cpu(thread_get_current_thread());
+}
+
 /*---------------------------------------------------------------------------------------*/
 
 // aka os_vmmap_t
@@ -97,6 +123,7 @@ extern "C" struct haiku_vmspace {
 };
 
 os_vmmap_t *os_kernel_map;
+cpu_status *interrupt_status;
 
 
 extern "C"
@@ -434,19 +461,39 @@ find_device(const char* name)
 status_t
 init_driver(void)
 {
+	status_t status;
+	int32 n_cpus;
 	if (nvmm_init())
 		return B_ERROR;
 
 	os_kernel_map = (os_vmmap_t *)malloc(sizeof(os_vmmap_t));
 	if (os_kernel_map == NULL) {
-		nvmm_fini();
-		return B_NO_MEMORY;
+		status = B_NO_MEMORY;
+		goto err1;
 	}
 
 	os_kernel_map->address_space = VMAddressSpace::Kernel();
 
+	n_cpus = haiku_smp_get_num_cpus();
+	if (n_cpus) {
+		status = B_BAD_VALUE;
+		goto err2;
+	}
+
+	interrupt_status = (cpu_status *)malloc(n_cpus * sizeof(cpu_status));
+	if (interrupt_status == NULL) {
+		status = B_NO_MEMORY;
+		goto err2;
+	}
+
 	TRACE_ALWAYS("nvmm: init_driver OK\n");
 	return B_OK;
+
+err2:
+	free(os_kernel_map);
+err1:
+	nvmm_fini();
+	return status;
 }
 
 
@@ -456,4 +503,5 @@ uninit_driver(void)
 	TRACE_ALWAYS("nvmm: uninit_driver\n");
 	nvmm_fini();
 	free(os_kernel_map);
+	free(interrupt_status);
 }

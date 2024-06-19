@@ -59,6 +59,7 @@
 #elif defined(__HAIKU__)
 #include <arch/x86/arch_cpu.h>
 #include <Drivers.h>
+#include <int.h>
 #include <machine/specialreg.h>
 #include <kernel/lock.h>
 #include <SupportDefs.h>
@@ -115,10 +116,18 @@ typedef mutex			os_mtx_t;
 // roundup() taken from headers/private/firewire/fwglue.h
 #define roundup(x, y)   ((((x)+((y)-1))/(y))*(y))  /* to any y */
 #define __aligned(bytes) __attribute__((__aligned__(bytes)))
-
-#include "nvmm_bitops.h"
+#define __diagused
 
 #define PAGE_SIZE		B_PAGE_SIZE
+
+// taken from sys/cpu/x86_64/include/segments.h (DragonFlyBSD)
+#define	GSEL(s,r)	(((s) << 3) | r)/* a global selector */
+#define	GCODE_SEL	1	/* Kernel Code Descriptor */
+#define	GDATA_SEL	2	/* Kernel Data Descriptor */
+#define	SEL_KPL		0	/* kernel privilege level */
+// taken from sys/cpu/x86_64/include/psl.h (DragonFlyBSD)
+#define	PSL_I		0x00000200	/* interrupt enable bit */
+#define	PSL_RF		0x00010000	/* resume flag bit */
 #endif
 
 /* Bitops. */
@@ -132,6 +141,8 @@ typedef mutex			os_mtx_t;
 #undef  __BITS
 #define __BITS(__m, __n)	__BITS64(__m, __n)
 #endif /* __x86_64__ */
+#elif defined(__HAIKU__)
+#include "nvmm_bitops.h"
 #endif
 
 /* Maps. */
@@ -283,11 +294,11 @@ typedef struct globaldata	os_cpu_t;
 #define os_curcpu_gdt()		mdcpu->gd_gdt
 #define os_curcpu_idt()		r_idt_arr[mycpuid].rd_base
 #elif defined(__HAIKU__)
-typedef int32			os_cpu_t;
+typedef uint32			os_cpu_t;
 #define OS_CPU_FOREACH(cpu)	\
-	int32 _ncpus = haiku_smp_get_num_cpus(); \
+	uint32 _ncpus = haiku_smp_get_num_cpus(); \
 	for (cpu = 0; cpu < _ncpus; cpu++)
-#define os_cpu_number(cpu)	(int32)cpu
+#define os_cpu_number(cpu)	(uint32)cpu
 #define os_curcpu()		haiku_smp_get_current_cpu()
 #define os_curcpu_number()	haiku_smp_get_current_cpu()
 #endif
@@ -311,6 +322,13 @@ typedef cpumask_t		os_cpuset_t;
 #define os_cpuset_isset(s, c)	CPUMASK_TESTBIT(*(s), c)
 #define os_cpuset_clear(s, c)	ATOMIC_CPUMASK_NANDBIT(*(s), c)
 #define os_cpuset_setrunning(s)	ATOMIC_CPUMASK_ORMASK(*(s), smp_active_mask)
+#elif defined(__HAIKU__)
+typedef int32			os_cpuset_t;
+#define os_cpuset_init(s)	*(s) = calloc(1, sizeof(int32))
+#define os_cpuset_destroy(s)	free(s)
+#define os_cpuset_isset(s, c)	atomic_get(s) & _BIT(c)
+#define os_cpuset_clear(s, c)	atomic_and(s, ~_BIT(c))
+#define os_cpuset_setrunning(s) atomic_or(s, __BIT(haiku_smp_get_num_cpus()) - 1)
 #endif
 
 /* Preemption. */
@@ -333,6 +351,11 @@ typedef cpumask_t		os_cpuset_t;
 #define os_preempt_disable()	crit_enter()
 #define os_preempt_enable()	crit_exit()
 #define os_preempt_disabled()	(curthread->td_critcount != 0)
+#elif defined(__HAIKU__)
+extern cpu_status *interrupt_status;
+#define os_preempt_disable()	interrupt_status[haiku_smp_get_current_cpu()] = disable_interrupts()
+#define os_preempt_enable()	restore_interrupts(interrupt_status[haiku_smp_get_current_cpu()])
+#define os_preempt_disabled()	!interrupts_enabled()
 #endif
 
 /* Asserts. */
@@ -413,6 +436,15 @@ int32 haiku_smp_get_current_cpu();
 int32 haiku_smp_get_num_cpus();
 
 thread_id haiku_get_current_thread_id();
+
+static __inline uint64_t
+rdtsc(void)
+{
+	uint32_t low, high;
+
+	__asm __volatile("rdtsc" : "=a" (low), "=d" (high));
+	return (low | ((uint64_t)high << 32));
+}
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -485,11 +517,19 @@ os_ipi_broadcast(void (*func)(void *), void *arg)
 #include <drivers/KernelExport.h>
 #define OS_IPI_FUNC(func)	void func(void *arg, int unused)
 
+void os_ipi_unicast(os_cpu_t *cpu, void (*func)(void *, int), void *arg);
+
 static inline void
 os_ipi_broadcast(void (*func)(void *, int), void *arg)
 {
 	call_all_cpus_sync(func, arg);
 }
+
+int haiku_thread_bind();
+void haiku_thread_unbind();
+
+#define curlwp_bind()		haiku_thread_bind()
+#define curlwp_bindx(bound)	haiku_thread_unbind()
 
 #endif /* __NetBSD__ */
 

@@ -12,6 +12,7 @@ SubDirC++Flags [ FDefines _KERNEL=1 ] ;
 KernelAddon nvmm :
 	nvmm.c
 	nvmm_haiku.cpp
+	nvmm_x86.c
 	nvmm_x86_vmx.c
 	nvmm_x86_vmxfunc.S
 	nvmm_x86_svm.c
