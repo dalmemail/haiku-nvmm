@@ -323,12 +323,12 @@ typedef cpumask_t		os_cpuset_t;
 #define os_cpuset_clear(s, c)	ATOMIC_CPUMASK_NANDBIT(*(s), c)
 #define os_cpuset_setrunning(s)	ATOMIC_CPUMASK_ORMASK(*(s), smp_active_mask)
 #elif defined(__HAIKU__)
-typedef int32			os_cpuset_t;
-#define os_cpuset_init(s)	*(s) = calloc(1, sizeof(int32))
-#define os_cpuset_destroy(s)	free(s)
-#define os_cpuset_isset(s, c)	atomic_get(s) & _BIT(c)
-#define os_cpuset_clear(s, c)	atomic_and(s, ~_BIT(c))
-#define os_cpuset_setrunning(s) atomic_or(s, __BIT(haiku_smp_get_num_cpus()) - 1)
+typedef struct haiku_cpuset	os_cpuset_t;
+status_t os_cpuset_init(os_cpuset_t *cpuset);
+void os_cpuset_destroy(os_cpuset_t *cpuset);
+bool os_cpuset_isset(os_cpuset_t *cpuset, int32 cpu);
+void os_cpuset_clear(os_cpuset_t *cpuset, int32 cpu);
+void os_cpuset_setrunning(os_cpuset_t *cpuset);
 #endif
 
 /* Preemption. */

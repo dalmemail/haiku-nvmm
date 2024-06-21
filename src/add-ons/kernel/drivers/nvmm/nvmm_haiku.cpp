@@ -122,6 +122,12 @@ extern "C" struct haiku_vmspace {
 	struct pmap pmap;
 };
 
+
+// aka os_cpuset_t
+extern "C" struct haiku_cpuset {
+	CPUSet *set;
+};
+
 os_vmmap_t *os_kernel_map;
 cpu_status *interrupt_status;
 
@@ -340,6 +346,51 @@ os_vmmap_t
 os_curproc_map()
 {
 	return { .address_space = VMAddressSpace::Get(VMAddressSpace::CurrentID()) };
+}
+
+
+extern "C"
+status_t
+os_cpuset_init(os_cpuset_t *cpuset)
+{
+	cpuset = (os_cpuset_t *)malloc(sizeof(os_cpuset_t));
+	if (cpuset == NULL)
+		return B_NO_MEMORY;
+
+	cpuset->set = new CPUSet();
+}
+
+
+extern "C"
+void
+os_cpuset_destroy(os_cpuset_t *cpuset)
+{
+	delete cpuset->set;
+	free(cpuset);
+}
+
+
+extern "C"
+bool
+os_cpuset_isset(os_cpuset_t *cpuset, int32 cpu)
+{
+	return cpuset->set->GetBit(cpu);
+}
+
+
+extern "C"
+void
+os_cpuset_clear(os_cpuset_t *cpuset, int32 cpu)
+{
+	cpuset->set->ClearBitAtomic(cpu);
+}
+
+
+extern "C"
+void
+os_cpuset_setrunning(os_cpuset_t *cpuset)
+{
+	cpuset->set->SetAll();
 }
 
 
