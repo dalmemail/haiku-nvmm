@@ -212,7 +212,7 @@ os_vmspace_create(vaddr_t vmin, vaddr_t vmax)
 
 	// PML4 must be 512 entries of 8 bytes each
 	STATIC_ASSERT(PAGE_SIZE == 4096);
-	status = os_contigpa_zalloc(&ret->pmap.pm_pml4pa, ret->pmap.pm_pml4, 1);
+	status = os_contigpa_zalloc(&ret->pmap.pm_pml4pa, (vaddr_t *)&ret->pmap.pm_pml4, 1);
 	if (status != B_OK) {
 		ret->cache->Delete();
 		os_mem_free(ret, sizeof(os_vmobj_t));
