@@ -419,8 +419,7 @@ os_cpuset_setrunning(os_cpuset_t *cpuset)
 
 int32 api_version = B_CUR_DRIVER_API_VERSION;
 
-static const char *sNVMMDevice = "nvmm/nvmm";
-static const char *sDevices[] = { NULL, NULL };
+static const char *sDevices[] = { "misc/nvmm", NULL };
 
 static status_t nvmm_open_hook(const char *name, uint32 flags, void **cookie);
 static status_t nvmm_close_hook(void *cookie);
@@ -516,7 +515,6 @@ const char**
 publish_devices(void)
 {
 	TRACE_ALWAYS("nvmm: publish_devices\n");
-	sDevices[0] = (const char*)sNVMMDevice;
 	return sDevices;
 }
 
@@ -545,8 +543,8 @@ init_driver(void)
 
 	os_kernel_map->address_space = VMAddressSpace::Kernel();
 
-	n_cpus = haiku_smp_get_num_cpus();
-	if (n_cpus) {
+	n_cpus = smp_get_num_cpus();
+	if (n_cpus <= 0) {
 		status = B_BAD_VALUE;
 		goto err2;
 	}

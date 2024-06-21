@@ -167,7 +167,7 @@ nvmm_init(void)
 	if (nvmm_fd != -1)
 		return 0;
 #if defined(__HAIKU__)
-	nvmm_fd = open("/dev/nvmm/nvmm", O_RDONLY | O_CLOEXEC);
+	nvmm_fd = open("/dev/misc/nvmm", O_RDONLY | O_CLOEXEC);
 #else
 	nvmm_fd = open("/dev/nvmm", O_RDONLY | O_CLOEXEC);
 #endif
@@ -198,7 +198,7 @@ nvmm_root_init(void)
 	if (nvmm_fd != -1)
 		return 0;
 #if defined(__HAIKU__)
-	nvmm_fd = open("/dev/nvmm/nvmm", O_WRONLY | O_CLOEXEC);
+	nvmm_fd = open("/dev/misc/nvmm", O_WRONLY | O_CLOEXEC);
 #else
 	nvmm_fd = open("/dev/nvmm", O_WRONLY | O_CLOEXEC);
 #endif
