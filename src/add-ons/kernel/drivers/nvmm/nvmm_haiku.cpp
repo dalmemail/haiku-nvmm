@@ -210,6 +210,15 @@ os_vmspace_create(vaddr_t vmin, vaddr_t vmax)
 
 	ret->pmap.pm_invgen = 0;
 
+	// PML4 must be 512 entries of 8 bytes each
+	STATIC_ASSERT(PAGE_SIZE == 4096);
+	status = os_contigpa_zalloc(&ret->pmap.pm_pml4pa, ret->pmap.pm_pml4, 1);
+	if (status != B_OK) {
+		ret->cache->Delete();
+		os_mem_free(ret, sizeof(os_vmobj_t));
+		return NULL;
+	}
+
 	return ret;
 }
 
@@ -220,6 +229,7 @@ os_vmspace_destroy(os_vmspace_t *vm)
 {
 	if (vm) {
 		vm->cache->Delete();
+		os_contigpa_free(vm->pmap.pm_pml4pa, (vaddr_t)vm->pmap.pm_pml4, 1);
 		os_mem_free(vm, sizeof(os_vmspace_t));
 	}
 }
@@ -248,6 +258,14 @@ struct pmap*
 os_vmspace_pmap(os_vmspace_t *vm)
 {
 	return &vm->pmap;
+}
+
+
+extern "C"
+paddr_t
+os_vmspace_pdirpa(os_vmspace_t *vm)
+{
+	return vm->pmap.pm_pml4pa;
 }
 
 
@@ -358,6 +376,8 @@ os_cpuset_init(os_cpuset_t *cpuset)
 		return B_NO_MEMORY;
 
 	cpuset->set = new CPUSet();
+
+	return B_OK;
 }
 
 

@@ -257,13 +257,17 @@ extern bool pmap_ept_has_ad;
 #define os_vmspace_pmap(vm)	vmspace_pmap(vm)
 #define os_vmspace_pdirpa(vm)	(vtophys(vmspace_pmap(vm)->pm_pml4))
 #elif defined(__HAIKU__)
-// contains a subset of the fields
+// contains some fields
 // present at struct pmap from DragonFlyBSD
 // see sys/platform/pc64/include/pmap.h
 struct pmap {
+	uint64_t* pm_pml4; // Kernel virtual address (KVA)
+			   // of level 4 page table
+	paddr_t pm_pml4pa;
 	uint64_t pm_invgen;
 };
 struct pmap *os_vmspace_pmap(os_vmspace_t *vm);
+paddr_t os_vmspace_pdirpa(os_vmspace_t *vm);
 #endif
 
 /* CPU. */
