@@ -341,7 +341,7 @@ os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 	VMArea *area;
 	status = map_backing_store(map->address_space, vmobj->cache, vmobj->cache->virtual_base,
 		"nvmm_vmobj_area", cache_size, wiring, prot, maxprot, mapping, flags,
-		&addressRestrictions, kernel, &area, (void **)&addr);
+		&addressRestrictions, kernel, &area, (void **)addr);
 
 	map->address_space->WriteUnlock();
 	vmobj->cache->Unlock();
