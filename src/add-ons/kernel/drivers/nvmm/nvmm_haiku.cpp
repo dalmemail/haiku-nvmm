@@ -360,10 +360,23 @@ os_vmobj_unmap(os_vmmap_t *map __unused, vaddr_t start, vaddr_t end __unused,
 
 
 extern "C"
-os_vmmap_t
-os_curproc_map()
+os_vmmap_t *
+os_get_curproc_map()
 {
-	return { .address_space = VMAddressSpace::Get(VMAddressSpace::CurrentID()) };
+	os_vmmap_t *ret = (os_vmmap_t *)os_mem_alloc(sizeof(os_vmmap_t));
+	if (ret == NULL)
+		return NULL;
+
+	ret->address_space = VMAddressSpace::GetCurrent();
+	return ret;
+}
+
+
+extern "C"
+void
+os_free_curproc_map(os_vmmap_t *map)
+{
+	os_mem_free(map, sizeof(os_vmmap_t));
 }
 
 

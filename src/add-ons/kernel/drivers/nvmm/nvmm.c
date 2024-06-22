@@ -419,10 +419,8 @@ nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 
 	memset(vcpu->comm, 0, NVMM_COMM_PAGE_SIZE);
 
-#if defined(__HAIKU)
-	os_vmmap_t *os_curproc_map;
-	os_vmmap_t curproc_map = os_curproc_map();
-	os_curproc_map = &curproc_map;
+#if defined(__HAIKU__)
+	os_vmmap_t *os_curproc_map = os_get_curproc_map();
 #endif
 
 	/* Map the comm page on the user side, as pageable. */
@@ -431,6 +429,11 @@ nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
 	    args->cpuid * NVMM_COMM_PAGE_SIZE, false /* !wired */,
 	    false /* !fixed */, true /* shared */, PROT_READ | PROT_WRITE,
 	    PROT_READ | PROT_WRITE);
+
+#if defined(__HAIKU__)
+	os_free_curproc_map(os_curproc_map);
+#endif
+
 	if (error) {
 		nvmm_vcpu_free(mach, vcpu);
 		nvmm_vcpu_put(vcpu);
