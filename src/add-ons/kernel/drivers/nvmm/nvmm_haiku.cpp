@@ -101,6 +101,20 @@ haiku_thread_unbind()
 	thread_unpin_from_current_cpu(thread_get_current_thread());
 }
 
+
+extern "C"
+status_t
+os_mtx_lock(os_mtx_t *lock)
+{
+	// if interrupts are disabled
+	if (os_preempt_disabled())
+		while (mutex_trylock(lock) != B_OK);
+	else
+		return mutex_lock(lock);
+
+	return B_OK;
+}
+
 /*---------------------------------------------------------------------------------------*/
 
 // aka os_vmmap_t
@@ -326,8 +340,8 @@ os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 		return status;
 
 	uint32 wiring = wired ? B_FULL_LOCK : B_NO_LOCK;
-	int mapping = REGION_NO_PRIVATE_MAP;
-	uint32 flags = fixed ? CREATE_AREA_UNMAP_ADDRESS_RANGE : 0;
+	int mapping = REGION_PRIVATE_MAP;
+	uint32 flags = 0;
 	bool kernel = false;
 	if (map->address_space == VMAddressSpace::Kernel())
 		kernel = true;
@@ -351,10 +365,13 @@ os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 
 extern "C"
 void
-os_vmobj_unmap(os_vmmap_t *map __unused, vaddr_t start, vaddr_t end __unused,
+os_vmobj_unmap(os_vmmap_t *map, vaddr_t start, vaddr_t end,
 	bool wired __unused)
 {
-	delete_area(area_for((void *)start));
+	bool kernel = map->address_space == VMAddressSpace::Kernel();
+	map->address_space->WriteLock();
+	discard_address_range(map->address_space, start, end - start, kernel);
+	map->address_space->WriteUnlock();
 }
 
 

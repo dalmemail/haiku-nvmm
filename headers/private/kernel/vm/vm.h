@@ -165,6 +165,9 @@ status_t map_backing_store(VMAddressSpace* addressSpace, VMCache* cache, off_t o
 			const virtual_address_restrictions* addressRestrictions,
 			bool kernel, VMArea** _area, void** _virtualAddress);
 
+status_t discard_address_range(VMAddressSpace* addressSpace, addr_t address, addr_t size,
+			bool kernel);
+
 // user syscalls
 area_id _user_create_area(const char *name, void **address, uint32 addressSpec,
 			size_t size, uint32 lock, uint32 protection);

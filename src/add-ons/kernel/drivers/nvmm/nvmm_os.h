@@ -196,7 +196,7 @@ void os_free_curproc_map(os_vmmap_t *map);
 #elif defined(__HAIKU__)
 #define os_mtx_init(lock)	mutex_init(lock, NULL)
 #define os_mtx_destroy(lock)	mutex_destroy(lock)
-#define os_mtx_lock(lock)	mutex_lock(lock)
+status_t os_mtx_lock(os_mtx_t *lock);
 #define os_mtx_unlock(lock)	mutex_unlock(lock)
 #endif
 

@@ -1018,7 +1018,7 @@ discard_area_range(VMArea* area, addr_t address, addr_t size)
 }
 
 
-static status_t
+status_t
 discard_address_range(VMAddressSpace* addressSpace, addr_t address, addr_t size,
 	bool kernel)
 {
