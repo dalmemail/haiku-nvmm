@@ -76,9 +76,7 @@ struct nvmm_hmapping {
 	bool present;
 	uintptr_t hva;
 	size_t size;
-	#ifndef __HAIKU__ // Not supported yet by our port
 	os_vmobj_t *vmobj;
-	#endif
 };
 
 struct nvmm_machine {

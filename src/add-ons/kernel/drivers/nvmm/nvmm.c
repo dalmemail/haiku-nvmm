@@ -658,7 +658,6 @@ out:
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 static os_vmobj_t *
 nvmm_hmapping_getvmobj(struct nvmm_machine *mach, uintptr_t hva, size_t size,
    size_t *off)
@@ -758,9 +757,16 @@ nvmm_hmapping_free(struct nvmm_machine *mach, uintptr_t hva, size_t size)
 			continue;
 		}
 
+#if defined(__HAIKU__)
+		os_vmmap_t *os_curproc_map = os_get_curproc_map();
+#endif
 		os_vmobj_unmap(os_curproc_map, hmapping->hva,
 		    hmapping->hva + hmapping->size, false);
 		os_vmobj_rel(hmapping->vmobj);
+
+#if defined(__HAIKU__)
+		os_free_curproc_map(os_curproc_map);
+#endif
 
 		hmapping->vmobj = NULL;
 		hmapping->present = false;
@@ -798,10 +804,18 @@ nvmm_hva_map(struct nvmm_owner *owner, struct nvmm_ioc_hva_map *args)
 	hmapping->vmobj = os_vmobj_create(hmapping->size);
 	uva = hmapping->hva;
 
+#if defined(__HAIKU__)
+	os_vmmap_t *os_curproc_map = os_get_curproc_map();
+#endif
+
 	/* Map the vmobj into the user address space, as pageable. */
 	error = os_vmobj_map(os_curproc_map, &uva, hmapping->size,
 	    hmapping->vmobj, 0, false /* !wired */, true /* fixed */,
 	    true /* shared */, PROT_READ | PROT_WRITE, PROT_READ | PROT_WRITE);
+
+#if defined(__HAIKU__)
+	os_free_curproc_map(os_curproc_map);
+#endif
 
 out:
 	nvmm_machine_put(mach);
@@ -823,7 +837,6 @@ nvmm_hva_unmap(struct nvmm_owner *owner, struct nvmm_ioc_hva_unmap *args)
 	nvmm_machine_put(mach);
 	return error;
 }
-#endif // 0
 
 /* -------------------------------------------------------------------------- */
 
@@ -1078,9 +1091,9 @@ nvmm_ioctl(struct nvmm_owner *owner, unsigned long cmd, void *data)
 	case NVMM_IOC_GPA_MAP:
 		return nvmm_gpa_map(owner, data);
 	case NVMM_IOC_GPA_UNMAP:
-		return nvmm_gpa_unmap(owner, data);
+		return nvmm_gpa_unmap(owner, data);*/
 	case NVMM_IOC_HVA_MAP:
-		return nvmm_hva_map(owner, data);
+		return nvmm_hva_map(owner, data);/*
 	case NVMM_IOC_HVA_UNMAP:
 		return nvmm_hva_unmap(owner, data);
 	case NVMM_IOC_CTL:
