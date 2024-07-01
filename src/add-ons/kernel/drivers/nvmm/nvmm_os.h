@@ -262,13 +262,11 @@ extern bool pmap_ept_has_ad;
 // present at struct pmap from DragonFlyBSD
 // see sys/platform/pc64/include/pmap.h
 struct pmap {
-	uint64_t* pm_pml4; // Kernel virtual address (KVA)
-			   // of level 4 page table
-	paddr_t pm_pml4pa;
 	uint64_t pm_invgen;
 };
 struct pmap *os_vmspace_pmap(os_vmspace_t *vm);
 paddr_t os_vmspace_pdirpa(os_vmspace_t *vm);
+os_vmmap_t *os_vmspace_get_vmmap(os_vmspace_t *vm);
 #endif
 
 /* CPU. */
@@ -381,6 +379,7 @@ extern cpu_status *interrupt_status;
 #if defined(__HAIKU__)
 #define PROT_READ	B_READ_AREA
 #define PROT_WRITE	B_WRITE_AREA
+#define PROT_EXEC	B_EXECUTE_AREA
 #endif
 
 /* -------------------------------------------------------------------------- */

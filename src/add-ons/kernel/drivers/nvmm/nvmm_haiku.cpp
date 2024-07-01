@@ -28,6 +28,8 @@ extern "C" {
 #include <vm/VMCache.h>
 #include <vm/VMAddressSpace.h>
 
+#include <paging/64bit/X86GPAtoHPATranslationMap.h>
+
 #define __unused __attribute__ ((unused))
 
 
@@ -132,7 +134,10 @@ extern "C" struct haiku_vmobj {
 
 // aka os_vmspace_t
 extern "C" struct haiku_vmspace {
-	VMCache *cache;
+	VMAddressSpace *address_space;
+	// this holds exactly the same as address_space (duplicated)
+	// but os_vmobj_map expects an os_vmmap_t*
+	os_vmmap_t *vm_map;
 	struct pmap pmap;
 };
 
@@ -215,23 +220,22 @@ os_vmspace_create(vaddr_t vmin, vaddr_t vmax)
 	if (ret == NULL)
 		return NULL;
 
-	status_t status = VMCacheFactory::CreateAnonymousCache(ret->cache, false,
-				0, 0, true, 0);
-	if (status != B_OK) {
-		os_mem_free(ret, sizeof(os_vmobj_t));
+	ret->vm_map = (os_vmmap_t *)os_mem_alloc(sizeof(os_vmmap_t));
+	if (ret->vm_map == NULL) {
+		os_mem_free(ret, sizeof(os_vmspace_t));
 		return NULL;
 	}
+
+	size_t size = vmax - vmin + 1;
+	status_t status = VMAddressSpace::Create(0, vmin, size, false, true, &ret->address_space);
+	if (status != B_OK) {
+		os_mem_free(ret->vm_map, sizeof(os_vmmap_t));
+		os_mem_free(ret, sizeof(os_vmspace_t));
+		return NULL;
+	}
+	ret->vm_map->address_space = ret->address_space;
 
 	ret->pmap.pm_invgen = 0;
-
-	// PML4 must be 512 entries of 8 bytes each
-	STATIC_ASSERT(PAGE_SIZE == 4096);
-	status = os_contigpa_zalloc(&ret->pmap.pm_pml4pa, (vaddr_t *)&ret->pmap.pm_pml4, 1);
-	if (status != B_OK) {
-		ret->cache->Delete();
-		os_mem_free(ret, sizeof(os_vmobj_t));
-		return NULL;
-	}
 
 	return ret;
 }
@@ -241,11 +245,9 @@ extern "C"
 void
 os_vmspace_destroy(os_vmspace_t *vm)
 {
-	if (vm) {
-		vm->cache->Delete();
-		os_contigpa_free(vm->pmap.pm_pml4pa, (vaddr_t)vm->pmap.pm_pml4, 1);
-		os_mem_free(vm, sizeof(os_vmspace_t));
-	}
+	vm->address_space->Put();
+	os_mem_free(vm->vm_map, sizeof(os_vmmap_t));
+	os_mem_free(vm, sizeof(os_vmspace_t));
 }
 
 
@@ -253,8 +255,8 @@ extern "C"
 int
 os_vmspace_fault(os_vmspace_t *vm, vaddr_t va, vm_prot_t prot)
 {
-	vm_page *page = vm->cache->LookupPage(va);
-	if (page == NULL)
+	VMArea *area = vm->address_space->LookupArea(va);
+	if (area == NULL)
 		return 1;
 
 	// TODO: Probably through page->cache_ref->cache
@@ -279,7 +281,18 @@ extern "C"
 paddr_t
 os_vmspace_pdirpa(os_vmspace_t *vm)
 {
-	return vm->pmap.pm_pml4pa;
+	X86GPAtoHPATranslationMap *map;
+	map = (X86GPAtoHPATranslationMap *)vm->address_space->TranslationMap();
+
+	return map->PhysicalPML4();
+}
+
+
+extern "C"
+os_vmmap_t *
+os_vmspace_get_vmmap(os_vmspace_t *vm)
+{
+	return vm->vm_map;
 }
 
 

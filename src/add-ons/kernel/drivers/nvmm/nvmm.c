@@ -840,7 +840,6 @@ nvmm_hva_unmap(struct nvmm_owner *owner, struct nvmm_ioc_hva_unmap *args)
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 static int
 nvmm_gpa_map(struct nvmm_owner *owner, struct nvmm_ioc_gpa_map *args)
 {
@@ -896,16 +895,25 @@ nvmm_gpa_map(struct nvmm_owner *owner, struct nvmm_ioc_gpa_map *args)
 		goto out;
 	}
 
+#if defined(__HAIKU__)
+	os_vmmap_t *vm_map = os_vmspace_get_vmmap(mach->vm);
+	/* Map the vmobj into the machine address space, as pageable. */
+	error = os_vmobj_map(vm_map, &gpa, args->size, vmobj, off,
+	    false /* !wired */, true /* fixed */, false /* !shared */,
+	    args->prot, PROT_READ | PROT_WRITE | PROT_EXEC);
+#else
 	/* Map the vmobj into the machine address space, as pageable. */
 	error = os_vmobj_map(&mach->vm->vm_map, &gpa, args->size, vmobj, off,
 	    false /* !wired */, true /* fixed */, false /* !shared */,
 	    args->prot, PROT_READ | PROT_WRITE | PROT_EXEC);
+#endif
 
 out:
 	nvmm_machine_put(mach);
 	return error;
 }
 
+#if 0
 static int
 nvmm_gpa_unmap(struct nvmm_owner *owner, struct nvmm_ioc_gpa_unmap *args)
 {
@@ -1087,9 +1095,9 @@ nvmm_ioctl(struct nvmm_owner *owner, unsigned long cmd, void *data)
 	case NVMM_IOC_VCPU_INJECT:
 		return nvmm_vcpu_inject(owner, data);
 	case NVMM_IOC_VCPU_RUN:
-		return nvmm_vcpu_run(owner, data);
+		return nvmm_vcpu_run(owner, data);*/
 	case NVMM_IOC_GPA_MAP:
-		return nvmm_gpa_map(owner, data);
+		return nvmm_gpa_map(owner, data);/*
 	case NVMM_IOC_GPA_UNMAP:
 		return nvmm_gpa_unmap(owner, data);*/
 	case NVMM_IOC_HVA_MAP:
