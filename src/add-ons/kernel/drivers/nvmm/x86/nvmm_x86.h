@@ -749,6 +749,7 @@ typedef struct {
 #define x86_get_cpuid2(l, c, d)	cpuid_count(l, c, (uint32_t *)d)
 #elif defined(__HAIKU__)
 void x86_get_cpuid(uint32_t eax, cpuid_desc_t *descriptors);
+void x86_get_cpuid2(uint32_t eax, uint32_t ecx, cpuid_desc_t *descriptors);
 #endif
 
 /* Control registers. */

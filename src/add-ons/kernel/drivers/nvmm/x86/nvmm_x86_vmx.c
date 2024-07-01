@@ -595,10 +595,8 @@ vmx_sti(void)
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 static void vmx_vcpu_state_provide(struct nvmm_cpu *, uint64_t);
 static void vmx_vcpu_state_commit(struct nvmm_cpu *);
-#endif
 
 /*
  * These host values are static, they do not change at runtime and are the same
@@ -1248,7 +1246,6 @@ error:
 static uint32_t vmx_cpuid_max_basic __read_mostly;
 static uint32_t vmx_cpuid_max_extended __read_mostly;
 
-#if 0
 static void
 vmx_inkernel_exec_cpuid(struct vmx_cpudata *cpudata, uint32_t eax, uint32_t ecx)
 {
@@ -1598,7 +1595,6 @@ vmx_exit_hlt(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 #define VMX_QUAL_CR_LMSW_OPMEM	__BIT(6)
 #define VMX_QUAL_CR_GPR		__BITS(11,8)
 #define VMX_QUAL_CR_LMSW_SRC	__BIT(31,16)
-#endif // 0
 
 static inline int
 vmx_check_cr(uint64_t crval, uint64_t fixed0, uint64_t fixed1)
@@ -1614,7 +1610,6 @@ vmx_check_cr(uint64_t crval, uint64_t fixed0, uint64_t fixed1)
 	return 0;
 }
 
-#if 0
 static int
 vmx_inkernel_handle_cr0(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
     uint64_t qual)
@@ -2054,7 +2049,6 @@ vmx_exit_epf(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	    NVMM_X64_STATE_GPRS | NVMM_X64_STATE_SEGS |
 	    NVMM_X64_STATE_CRS | NVMM_X64_STATE_MSRS);
 }
-#endif // 0
 
 /* -------------------------------------------------------------------------- */
 
@@ -2168,7 +2162,6 @@ vmx_vcpu_guest_misc_leave(struct nvmm_cpu *vcpu)
 #define VMX_INVEPT_CONTEXT		1
 #define VMX_INVEPT_ALL			2
 
-#if 0
 static inline void
 vmx_gtlb_catchup(struct nvmm_cpu *vcpu, int hcpu)
 {
@@ -2479,7 +2472,6 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 	return error;
 }
-#endif
 
 /* -------------------------------------------------------------------------- */
 
@@ -3699,6 +3691,6 @@ const struct nvmm_impl nvmm_x86_vmx = {
 	.vcpu_configure = vmx_vcpu_configure,*/
 	.vcpu_setstate = vmx_vcpu_setstate,
 	.vcpu_getstate = vmx_vcpu_getstate,/*
-	.vcpu_inject = vmx_vcpu_inject,
-	.vcpu_run = vmx_vcpu_run*/
+	.vcpu_inject = vmx_vcpu_inject,*/
+	.vcpu_run = vmx_vcpu_run
 };

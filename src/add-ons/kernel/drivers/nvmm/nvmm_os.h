@@ -407,7 +407,6 @@ void		os_pa_free(paddr_t);
 int		os_contigpa_zalloc(paddr_t *, vaddr_t *, size_t);
 void		os_contigpa_free(paddr_t, vaddr_t, size_t);
 
-#ifndef __HAIKU__
 static inline bool
 os_return_needed(void)
 {
@@ -427,10 +426,11 @@ os_return_needed(void)
 		return true;
 	}
 	return false;
+#elif defined(__HAIKU__)
+	// TODO: This is temporary !
+	return false;
 #endif
 }
-
-#endif // #ifndef __HAIKU__
 
 // Haiku auxiliary functions
 #if defined(__HAIKU__)
@@ -449,6 +449,13 @@ rdtsc(void)
 	__asm __volatile("rdtsc" : "=a" (low), "=d" (high));
 	return (low | ((uint64_t)high << 32));
 }
+
+int fls(int mask);
+int flsll(long long mask);
+// based on ilog2() from DragonFlyBSD
+// available at /sys/dev/drm/include/linux/log2.h
+#define ilog2(n) (sizeof(n) <= 4) ?			\
+	fls((uint32)(n)) - 1 : flsll((uint64)(n)) - 1
 #endif
 
 /* -------------------------------------------------------------------------- */

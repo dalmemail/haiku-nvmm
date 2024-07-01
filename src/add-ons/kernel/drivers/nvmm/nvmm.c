@@ -596,6 +596,7 @@ out:
 	nvmm_machine_put(mach);
 	return error;
 }
+#endif
 
 static int
 nvmm_do_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
@@ -654,7 +655,6 @@ out:
 	nvmm_machine_put(mach);
 	return error;
 }
-#endif
 
 /* -------------------------------------------------------------------------- */
 
@@ -1093,9 +1093,9 @@ nvmm_ioctl(struct nvmm_owner *owner, unsigned long cmd, void *data)
 	case NVMM_IOC_VCPU_GETSTATE:
 		return nvmm_vcpu_getstate(owner, data);/*
 	case NVMM_IOC_VCPU_INJECT:
-		return nvmm_vcpu_inject(owner, data);
+		return nvmm_vcpu_inject(owner, data);*/
 	case NVMM_IOC_VCPU_RUN:
-		return nvmm_vcpu_run(owner, data);*/
+		return nvmm_vcpu_run(owner, data);
 	case NVMM_IOC_GPA_MAP:
 		return nvmm_gpa_map(owner, data);/*
 	case NVMM_IOC_GPA_UNMAP:

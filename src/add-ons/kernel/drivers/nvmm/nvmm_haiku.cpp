@@ -17,6 +17,7 @@ extern "C" {
 #include <OS.h>
 
 #include <arch/x86/arch_cpu.h>
+#include <arch/x86/arch_system_info.h>
 #include <kernel/heap.h>
 #include <kernel/smp.h>
 #include <kernel/thread.h>
@@ -37,6 +38,24 @@ extern "C" void x86_get_cpuid(uint32_t eax, cpuid_desc_t *descriptors)
 {
 	cpuid_info info;
 	if (get_cpuid(&info, eax, 0) != B_OK) {
+		descriptors->eax = 0;
+		descriptors->ebx = 0;
+		descriptors->ecx = 0;
+		descriptors->edx = 0;
+	}
+	else {
+		descriptors->eax = info.regs.eax;
+		descriptors->ebx = info.regs.ebx;
+		descriptors->ecx = info.regs.ecx;
+		descriptors->edx = info.regs.edx;
+	}
+}
+
+
+extern "C" void x86_get_cpuid2(uint32_t eax, uint32_t ecx, cpuid_desc_t *descriptors)
+{
+	cpuid_info info;
+	if (get_current_cpuid(&info, eax, ecx) != B_OK) {
 		descriptors->eax = 0;
 		descriptors->ebx = 0;
 		descriptors->ecx = 0;
@@ -115,6 +134,39 @@ os_mtx_lock(os_mtx_t *lock)
 		return mutex_lock(lock);
 
 	return B_OK;
+}
+
+
+// This two functions are taken from /lib/libc/string/fls.c and
+// /lib/libc/string/flsll.c DragonFlyBSD
+/*
+ * Find Last Set bit
+ */
+extern "C"
+int
+fls(int mask)
+{
+	int bit;
+
+	if (mask == 0)
+		return (0);
+	for (bit = 1; mask != 1; bit++)
+		mask = (unsigned int)mask >> 1;
+	return (bit);
+}
+
+
+extern "C"
+int
+flsll(long long mask)
+{
+	int bit;
+
+	if (mask == 0)
+		return (0);
+	for (bit = 1; mask != 1; bit++)
+		mask = (unsigned long long)mask >> 1;
+	return (bit);
 }
 
 /*---------------------------------------------------------------------------------------*/
