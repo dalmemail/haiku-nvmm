@@ -3697,8 +3697,8 @@ const struct nvmm_impl nvmm_x86_vmx = {
 	.vcpu_create = vmx_vcpu_create,/*
 	.vcpu_destroy = vmx_vcpu_destroy,
 	.vcpu_configure = vmx_vcpu_configure,*/
-	.vcpu_setstate = vmx_vcpu_setstate,/*
-	.vcpu_getstate = vmx_vcpu_getstate,
+	.vcpu_setstate = vmx_vcpu_setstate,
+	.vcpu_getstate = vmx_vcpu_getstate,/*
 	.vcpu_inject = vmx_vcpu_inject,
 	.vcpu_run = vmx_vcpu_run*/
 };

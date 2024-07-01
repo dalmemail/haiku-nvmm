@@ -549,7 +549,6 @@ out:
 	return error;
 }
 
-#if 0
 static int
 nvmm_vcpu_getstate(struct nvmm_owner *owner,
     struct nvmm_ioc_vcpu_getstate *args)
@@ -574,6 +573,7 @@ out:
 	return error;
 }
 
+#if 0
 static int
 nvmm_vcpu_inject(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_inject *args)
 {
@@ -1089,9 +1089,9 @@ nvmm_ioctl(struct nvmm_owner *owner, unsigned long cmd, void *data)
 	case NVMM_IOC_VCPU_CONFIGURE:
 		return nvmm_vcpu_configure(owner, data);*/
 	case NVMM_IOC_VCPU_SETSTATE:
-		return nvmm_vcpu_setstate(owner, data);/*
+		return nvmm_vcpu_setstate(owner, data);
 	case NVMM_IOC_VCPU_GETSTATE:
-		return nvmm_vcpu_getstate(owner, data);
+		return nvmm_vcpu_getstate(owner, data);/*
 	case NVMM_IOC_VCPU_INJECT:
 		return nvmm_vcpu_inject(owner, data);
 	case NVMM_IOC_VCPU_RUN:
