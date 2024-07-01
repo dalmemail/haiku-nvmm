@@ -173,7 +173,6 @@ nvmm_vcpu_free(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	}
 }
 
-#if 0
 static int
 nvmm_vcpu_get(struct nvmm_machine *mach, nvmm_cpuid_t cpuid,
     struct nvmm_cpu **ret)
@@ -194,7 +193,6 @@ nvmm_vcpu_get(struct nvmm_machine *mach, nvmm_cpuid_t cpuid,
 
 	return 0;
 }
-#endif
 
 static void
 nvmm_vcpu_put(struct nvmm_cpu *vcpu)
@@ -526,6 +524,7 @@ out:
 	return error;
 }
 
+#endif
 static int
 nvmm_vcpu_setstate(struct nvmm_owner *owner,
     struct nvmm_ioc_vcpu_setstate *args)
@@ -550,6 +549,7 @@ out:
 	return error;
 }
 
+#if 0
 static int
 nvmm_vcpu_getstate(struct nvmm_owner *owner,
     struct nvmm_ioc_vcpu_getstate *args)
@@ -1087,9 +1087,9 @@ nvmm_ioctl(struct nvmm_owner *owner, unsigned long cmd, void *data)
 	case NVMM_IOC_VCPU_DESTROY:
 		return nvmm_vcpu_destroy(owner, data);
 	case NVMM_IOC_VCPU_CONFIGURE:
-		return nvmm_vcpu_configure(owner, data);
+		return nvmm_vcpu_configure(owner, data);*/
 	case NVMM_IOC_VCPU_SETSTATE:
-		return nvmm_vcpu_setstate(owner, data);
+		return nvmm_vcpu_setstate(owner, data);/*
 	case NVMM_IOC_VCPU_GETSTATE:
 		return nvmm_vcpu_getstate(owner, data);
 	case NVMM_IOC_VCPU_INJECT:
