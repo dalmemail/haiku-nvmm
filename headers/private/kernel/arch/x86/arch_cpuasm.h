@@ -55,6 +55,33 @@ x86_write_cr3(size_t value)
 #define x86_write_cr4(value) \
 	__asm__("mov    %0,%%cr4" : : "r" (value))
 
+#define x86_read_dr0() ({ \
+	size_t _v; \
+	__asm__("mov    %%dr0,%0" : "=r" (_v)); \
+	_v; \
+})
+
+#define x86_write_dr0(value) \
+	__asm__("mov    %0,%%dr0" : : "r" (value))
+
+#define x86_read_dr1() ({ \
+	size_t _v; \
+	__asm__("mov    %%dr1,%0" : "=r" (_v)); \
+	_v; \
+})
+
+#define x86_write_dr1(value) \
+	__asm__("mov    %0,%%dr1" : : "r" (value))
+
+#define x86_read_dr2() ({ \
+	size_t _v; \
+	__asm__("mov    %%dr2,%0" : "=r" (_v)); \
+	_v; \
+})
+
+#define x86_write_dr2(value) \
+	__asm__("mov    %0,%%dr2" : : "r" (value))
+
 #define x86_read_dr3() ({ \
 	size_t _v; \
 	__asm__("mov    %%dr3,%0" : "=r" (_v)); \
@@ -63,6 +90,27 @@ x86_write_cr3(size_t value)
 
 #define x86_write_dr3(value) \
 	__asm__("mov    %0,%%dr3" : : "r" (value))
+
+#define x86_read_dr6() ({ \
+	size_t _v; \
+	__asm__("mov    %%dr6,%0" : "=r" (_v)); \
+	_v; \
+})
+
+#define x86_write_dr6(value) \
+	__asm__("mov    %0,%%dr6" : : "r" (value))
+
+#define x86_read_dr7() ({ \
+	size_t _v; \
+	__asm__("mov    %%dr7,%0" : "=r" (_v)); \
+	_v; \
+})
+
+static inline void
+x86_write_dr7(size_t value)
+{
+	__asm__("mov    %0,%%dr7" : : "r" (value));
+}
 
 #define invalidate_TLB(va) \
 	__asm__("invlpg (%0)" : : "r" (va))

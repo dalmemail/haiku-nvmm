@@ -169,6 +169,58 @@ flsll(long long mask)
 	return (bit);
 }
 
+// this should be called with preemption disabled
+// otherwise we might return the gdt not of the
+// current CPU..
+extern "C"
+uint64
+os_curcpu_gdt()
+{
+	struct gdtr {
+		uint16 limit;
+		uint64 base;
+	} _PACKED;
+	struct gdtr gdtr;
+	__asm __volatile("sgdt %0" : "=m" (gdtr));
+
+	return gdtr.base;
+}
+
+
+extern "C"
+uint64
+os_curcpu_idt()
+{
+	struct idtr {
+		uint16 limit;
+		uint64 base;
+	} _PACKED;
+	struct idtr idtr;
+	__asm __volatile("sidt %0" : "=m" (idtr));
+
+	return idtr.base;
+}
+
+
+extern "C"
+void *
+os_curcpu_tss()
+{
+	return &gCPU[os_curcpu_number()].arch.tss;
+}
+
+
+extern "C"
+uint16
+os_curcpu_tss_sel()
+{
+	uint16 selector;
+	__asm __volatile("str %0" : "=m" (selector));
+
+	return selector;
+}
+
+
 /*---------------------------------------------------------------------------------------*/
 
 // aka os_vmmap_t

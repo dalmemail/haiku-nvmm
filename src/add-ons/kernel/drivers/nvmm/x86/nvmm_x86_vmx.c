@@ -2052,10 +2052,10 @@ vmx_exit_epf(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 static void
 vmx_vcpu_guest_fpu_enter(struct nvmm_cpu *vcpu)
 {
+#if 0
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 
 #if defined(__NetBSD__)
@@ -2072,11 +2072,13 @@ vmx_vcpu_guest_fpu_enter(struct nvmm_cpu *vcpu)
 	if (vmx_xcr0_mask != 0) {
 		x86_set_xcr(0, cpudata->gxcr0);
 	}
+#endif
 }
 
 static void
 vmx_vcpu_guest_fpu_leave(struct nvmm_cpu *vcpu)
 {
+#if 0
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 
 	if (vmx_xcr0_mask != 0) {
@@ -2088,6 +2090,7 @@ vmx_vcpu_guest_fpu_leave(struct nvmm_cpu *vcpu)
 	x86_curthread_restore_fpu();
 #elif defined(__DragonFly__)
 	npxpop(&cpudata->hstate.hmctx);
+#endif
 #endif
 }
 
@@ -2150,7 +2153,6 @@ vmx_vcpu_guest_misc_leave(struct nvmm_cpu *vcpu)
 	/* Restore the percpu host state. */
 	wrmsr(MSR_KERNELGSBASE, cpudata->hstate.kernelgsbase);
 }
-#endif
 
 /* -------------------------------------------------------------------------- */
 

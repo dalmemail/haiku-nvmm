@@ -117,14 +117,13 @@ typedef mutex			os_mtx_t;
 #define roundup(x, y)   ((((x)+((y)-1))/(y))*(y))  /* to any y */
 #define __aligned(bytes) __attribute__((__aligned__(bytes)))
 #define __diagused
-
+#define __insn_barrier()	__asm __volatile("":::"memory")
 #define PAGE_SIZE		B_PAGE_SIZE
-
 // taken from sys/cpu/x86_64/include/segments.h (DragonFlyBSD)
 #define	GSEL(s,r)	(((s) << 3) | r)/* a global selector */
-#define	GCODE_SEL	1	/* Kernel Code Descriptor */
-#define	GDATA_SEL	2	/* Kernel Data Descriptor */
-#define	SEL_KPL		0	/* kernel privilege level */
+#define	GCODE_SEL	KERNEL_CODE_SEGMENT /* Kernel Code Descriptor */
+#define	GDATA_SEL	KERNEL_DATA_SEGMENT /* Kernel Data Descriptor */
+#define	SEL_KPL		DPL_KERNEL /* kernel privilege level */
 // taken from sys/cpu/x86_64/include/psl.h (DragonFlyBSD)
 #define	PSL_I		0x00000200	/* interrupt enable bit */
 #define	PSL_RF		0x00010000	/* resume flag bit */
@@ -304,6 +303,10 @@ typedef uint32			os_cpu_t;
 #define os_cpu_number(cpu)	(uint32)cpu
 #define os_curcpu()		haiku_smp_get_current_cpu()
 #define os_curcpu_number()	haiku_smp_get_current_cpu()
+uint16 os_curcpu_tss_sel();
+void *os_curcpu_tss();
+uint64 os_curcpu_gdt();
+uint64 os_curcpu_idt();
 #endif
 
 /* Cpusets. */
