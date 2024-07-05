@@ -180,13 +180,21 @@ vmx_vmclear(paddr_t *pa)
 static inline void
 vmx_cli(void)
 {
+#if defined(__HAIKU__)
+	__asm volatile("" ::: "memory");
+#else
 	__asm volatile ("cli" ::: "memory");
+#endif
 }
 
 static inline void
 vmx_sti(void)
 {
+#if defined(__HAIKU__)
+	__asm volatile("" ::: "memory");
+#else
 	__asm volatile ("sti" ::: "memory");
+#endif
 }
 
 #define MSR_IA32_FEATURE_CONTROL	0x003A
@@ -2196,7 +2204,7 @@ vmx_htlb_flush(struct nvmm_machine *mach, struct vmx_cpudata *cpudata)
 	struct ept_desc ept_desc;
 	uint64_t machgen;
 
-#if defined(__NetBSD__)
+#if defined(__NetBSD__) || defined(__HAIKU__)
 	machgen = ((struct vmx_machdata *)mach->machdata)->mach_htlb_gen;
 #elif defined(__DragonFly__)
 	clear_xinvltlb();
@@ -3679,12 +3687,12 @@ const struct nvmm_impl nvmm_x86_vmx = {
 	.ident = vmx_ident,
 	.init = vmx_init,
 	.fini = vmx_fini,
-	.capability = vmx_capability,/*
+	.capability = vmx_capability,
 	.mach_conf_max = NVMM_X86_MACH_NCONF,
 	.mach_conf_sizes = NULL,
-	.vcpu_conf_max = NVMM_X86_VCPU_NCONF,
-	.vcpu_conf_sizes = vmx_vcpu_conf_sizes,
-	.state_size = sizeof(struct nvmm_x64_state),*/
+	.vcpu_conf_max = NVMM_X86_VCPU_NCONF,/*
+	.vcpu_conf_sizes = vmx_vcpu_conf_sizes,*/
+	.state_size = sizeof(struct nvmm_x64_state),
 	.machine_create = vmx_machine_create,/*
 	.machine_destroy = vmx_machine_destroy,
 	.machine_configure = vmx_machine_configure,*/

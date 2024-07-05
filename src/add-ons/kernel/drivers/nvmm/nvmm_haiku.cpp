@@ -421,22 +421,6 @@ os_vmobj_create(voff_t size)
 	}
 	ret->ref_count = 0;
 
-	// everything has to be wired (temporarily)
-	// allocate every page we need now
-	// For full lock areas reserve the pages before locking the address
-	// space. E.g. block caches can't release their memory while we hold the
-	// address space lock.
-	ret->cache->Lock();
-	vm_page_reservation reservation;
-	vm_page_reserve_pages(&reservation, numPages, VM_PRIORITY_USER);
-	for (off_t offset = 0; offset < size; offset += B_PAGE_SIZE) {
-		vm_page* page = vm_page_allocate_page(&reservation,
-			PAGE_STATE_WIRED);
-		ret->cache->InsertPage(page, offset);
-		//map_page(area, page, address, protection, &reservation);
-	}
-	ret->cache->Unlock();
-
 	return ret;
 }
 
@@ -491,32 +475,8 @@ os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 		"nvmm_vmobj_area", size, wiring, prot, maxprot, mapping, flags,
 		&addressRestrictions, kernel, &area, (void **)addr);
 
-	if (status != B_OK)
-		panic("TE HE ENCONTRADO HIJO DE MIL PUTAS");
-
-
-	// temporary, since this requires all memory to be wired
-	VMTranslationMap *translation_map = map->address_space->TranslationMap();
-	size_t reservePages = translation_map->MaxPagesNeededToMap(area->Base(),
-		area->Base() + (area->Size() - 1));
-
-	vm_page_reservation reservation;
-	vm_page_reserve_pages(&reservation, reservePages,
-		map->address_space == VMAddressSpace::Kernel()
-			? VM_PRIORITY_SYSTEM : VM_PRIORITY_USER);
-	translation_map->Lock();
-
-	phys_addr_t physicalAddress;
-	for (addr_t offset = 0; offset < area->Size();
-			offset += B_PAGE_SIZE) {
-		vm_page *page = vmobj->cache->LookupPage(offset);
-		physicalAddress = page->physical_page_number * B_PAGE_SIZE;
-		translation_map->Map(area->Base() + offset, physicalAddress,
-			prot, area->MemoryType(), &reservation);
-	}
-
-	translation_map->Unlock();
-	vm_page_unreserve_pages(&reservation);
+	//if (status == B_OK && wired)
+	//	lock_memory_etc(map->address_space->ID(), (void *)*addr, size, 0);
 
 	map->address_space->WriteUnlock();
 	vmobj->cache->Unlock();
@@ -560,13 +520,13 @@ os_free_curproc_map(os_vmmap_t *map)
 
 extern "C"
 status_t
-os_cpuset_init(os_cpuset_t *cpuset)
+os_cpuset_init(os_cpuset_t **cpuset)
 {
-	cpuset = (os_cpuset_t *)malloc(sizeof(os_cpuset_t));
-	if (cpuset == NULL)
+	*cpuset = (os_cpuset_t *)malloc(sizeof(os_cpuset_t));
+	if (*cpuset == NULL)
 		return B_NO_MEMORY;
 
-	cpuset->set = new CPUSet();
+	(*cpuset)->set = new CPUSet();
 
 	return B_OK;
 }

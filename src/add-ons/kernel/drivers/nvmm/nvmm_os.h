@@ -298,9 +298,11 @@ typedef struct globaldata	os_cpu_t;
 #elif defined(__HAIKU__)
 typedef uint32			os_cpu_t;
 #define OS_CPU_FOREACH(cpu)	\
+	os_cpu_t cpu_index_; \
+	cpu = &cpu_index_; \
 	uint32 _ncpus = haiku_smp_get_num_cpus(); \
-	for (cpu = 0; cpu < _ncpus; cpu++)
-#define os_cpu_number(cpu)	(uint32)cpu
+	for (*cpu = 0; *cpu < _ncpus; (*cpu)++)
+#define os_cpu_number(cpu)	(*cpu)
 #define os_curcpu()		haiku_smp_get_current_cpu()
 #define os_curcpu_number()	haiku_smp_get_current_cpu()
 uint16 os_curcpu_tss_sel();
@@ -330,7 +332,7 @@ typedef cpumask_t		os_cpuset_t;
 #define os_cpuset_setrunning(s)	ATOMIC_CPUMASK_ORMASK(*(s), smp_active_mask)
 #elif defined(__HAIKU__)
 typedef struct haiku_cpuset	os_cpuset_t;
-status_t os_cpuset_init(os_cpuset_t *cpuset);
+status_t os_cpuset_init(os_cpuset_t **cpuset);
 void os_cpuset_destroy(os_cpuset_t *cpuset);
 bool os_cpuset_isset(os_cpuset_t *cpuset, int32 cpu);
 void os_cpuset_clear(os_cpuset_t *cpuset, int32 cpu);
