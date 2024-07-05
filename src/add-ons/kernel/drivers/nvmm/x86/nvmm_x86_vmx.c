@@ -181,6 +181,15 @@ static inline void
 vmx_cli(void)
 {
 #if defined(__HAIKU__)
+	/*
+	 * vmx_cli() and vmx_sti() are only called from vmx_vcpu_run(). They
+	 * are called after vmx_vmcs_enter() (which disables preemption) and
+	 * before vmx_vmcs_leave() (which enables preemption). In Haiku we
+	 * need to disable interrupts to disable preemption, so if we leave
+	 * this code unmodified the call to vmx_sti() would enable preemption
+	 * before vmx_vmcs_leave() is called, when it should be still disabled.
+	 */
+	OS_ASSERT(!interrupts_enabled());
 	__asm volatile("" ::: "memory");
 #else
 	__asm volatile ("cli" ::: "memory");
