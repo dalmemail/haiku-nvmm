@@ -225,20 +225,20 @@ os_curcpu_tss_sel()
 /*---------------------------------------------------------------------------------------*/
 
 // aka os_vmmap_t
-extern "C" struct haiku_map {
+struct haiku_map {
 	VMAddressSpace *address_space;
 };
 
 
 // aka os_vmobj_t
-extern "C" struct haiku_vmobj {
+struct haiku_vmobj {
 	VMCache *cache;
 	int32	ref_count;
 };
 
 
 // aka os_vmspace_t
-extern "C" struct haiku_vmspace {
+struct haiku_vmspace {
 	VMAddressSpace *address_space;
 	// this holds exactly the same as address_space (duplicated)
 	// but os_vmobj_map expects an os_vmmap_t*
@@ -248,7 +248,7 @@ extern "C" struct haiku_vmspace {
 
 
 // aka os_cpuset_t
-extern "C" struct haiku_cpuset {
+struct haiku_cpuset {
 	CPUSet *set;
 };
 
