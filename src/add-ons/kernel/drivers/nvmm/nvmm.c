@@ -82,7 +82,6 @@ nvmm_machine_alloc(struct nvmm_machine **ret)
 	return ENOBUFS;
 }
 
-#if 0
 static void
 nvmm_machine_free(struct nvmm_machine *mach)
 {
@@ -92,7 +91,6 @@ nvmm_machine_free(struct nvmm_machine *mach)
 	os_atomic_dec_uint(&nmachines);
 }
 
-#endif
 static int
 nvmm_machine_get(struct nvmm_owner *owner, nvmm_machid_t machid,
     struct nvmm_machine **ret, bool writer)
@@ -205,7 +203,6 @@ nvmm_vcpu_put(struct nvmm_cpu *vcpu)
 void
 nvmm_kill_machines(struct nvmm_owner *owner)
 {
-#if 0
 	struct nvmm_machine *mach;
 	struct nvmm_cpu *vcpu;
 	size_t i, j;
@@ -244,7 +241,6 @@ nvmm_kill_machines(struct nvmm_owner *owner)
 
 		os_rwl_unlock(&mach->lock);
 	}
-#endif
 }
 
 /* -------------------------------------------------------------------------- */
@@ -298,7 +294,6 @@ nvmm_machine_create(struct nvmm_owner *owner,
 	return 0;
 }
 
-#if 0
 static int
 nvmm_machine_destroy(struct nvmm_owner *owner,
     struct nvmm_ioc_machine_destroy *args)
@@ -377,7 +372,6 @@ out:
 	os_mem_free(data, allocsz);
 	return error;
 }
-#endif
 
 static int
 nvmm_vcpu_create(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_create *args)
@@ -453,7 +447,6 @@ out:
 	return error;
 }
 
-#if 0
 static int
 nvmm_vcpu_destroy(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_destroy *args)
 {
@@ -524,7 +517,6 @@ out:
 	return error;
 }
 
-#endif
 static int
 nvmm_vcpu_setstate(struct nvmm_owner *owner,
     struct nvmm_ioc_vcpu_setstate *args)
@@ -573,7 +565,6 @@ out:
 	return error;
 }
 
-#if 0
 static int
 nvmm_vcpu_inject(struct nvmm_owner *owner, struct nvmm_ioc_vcpu_inject *args)
 {
@@ -596,7 +587,6 @@ out:
 	nvmm_machine_put(mach);
 	return error;
 }
-#endif
 
 static int
 nvmm_do_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
@@ -913,7 +903,6 @@ out:
 	return error;
 }
 
-#if 0
 static int
 nvmm_gpa_unmap(struct nvmm_owner *owner, struct nvmm_ioc_gpa_unmap *args)
 {
@@ -950,18 +939,22 @@ nvmm_gpa_unmap(struct nvmm_owner *owner, struct nvmm_ioc_gpa_unmap *args)
 		goto out;
 	}
 
+#if defined(__HAIKU__)
+	os_vmmap_t *vm_map = os_vmspace_get_vmmap(mach->vm);
+	/* Unmap the memory from the machine. */
+	os_vmobj_unmap(vm_map, gpa, gpa + args->size, false);
+#else
 	/* Unmap the memory from the machine. */
 	os_vmobj_unmap(&mach->vm->vm_map, gpa, gpa + args->size, false);
+#endif
 
 out:
 	nvmm_machine_put(mach);
 	return error;
 }
-#endif // 0
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 static int
 nvmm_ctl_mach_info(struct nvmm_owner *owner, struct nvmm_ioc_ctl *args)
 {
@@ -1011,7 +1004,6 @@ nvmm_ctl(struct nvmm_owner *owner, struct nvmm_ioc_ctl *args)
 		return EINVAL;
 	}
 }
-#endif // 0
 
 /* -------------------------------------------------------------------------- */
 
@@ -1078,34 +1070,34 @@ nvmm_ioctl(struct nvmm_owner *owner, unsigned long cmd, void *data)
 		return nvmm_capability(owner, data);
 	case NVMM_IOC_MACHINE_CREATE:
 		return nvmm_machine_create(owner, data);
-/*	case NVMM_IOC_MACHINE_DESTROY:
+	case NVMM_IOC_MACHINE_DESTROY:
 		return nvmm_machine_destroy(owner, data);
 	case NVMM_IOC_MACHINE_CONFIGURE:
-		return nvmm_machine_configure(owner, data);*/
+		return nvmm_machine_configure(owner, data);
 	case NVMM_IOC_VCPU_CREATE:
-		return nvmm_vcpu_create(owner, data);/*
+		return nvmm_vcpu_create(owner, data);
 	case NVMM_IOC_VCPU_DESTROY:
 		return nvmm_vcpu_destroy(owner, data);
 	case NVMM_IOC_VCPU_CONFIGURE:
-		return nvmm_vcpu_configure(owner, data);*/
+		return nvmm_vcpu_configure(owner, data);
 	case NVMM_IOC_VCPU_SETSTATE:
 		return nvmm_vcpu_setstate(owner, data);
 	case NVMM_IOC_VCPU_GETSTATE:
-		return nvmm_vcpu_getstate(owner, data);/*
+		return nvmm_vcpu_getstate(owner, data);
 	case NVMM_IOC_VCPU_INJECT:
-		return nvmm_vcpu_inject(owner, data);*/
+		return nvmm_vcpu_inject(owner, data);
 	case NVMM_IOC_VCPU_RUN:
 		return nvmm_vcpu_run(owner, data);
 	case NVMM_IOC_GPA_MAP:
-		return nvmm_gpa_map(owner, data);/*
+		return nvmm_gpa_map(owner, data);
 	case NVMM_IOC_GPA_UNMAP:
-		return nvmm_gpa_unmap(owner, data);*/
+		return nvmm_gpa_unmap(owner, data);
 	case NVMM_IOC_HVA_MAP:
-		return nvmm_hva_map(owner, data);/*
+		return nvmm_hva_map(owner, data);
 	case NVMM_IOC_HVA_UNMAP:
 		return nvmm_hva_unmap(owner, data);
 	case NVMM_IOC_CTL:
-		return nvmm_ctl(owner, data);*/
+		return nvmm_ctl(owner, data);
 	default:
 		return EINVAL;
 	}

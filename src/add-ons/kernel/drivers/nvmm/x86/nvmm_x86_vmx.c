@@ -2471,6 +2471,9 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		if (exit->reason != NVMM_VCPU_EXIT_NONE) {
 			break;
 		}
+
+		// temporary ugly hack
+		break;
 	}
 
 	cpudata->vmcs_launched = launched;
@@ -3119,7 +3122,6 @@ error:
 	os_pagemem_free(cpudata, sizeof(*cpudata));
 	return error;
 }
-#if 0
 
 static void
 vmx_vcpu_destroy(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
@@ -3140,11 +3142,9 @@ vmx_vcpu_destroy(struct nvmm_machine *mach, struct nvmm_cpu *vcpu)
 	    1);
 	os_pagemem_free(cpudata, sizeof(*cpudata));
 }
-#endif
 
 /* -------------------------------------------------------------------------- */
 
-#if 0
 static int
 vmx_vcpu_configure_cpuid(struct vmx_cpudata *cpudata, void *data)
 {
@@ -3223,7 +3223,6 @@ vmx_vcpu_configure(struct nvmm_cpu *vcpu, uint64_t op, void *data)
 		return EINVAL;
 	}
 }
-#endif
 
 /* -------------------------------------------------------------------------- */
 
@@ -3267,7 +3266,6 @@ vmx_machine_create(struct nvmm_machine *mach)
 	machdata->mach_htlb_gen = 1;
 }
 
-#if 0
 static void
 vmx_machine_destroy(struct nvmm_machine *mach)
 {
@@ -3279,7 +3277,6 @@ vmx_machine_configure(struct nvmm_machine *mach, uint64_t op, void *data)
 {
 	panic("%s: impossible", __func__);
 }
-#endif // 0
 
 /* -------------------------------------------------------------------------- */
 
@@ -3699,17 +3696,17 @@ const struct nvmm_impl nvmm_x86_vmx = {
 	.capability = vmx_capability,
 	.mach_conf_max = NVMM_X86_MACH_NCONF,
 	.mach_conf_sizes = NULL,
-	.vcpu_conf_max = NVMM_X86_VCPU_NCONF,/*
-	.vcpu_conf_sizes = vmx_vcpu_conf_sizes,*/
+	.vcpu_conf_max = NVMM_X86_VCPU_NCONF,
+	.vcpu_conf_sizes = vmx_vcpu_conf_sizes,
 	.state_size = sizeof(struct nvmm_x64_state),
-	.machine_create = vmx_machine_create,/*
+	.machine_create = vmx_machine_create,
 	.machine_destroy = vmx_machine_destroy,
-	.machine_configure = vmx_machine_configure,*/
-	.vcpu_create = vmx_vcpu_create,/*
+	.machine_configure = vmx_machine_configure,
+	.vcpu_create = vmx_vcpu_create,
 	.vcpu_destroy = vmx_vcpu_destroy,
-	.vcpu_configure = vmx_vcpu_configure,*/
+	.vcpu_configure = vmx_vcpu_configure,
 	.vcpu_setstate = vmx_vcpu_setstate,
-	.vcpu_getstate = vmx_vcpu_getstate,/*
-	.vcpu_inject = vmx_vcpu_inject,*/
+	.vcpu_getstate = vmx_vcpu_getstate,
+	.vcpu_inject = vmx_vcpu_inject,
 	.vcpu_run = vmx_vcpu_run
 };

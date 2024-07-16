@@ -385,6 +385,8 @@ extern cpu_status *interrupt_status;
 #define PROT_READ	B_READ_AREA
 #define PROT_WRITE	B_WRITE_AREA
 #define PROT_EXEC	B_EXECUTE_AREA
+#define copyin(from, to, size)	user_memcpy(to, from, size)
+#define copyout(from, to, size)	user_memcpy(to, from, size)
 #endif
 
 /* -------------------------------------------------------------------------- */
