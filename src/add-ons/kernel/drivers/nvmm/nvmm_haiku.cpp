@@ -444,7 +444,7 @@ os_vmobj_rel(os_vmobj_t *vmobj)
 			VMAddressSpace *address_space = area->address_space;
 			address_space->ReadLock();
 			vaddr_t start = area->Base();
-			vaddr_t end = area->Base() + area->Size() - 1;
+			vaddr_t end = area->Base() + area->Size();
 			bool wired = area->wiring == B_FULL_LOCK;
 			next_area = area->cache_next;
 			address_space->ReadUnlock();
@@ -499,6 +499,7 @@ os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 }
 
 
+// the range [start, end-1] will be unmapped
 extern "C"
 void
 os_vmobj_unmap(os_vmmap_t *map, vaddr_t start, vaddr_t end,
@@ -506,6 +507,7 @@ os_vmobj_unmap(os_vmmap_t *map, vaddr_t start, vaddr_t end,
 {
 	map->address_space->ReadLock();
 	VMArea *area = map->address_space->LookupArea(start);
+	OS_ASSERT(start == area->Base() && end == area->Base() + area->Size());
 	team_id team = map->address_space->ID();
 	area_id id = area->id;
 	map->address_space->ReadUnlock();
