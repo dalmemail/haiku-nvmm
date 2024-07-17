@@ -432,16 +432,6 @@ os_vmobj_rel(os_vmobj_t *vmobj)
 {
 	int32 previous = atomic_add(&vmobj->ref_count, -1);
 	if (previous == 0) {
-/*		vmobj->cache->Lock();
-		// we remove any areas that haven't been removed yet
-		for (VMArea *area = vmobj->cache->areas; area != NULL; ) {
-			VMArea *area_to_delete = area;
-			area = area->cache_next;
-			vmobj->cache->Unlock();
-			delete_area(area_to_delete->id);
-			vmobj->cache->Lock();
-		}
-		vmobj->cache->Unlock();*/
 		vmobj->cache->Delete();
 		os_mem_free(vmobj, sizeof(os_vmobj_t));
 	}
