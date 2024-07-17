@@ -438,10 +438,11 @@ os_vmobj_rel(os_vmobj_t *vmobj)
 }
 
 
+// shared indicates whether the mapping is inherit on fork calls or not
 extern "C"
 int
 os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
-	voff_t offset, bool wired, bool fixed, bool shared, int prot, int maxprot)
+	voff_t offset, bool wired, bool fixed, bool shared __unused, int prot, int maxprot)
 {
 	if (!vmobj->cache->Lock())
 		return B_ERROR;
@@ -450,9 +451,7 @@ os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 	if (status != B_OK)
 		return status;
 
-//	uint32 wiring = wired ? B_FULL_LOCK : B_NO_LOCK;
-	uint32 wiring = B_FULL_LOCK;
-//	int mapping = shared ? REGION_NO_PRIVATE_MAP : REGION_PRIVATE_MAP;
+	uint32 wiring = wired ? B_FULL_LOCK : B_NO_LOCK;
 	int mapping = REGION_NO_PRIVATE_MAP;
 	uint32 flags = fixed ? CREATE_AREA_UNMAP_ADDRESS_RANGE : 0;
 	bool kernel = false;
