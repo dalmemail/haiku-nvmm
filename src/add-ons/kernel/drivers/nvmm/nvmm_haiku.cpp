@@ -432,6 +432,26 @@ os_vmobj_rel(os_vmobj_t *vmobj)
 {
 	int32 previous = atomic_add(&vmobj->ref_count, -1);
 	if (previous == 0) {
+		// locks in this function might be unnecessary
+		// since we're gonna destroy everything (no one else should be around)
+		vmobj->cache->Lock();
+		VMArea *area = vmobj->cache->areas;
+		vmobj->cache->Unlock();
+		VMArea *next_area;
+		for (; area != NULL; area = next_area) {
+			// We don't own the address space lock but the area address
+			// space should never change, since this area maps a vmobj
+			VMAddressSpace *address_space = area->address_space;
+			address_space->ReadLock();
+			vaddr_t start = area->Base();
+			vaddr_t end = area->Base() + area->Size() - 1;
+			bool wired = area->wiring == B_FULL_LOCK;
+			next_area = area->cache_next;
+			address_space->ReadUnlock();
+			os_vmmap_t vm_map;
+			vm_map.address_space = address_space;
+			os_vmobj_unmap(&vm_map, start, end, wired);
+		}
 		vmobj->cache->Delete();
 		os_mem_free(vmobj, sizeof(os_vmobj_t));
 	}
@@ -486,14 +506,10 @@ os_vmobj_unmap(os_vmmap_t *map, vaddr_t start, vaddr_t end,
 {
 	map->address_space->ReadLock();
 	VMArea *area = map->address_space->LookupArea(start);
+	team_id team = map->address_space->ID();
+	area_id id = area->id;
 	map->address_space->ReadUnlock();
-	vaddr_t area_end = area->Base() + area->Size() - 1;
-	if (start <= area->Base() && area_end <= end)
-		// use delete_area(,,) better (this one uses ReleaseRef())
-		// TODO: Check if ReleaseRef() is needed (on cache)
-		map->address_space->DeleteArea(area, 0);
-	else
-		panic("os_vmobj_unmap: area to be unmapped doesn't fit on the requested range");
+	vm_delete_area(team, id, map->address_space == VMAddressSpace::Kernel());
 }
 
 
