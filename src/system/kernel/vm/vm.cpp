@@ -272,8 +272,6 @@ static cache_info* sCacheInfoTable;
 // function declarations
 static void delete_area(VMAddressSpace* addressSpace, VMArea* area,
 	bool addressSpaceCleanup);
-static status_t vm_soft_fault(VMAddressSpace* addressSpace, addr_t address,
-	bool isWrite, bool isExecute, bool isUser, vm_page** wirePage);
 static void fix_protection(uint32* protection);
 
 
@@ -4853,7 +4851,7 @@ fault_get_page(PageFaultContext& context)
 		via this parameter.
 	\return \c B_OK on success, another error code otherwise.
 */
-static status_t
+status_t
 vm_soft_fault(VMAddressSpace* addressSpace, addr_t originalAddress,
 	bool isWrite, bool isExecute, bool isUser, vm_page** wirePage)
 {

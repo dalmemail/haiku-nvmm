@@ -360,37 +360,10 @@ extern "C"
 int
 os_vmspace_fault(os_vmspace_t *vm, vaddr_t va, vm_prot_t prot)
 {
-	// This is temporary: Just to get the first things to work
-	// TODO: Here we should probably just check if it's a page fault or not
-	// and then just trigger the page fault handler
-	vm->address_space->ReadLock();
-	VMArea *area = vm->address_space->LookupArea(va);
-	vm->address_space->ReadUnlock();
-	if (area != NULL) {
-		VMTranslationMap *map = vm->address_space->TranslationMap();
-		map->Lock();
-		vaddr_t area_end = area->Base() + area->Size() - 1;
-		size_t reservedMapPages = map->MaxPagesNeededToMap(area->Base(), area_end);
-		vm_page_reservation reservation;
-		vm_page_reserve_pages(&reservation, reservedMapPages, VM_PRIORITY_SYSTEM);
-		area->cache->Lock();
-		vm_page *page = area->cache->LookupPage(0);
-		area->cache->Unlock();
-		if (page == NULL)
-			panic("page is null!\n");
+	status_t status = vm_soft_fault(vm->address_space, va,
+				prot & PROT_WRITE, prot & PROT_EXEC, true, NULL);
 
-		map->Map(va, page->physical_page_number * B_PAGE_SIZE, area->protection, area->MemoryType(), &reservation);
-		vm_page_unreserve_pages(&reservation);
-		map->Unlock();
-	}
-
-	// TODO: Probably through page->cache_ref->cache
-	//if ((area->protection & prot) != prot)
-	//	return 1;
-
-	// TODO: Page could be swapped out to disk?
-
-	return 1;
+	return status != B_OK;
 }
 
 
