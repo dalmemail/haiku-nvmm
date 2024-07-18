@@ -32,12 +32,16 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
-#include <err.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/mman.h>
+#if defined(__HAIKU__)
+#include <machine/specialreg.h>
+#else
+#include <err.h>
 #include <machine/segments.h>
 #include <machine/psl.h>
+#endif
 
 #include <nvmm.h>
 
@@ -46,13 +50,46 @@
 #include <machine/pte.h>
 #define PAGE_SIZE 4096
 
-#else /* DragonFly */
+#elif defined(__DragonFly__) /* DragonFly */
 
 #include <machine/pmap.h>
 #define PTE_P		X86_PG_V	/* 0x001: P (Valid) */
 #define PTE_W		X86_PG_RW	/* 0x002: R/W (Read/Write) */
 #define PSL_MBO		PSL_RESERVED_DEFAULT	/* 0x00000002 */
 #define SDT_SYS386BSY	SDT_SYSBSY	/* 11: system 64-bit TSS busy */
+
+#elif defined(__HAIKU__)
+
+#include <OS.h>
+#define PAGE_SIZE B_PAGE_SIZE
+
+// taken from nvmm_os.h / DragonFlyBSD's segments.h
+#define GSEL(s,r)       (((s) << 3) | r)/* a global selector */
+#define GCODE_SEL       1 /* Kernel Code Descriptor */
+#define GDATA_SEL       2 /* Kernel Data Descriptor */
+#define SEL_KPL         0 /* kernel privilege level */
+
+// taken from libnvmm_x86.c
+#define PTE_P           0x0000000000000001      /* Present */
+#define PTE_W           0x0000000000000002      /* Write */
+
+// taken from NetBSD
+#define PSL_MBO		0x00000002
+#define SDT_MEMRWA	19
+#define SDT_MEMERA	27
+#define SDT_SYSLDT	2
+#define SDT_SYS386BSY	11
+
+typedef uint64_t pt_entry_t;
+
+static void err(int error_code, char *str)
+{
+	printf(str);
+	printf("\n");
+	exit(error_code);
+}
+
+#define errx(error_code, str) err(error_code, str)
 
 #endif /* __NetBSD__ */
 
