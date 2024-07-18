@@ -4,6 +4,8 @@ UseHeaders [ FDirName $(HAIKU_TOP) src add-ons kernel drivers nvmm include ] : t
 UseHeaders [ FDirName $(HAIKU_TOP) headers libs libnvmm ] : true ;
 UseHeaders [ FDirName $(HAIKU_TOP) src add-ons kernel drivers nvmm ] : true ;
 
+UsePrivateKernelHeaders ;
+
 SEARCH_SOURCE += [ FDirName $(SUBDIR) h_io_assist ] ;
 SEARCH_SOURCE += [ FDirName $(SUBDIR) h_mem_assist ] ;
 

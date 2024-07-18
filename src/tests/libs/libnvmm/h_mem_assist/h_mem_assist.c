@@ -63,11 +63,12 @@
 #include <OS.h>
 #define PAGE_SIZE B_PAGE_SIZE
 
+#include <arch/x86/arch_cpu.h>
 // taken from nvmm_os.h / DragonFlyBSD's segments.h
 #define GSEL(s,r)       (((s) << 3) | r)/* a global selector */
-#define GCODE_SEL       1 /* Kernel Code Descriptor */
-#define GDATA_SEL       2 /* Kernel Data Descriptor */
-#define SEL_KPL         0 /* kernel privilege level */
+#define GCODE_SEL       KERNEL_CODE_SEGMENT /* Kernel Code Descriptor */
+#define GDATA_SEL       KERNEL_DATA_SEGMENT /* Kernel Data Descriptor */
+#define SEL_KPL         DPL_KERNEL /* kernel privilege level */
 
 // taken from libnvmm_x86.c
 #define PTE_P           0x0000000000000001      /* Present */
