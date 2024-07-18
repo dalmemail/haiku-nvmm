@@ -1,0 +1,14 @@
+SubDir HAIKU_TOP src tests libs libnvmm ;
+
+UseHeaders [ FDirName $(HAIKU_TOP) src add-ons kernel drivers nvmm include ] : true ;
+UseHeaders [ FDirName $(HAIKU_TOP) headers libs libnvmm ] : true ;
+UseHeaders [ FDirName $(HAIKU_TOP) src add-ons kernel drivers nvmm ] : true ;
+
+SEARCH_SOURCE += [ FDirName $(SUBDIR) h_mem_assist ] ;
+
+SimpleTest libnvmm_mem_assist :
+	h_mem_assist.c
+	h_mem_assist_asm.S
+	: libnvmm.so
+;
+
