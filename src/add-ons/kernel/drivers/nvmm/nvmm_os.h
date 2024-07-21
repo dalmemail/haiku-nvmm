@@ -127,6 +127,8 @@ typedef mutex			os_mtx_t;
 // taken from sys/cpu/x86_64/include/psl.h (DragonFlyBSD)
 #define	PSL_I		0x00000200	/* interrupt enable bit */
 #define	PSL_RF		0x00010000	/* resume flag bit */
+// taken from sys/sys/fcntl.h (NetBSD)
+#define	OFLAGS(fflags)	((fflags) - 1)
 #endif
 
 /* Bitops. */

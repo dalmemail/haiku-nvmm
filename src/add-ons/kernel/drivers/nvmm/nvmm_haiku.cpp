@@ -609,13 +609,17 @@ nvmm_open_hook(const char *name, uint32 flags, void **cookie)
 	if (!(flags & O_CLOEXEC))
 		return B_BAD_VALUE;
 
-	//TODO: Root owner not supported yet
 	struct nvmm_owner *owner;
-	owner = (struct nvmm_owner *)os_mem_alloc(sizeof(*owner));
-	if (owner == NULL)
-		return B_NO_MEMORY;
+	if (OFLAGS(flags) & O_WRONLY)
+		owner = &nvmm_root_owner;
+	else {
+		owner = (struct nvmm_owner *)os_mem_alloc(sizeof(*owner));
+		if (owner == NULL)
+			return B_NO_MEMORY;
 
-	owner->pid = getpid();
+		owner->pid = getpid();
+	}
+
 	*cookie = owner;
 
 	return B_OK;
@@ -630,7 +634,6 @@ nvmm_close_hook(void *cookie)
 
 	struct nvmm_owner *owner = (struct nvmm_owner *)cookie;
 	nvmm_kill_machines(owner);
-	TRACE_ALWAYS("%d\n", owner->pid);
 
 	return B_OK;
 }
@@ -642,7 +645,8 @@ nvmm_free_hook(void* cookie)
 	if (cookie == NULL)
 		return B_NO_INIT;
 
-	os_mem_free(cookie, sizeof(struct nvmm_owner));
+	if (cookie != &nvmm_root_owner)
+		os_mem_free(cookie, sizeof(struct nvmm_owner));
 
 	return B_OK;
 }
