@@ -658,12 +658,11 @@ nvmm_control_hook(void *cookie, uint32 op, void *data, size_t len)
 	len = IOCPARM_LEN(op);
 	BStackOrHeapArray<char, 128> kernel_data(len);
 
-	struct nvmm_owner owner = { .pid = getpid(), };
 	status_t status = user_memcpy(kernel_data, data, len);
 	if (status < 0)
 		return status;
 
-	status_t ioctl_status = nvmm_ioctl(&owner, op, kernel_data);
+	status_t ioctl_status = nvmm_ioctl((struct nvmm_owner *)cookie, op, kernel_data);
 
 	status = user_memcpy(data, kernel_data, len);
 	if (status < 0)
