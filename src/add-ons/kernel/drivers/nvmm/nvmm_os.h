@@ -298,6 +298,15 @@ typedef struct globaldata	os_cpu_t;
 #define os_curcpu_gdt()		mdcpu->gd_gdt
 #define os_curcpu_idt()		r_idt_arr[mycpuid].rd_base
 #elif defined(__HAIKU__)
+/*
+ * On NetBSD/DragonFlyBSD each CPU has a unique structure. NVMM
+ * uses the unique pointers to those structures as a way to check
+ * whether two CPUs are the same or not. In our case we'll use
+ * the pointer (void *)n to identify CPU n, except on OS_CPU_FOREACH
+ * and os_cpu_number where we'll use a valid pointer to uint32 (os_cpu_t).
+ * This hack allows to avoid allocating an os_cpu_t per CPU while also
+ * avoiding to modify NVMM's code.
+ */
 typedef uint32			os_cpu_t;
 #define OS_CPU_FOREACH(cpu)	\
 	os_cpu_t cpu_index_; \

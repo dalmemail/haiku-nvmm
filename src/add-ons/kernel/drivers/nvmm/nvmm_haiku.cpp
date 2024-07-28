@@ -102,7 +102,11 @@ extern "C"
 void
 os_ipi_unicast(os_cpu_t *cpu, void (*func)(void *, int), void *arg)
 {
-	call_single_cpu_sync(*cpu, func, arg);
+	int64 cpu_index = (int64)cpu;
+	if (cpu_index >= 0 && cpu_index < haiku_smp_get_num_cpus())
+		call_single_cpu_sync((uint32)cpu_index, func, arg);
+	else
+		panic("Invalid CPU index (%ld): No such CPU\n", cpu_index);
 }
 
 
