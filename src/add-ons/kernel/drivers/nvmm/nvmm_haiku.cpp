@@ -488,8 +488,9 @@ os_vmobj_map(os_vmmap_t *map, vaddr_t *addr, vsize_t size, os_vmobj_t *vmobj,
 		.alignment = B_PAGE_SIZE,
 	};
 	VMArea *area;
-	status = map_backing_store(map->address_space, vmobj->cache, vmobj->cache->virtual_base,
-		"nvmm_vmobj_area", size, wiring, prot, maxprot, mapping, flags,
+	status = map_backing_store(map->address_space, vmobj->cache,
+		vmobj->cache->virtual_base + offset, "nvmm_vmobj_area",
+		size, wiring, prot, maxprot, mapping, flags,
 		&addressRestrictions, kernel, &area, (void **)addr);
 
 	// RefCount() must always be number of areas + 1
