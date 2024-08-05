@@ -364,6 +364,15 @@ extern "C"
 int
 os_vmspace_fault(os_vmspace_t *vm, vaddr_t va, vm_prot_t prot)
 {
+	// if va isn't present on any area vm_soft_fault() will return
+	// error and print to syslog, which can heavily affect performance
+        vm->address_space->ReadLock();
+        if (!vm->address_space->LookupArea(va)) {
+                vm->address_space->ReadUnlock();
+                return 1;
+        }
+        vm->address_space->ReadUnlock();
+
 	status_t status = vm_soft_fault(vm->address_space, va,
 				prot & PROT_WRITE, prot & PROT_EXEC, true, NULL);
 
