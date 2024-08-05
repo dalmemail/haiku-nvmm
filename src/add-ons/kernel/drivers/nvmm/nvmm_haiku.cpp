@@ -420,7 +420,7 @@ os_vmobj_create(voff_t size)
 		numPages++;
 
 	status_t status = VMCacheFactory::CreateAnonymousCache(ret->cache, false,
-				numPages, 0, false, 0);
+				numPages, 0, true, 0);
 	if (status != B_OK) {
 		os_mem_free(ret, sizeof(os_vmobj_t));
 		return NULL;
