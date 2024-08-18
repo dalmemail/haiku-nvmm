@@ -21,6 +21,10 @@
 
 struct kernel_args;
 
+#ifndef __cplusplus
+typedef struct kernel_args kernel_args;
+#endif
+
 
 enum descriptor_types {
 	// segment types

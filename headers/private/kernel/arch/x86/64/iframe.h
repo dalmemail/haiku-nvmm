@@ -43,6 +43,9 @@ struct iframe {
 	};
 } _PACKED;
 
+typedef struct iframe iframe;
+
+
 #define IFRAME_IS_USER(f)	(((f)->cs & DPL_USER) == DPL_USER)
 
 

@@ -430,6 +430,37 @@ X86PagingMethod64Bit::PutPageTableEntryInTable(uint64* entry,
 
 
 /*static*/ void
+X86PagingMethod64Bit::PutPageTableEntryInTable2(uint64* entry,
+	phys_addr_t physicalAddress, uint32 attributes, uint32 memoryType,
+	bool globalPage)
+{
+	uint64 page = (physicalAddress & X86_64_PTE_ADDRESS_MASK)
+		| X86_64_PTE_PRESENT | (globalPage ? X86_64_PTE_GLOBAL : 0)
+		| MemoryTypeToPageTableEntryFlags(memoryType);
+
+	// if the page is user accessible, it's automatically
+	// accessible in kernel space, too (but with the same
+	// protection)
+	if ((attributes & B_USER_PROTECTION) != 0) {
+		page |= X86_64_PTE_USER;
+		if ((attributes & B_WRITE_AREA) != 0)
+			page |= X86_64_PTE_WRITABLE;
+		if ((attributes & B_EXECUTE_AREA) == 0
+			&& x86_check_feature(IA32_FEATURE_AMD_EXT_NX, FEATURE_EXT_AMD)) {
+			page |= X86_64_PTE_NOT_EXECUTABLE;
+		}
+	} else if ((attributes & B_KERNEL_WRITE_AREA) != 0)
+		page |= X86_64_PTE_WRITABLE;
+
+	page &= ~(56);
+	page |= 48;
+
+	// put it in the page table
+	SetTableEntry(entry, page);
+}
+
+
+/*static*/ void
 X86PagingMethod64Bit::_EnableExecutionDisable(void* dummy, int cpu)
 {
 	x86_write_msr(IA32_MSR_EFER, x86_read_msr(IA32_MSR_EFER)

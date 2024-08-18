@@ -273,13 +273,6 @@ static cache_info* sCacheInfoTable;
 // function declarations
 static void delete_area(VMAddressSpace* addressSpace, VMArea* area,
 	bool addressSpaceCleanup);
-static status_t vm_soft_fault(VMAddressSpace* addressSpace, addr_t address,
-	bool isWrite, bool isExecute, bool isUser, vm_page** wirePage);
-static status_t map_backing_store(VMAddressSpace* addressSpace,
-	VMCache* cache, off_t offset, const char* areaName, addr_t size, int wiring,
-	int protection, int protectionMax, int mapping, uint32 flags,
-	const virtual_address_restrictions* addressRestrictions, bool kernel,
-	VMArea** _area, void** _virtualAddress);
 static void fix_protection(uint32* protection);
 
 
@@ -1078,7 +1071,7 @@ discard_area_range(VMArea* area, addr_t address, addr_t size)
 }
 
 
-static status_t
+status_t
 discard_address_range(VMAddressSpace* addressSpace, addr_t address, addr_t size,
 	bool kernel)
 {
@@ -1102,7 +1095,7 @@ discard_address_range(VMAddressSpace* addressSpace, addr_t address, addr_t size,
 	that no part of the specified address range (base \c *_virtualAddress, size
 	\a size) is wired. The cache will also be temporarily unlocked.
 */
-static status_t
+status_t
 map_backing_store(VMAddressSpace* addressSpace, VMCache* cache, off_t offset,
 	const char* areaName, addr_t size, int wiring, int protection,
 	int protectionMax, int mapping,
@@ -4668,7 +4661,7 @@ vm_page_fault(addr_t address, addr_t faultAddress, bool isWrite, bool isExecute,
 	}
 
 	if (status < B_OK) {
-		dprintf("vm_page_fault: vm_soft_fault returned error '%s' on fault at "
+		panic("vm_page_fault: vm_soft_fault returned error '%s' on fault at "
 			"0x%lx, ip 0x%lx, write %d, user %d, exec %d, thread 0x%" B_PRIx32 "\n",
 			strerror(status), address, faultAddress, isWrite, isUser, isExecute,
 			thread_get_current_thread_id());
@@ -4934,7 +4927,7 @@ fault_get_page(PageFaultContext& context)
 		via this parameter.
 	\return \c B_OK on success, another error code otherwise.
 */
-static status_t
+status_t
 vm_soft_fault(VMAddressSpace* addressSpace, addr_t originalAddress,
 	bool isWrite, bool isExecute, bool isUser, vm_page** wirePage)
 {

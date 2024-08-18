@@ -87,6 +87,10 @@ public:
 									uint64* entry, phys_addr_t physicalAddress,
 									uint32 attributes, uint32 memoryType,
 									bool globalPage);
+	static	void				PutPageTableEntryInTable2(
+									uint64* entry, phys_addr_t physicalAddress,
+									uint32 attributes, uint32 memoryType,
+									bool globalPage);
 	static	void				SetTableEntry(uint64_t* entry,
 									uint64_t newEntry);
 	static	uint64_t			SetTableEntryFlags(uint64_t* entryPointer,
