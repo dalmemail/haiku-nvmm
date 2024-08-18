@@ -18,6 +18,7 @@
 #include "paging/64bit/paging.h"
 #include "paging/X86PagingMethod.h"
 #include "paging/X86PagingStructures.h"
+#include "paging/64bit/X86PagingMethod64Bit.h"
 
 
 class TranslationMapPhysicalPageMapper;
@@ -25,38 +26,12 @@ class X86PhysicalPageMapper;
 struct vm_page_reservation;
 
 
-class EPTPagingMethod final : public X86PagingMethod {
+class EPTPagingMethod {
 public:
-								EPTPagingMethod(bool la57);
+								EPTPagingMethod();
 	virtual						~EPTPagingMethod();
 
-	virtual	status_t			Init(kernel_args* args,
-									VMPhysicalPageMapper** _physicalPageMapper);
-	virtual	status_t			InitPostArea(kernel_args* args);
-
-	virtual	status_t			CreateTranslationMap(bool kernel,
-									VMTranslationMap** _map);
-
-	virtual	status_t			MapEarly(kernel_args* args,
-									addr_t virtualAddress,
-									phys_addr_t physicalAddress,
-									uint8 attributes,
-									page_num_t (*get_free_page)(kernel_args*));
-
-	virtual	bool				IsKernelPageAccessible(addr_t virtualAddress,
-									uint32 protection);
-
-	inline	X86PhysicalPageMapper* PhysicalPageMapper() const
-									{ return fPhysicalPageMapper; }
-	inline	TranslationMapPhysicalPageMapper* KernelPhysicalPageMapper() const
-									{ return fKernelPhysicalPageMapper; }
-
-	inline	uint64*				KernelVirtualPMLTop() const
-									{ return fKernelVirtualPMLTop; }
-	inline	phys_addr_t			KernelPhysicalPMLTop() const
-									{ return fKernelPhysicalPMLTop; }
-
-	static	EPTPagingMethod* Method();
+	static X86PhysicalPageMapper* PhysicalPageMapper();
 
 	static	uint64*				PageDirectoryForAddress(uint64* virtualPML4,
 									addr_t virtualAddress, bool isKernel,
@@ -101,15 +76,7 @@ public:
 									uint32 memoryType);
 
 private:
-	static	void				_EnableExecutionDisable(void* dummy, int cpu);
-
-			phys_addr_t			fKernelPhysicalPMLTop;
-			uint64*				fKernelVirtualPMLTop;
-
 			X86PhysicalPageMapper* fPhysicalPageMapper;
-			TranslationMapPhysicalPageMapper* fKernelPhysicalPageMapper;
-
-	static	bool				la57;
 };
 
 
@@ -117,10 +84,10 @@ static_assert(sizeof(std::atomic<uint64_t>) == sizeof(uint64_t),
 	"Non-trivial representation of atomic uint64_t.");
 
 
-/*static*/ inline EPTPagingMethod*
-EPTPagingMethod::Method()
+/*static*/ inline X86PhysicalPageMapper*
+EPTPagingMethod::PhysicalPageMapper()
 {
-	return static_cast<EPTPagingMethod*>(gX86PagingMethod);
+	return static_cast<X86PagingMethod64Bit*>(gX86PagingMethod)->PhysicalPageMapper();
 }
 
 

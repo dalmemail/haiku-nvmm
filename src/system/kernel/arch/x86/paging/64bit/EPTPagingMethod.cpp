@@ -34,184 +34,18 @@
 #endif
 
 
-bool EPTPagingMethod::la57 = false;
-
-
 // #pragma mark - EPTPagingMethod
 
 
-EPTPagingMethod::EPTPagingMethod(bool la57)
+EPTPagingMethod::EPTPagingMethod()
 	:
-	fKernelPhysicalPMLTop(0),
-	fKernelVirtualPMLTop(NULL),
-	fPhysicalPageMapper(NULL),
-	fKernelPhysicalPageMapper(NULL)
+	fPhysicalPageMapper(NULL)
 {
-	EPTPagingMethod::la57 = la57;
 }
 
 
 EPTPagingMethod::~EPTPagingMethod()
 {
-}
-
-
-status_t
-EPTPagingMethod::Init(kernel_args* args,
-	VMPhysicalPageMapper** _physicalPageMapper)
-{
-	fKernelPhysicalPMLTop = args->arch_args.phys_pgdir;
-	fKernelVirtualPMLTop = (uint64*)(addr_t)args->arch_args.vir_pgdir;
-
-	// if available enable NX-bit (No eXecute)
-	if (x86_check_feature(IA32_FEATURE_AMD_EXT_NX, FEATURE_EXT_AMD))
-		call_all_cpus_sync(&_EnableExecutionDisable, NULL);
-
-	// Ensure that the user half of the address space is clear. This removes
-	// the temporary identity mapping made by the boot loader.
-	memset(fKernelVirtualPMLTop, 0, sizeof(uint64) * 256);
-	arch_cpu_global_TLB_invalidate();
-
-	// Create the physical page mapper.
-	mapped_physical_page_ops_init(args, fPhysicalPageMapper,
-		fKernelPhysicalPageMapper);
-
-	*_physicalPageMapper = fPhysicalPageMapper;
-	return B_ERROR;
-}
-
-
-status_t
-EPTPagingMethod::InitPostArea(kernel_args* args)
-{
-	// Create an area covering the physical map area.
-	void* address = (void*)KERNEL_PMAP_BASE;
-	area_id area = vm_create_null_area(VMAddressSpace::KernelID(),
-		"physical map area", &address, B_EXACT_ADDRESS,
-		KERNEL_PMAP_SIZE, 0);
-	if (area < B_OK)
-		return area;
-
-	// Create an area to represent the kernel PMLTop.
-	area = create_area("kernel pmltop", (void**)&fKernelVirtualPMLTop,
-		B_EXACT_ADDRESS, B_PAGE_SIZE, B_ALREADY_WIRED,
-		B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA);
-	if (area < B_OK)
-		return area;
-
-	return B_OK;
-}
-
-
-status_t
-EPTPagingMethod::CreateTranslationMap(bool kernel, VMTranslationMap** _map)
-{
-	X86VMTranslationMap64Bit* map = new(std::nothrow) X86VMTranslationMap64Bit(la57);
-	if (map == NULL)
-		return B_NO_MEMORY;
-
-	status_t error = map->Init(kernel);
-	if (error != B_OK) {
-		delete map;
-		return error;
-	}
-
-	*_map = map;
-	return B_OK;
-}
-
-
-status_t
-EPTPagingMethod::MapEarly(kernel_args* args, addr_t virtualAddress,
-	phys_addr_t physicalAddress, uint8 attributes,
-	page_num_t (*get_free_page)(kernel_args*))
-{
-	TRACE("EPTPagingMethod::MapEarly(%#" B_PRIxADDR ", %#" B_PRIxPHYSADDR
-		", %#" B_PRIx8 ")\n", virtualAddress, physicalAddress, attributes);
-
-	uint64* virtualPML4 = fKernelVirtualPMLTop;
-	if (la57) {
-		// Get the PML4. We should be mapping on an existing PML4 at this stage.
-		uint64* pml5e = &fKernelVirtualPMLTop[VADDR_TO_PML5E(virtualAddress)];
-		ASSERT((*pml5e & X86_64_PML5E_PRESENT) != 0);
-		virtualPML4 = (uint64*)fKernelPhysicalPageMapper->GetPageTableAt(
-			*pml5e & X86_64_PML5E_ADDRESS_MASK);
-	}
-
-	// Get the PDPT. We should be mapping on an existing PDPT at this stage.
-	uint64* pml4e = &virtualPML4[VADDR_TO_PML4E(virtualAddress)];
-	ASSERT((*pml4e & X86_64_PML4E_PRESENT) != 0);
-	uint64* virtualPDPT = (uint64*)fKernelPhysicalPageMapper->GetPageTableAt(
-		*pml4e & X86_64_PML4E_ADDRESS_MASK);
-
-	// Get the page directory.
-	uint64* pdpte = &virtualPDPT[VADDR_TO_PDPTE(virtualAddress)];
-	uint64* virtualPageDir;
-	if ((*pdpte & X86_64_PDPTE_PRESENT) == 0) {
-		phys_addr_t physicalPageDir = get_free_page(args) * B_PAGE_SIZE;
-
-		TRACE("EPTPagingMethod::MapEarly(): creating page directory for va"
-			" %#" B_PRIxADDR " at %#" B_PRIxPHYSADDR "\n", virtualAddress,
-			physicalPageDir);
-
-		SetTableEntry(pdpte, (physicalPageDir & X86_64_PDPTE_ADDRESS_MASK)
-			| X86_64_PDPTE_PRESENT
-			| X86_64_PDPTE_WRITABLE
-			| X86_64_PDPTE_USER);
-
-		// Map it and zero it.
-		virtualPageDir = (uint64*)fKernelPhysicalPageMapper->GetPageTableAt(
-			physicalPageDir);
-		memset(virtualPageDir, 0, B_PAGE_SIZE);
-	} else {
-		virtualPageDir = (uint64*)fKernelPhysicalPageMapper->GetPageTableAt(
-			*pdpte & X86_64_PDPTE_ADDRESS_MASK);
-	}
-
-	// Get the page table.
-	uint64* pde = &virtualPageDir[VADDR_TO_PDE(virtualAddress)];
-	uint64* virtualPageTable;
-	if ((*pde & X86_64_PDE_PRESENT) == 0) {
-		phys_addr_t physicalPageTable = get_free_page(args) * B_PAGE_SIZE;
-
-		TRACE("EPTPagingMethod::MapEarly(): creating page table for va"
-			" %#" B_PRIxADDR " at %#" B_PRIxPHYSADDR "\n", virtualAddress,
-			physicalPageTable);
-
-		SetTableEntry(pde, (physicalPageTable & X86_64_PDE_ADDRESS_MASK)
-			| X86_64_PDE_PRESENT
-			| X86_64_PDE_WRITABLE
-			| X86_64_PDE_USER);
-
-		// Map it and zero it.
-		virtualPageTable = (uint64*)fKernelPhysicalPageMapper->GetPageTableAt(
-			physicalPageTable);
-		memset(virtualPageTable, 0, B_PAGE_SIZE);
-	} else {
-		virtualPageTable = (uint64*)fKernelPhysicalPageMapper->GetPageTableAt(
-			*pde & X86_64_PDE_ADDRESS_MASK);
-	}
-
-	// The page table entry must not already be mapped.
-	uint64* pte = &virtualPageTable[VADDR_TO_PTE(virtualAddress)];
-	ASSERT_PRINT(
-		(*pte & X86_64_PTE_PRESENT) == 0,
-		"virtual address: %#" B_PRIxADDR ", existing pte: %#" B_PRIx64,
-		virtualAddress, *pte);
-
-	// Fill in the table entry.
-	PutPageTableEntryInTable(pte, physicalAddress, attributes, 0,
-		IS_KERNEL_ADDRESS(virtualAddress));
-
-	return B_OK;
-}
-
-
-bool
-EPTPagingMethod::IsKernelPageAccessible(addr_t virtualAddress,
-	uint32 protection)
-{
-	return true;
 }
 
 
@@ -225,41 +59,10 @@ EPTPagingMethod::PageDirectoryForAddress(uint64* virtualPMLTop,
 	TranslationMapPhysicalPageMapper* pageMapper, int32& mapCount)
 {
 	uint64* virtualPML4 = virtualPMLTop;
-	if (la57) {
-		// Get the PDPT.
-		uint64* pml5e = &virtualPMLTop[VADDR_TO_PML5E(virtualAddress)];
-		if ((*pml5e & X86_64_PML5E_PRESENT) == 0) {
-			if (!allocateTables)
-				return NULL;
-
-			// Allocate a new PDPT.
-			vm_page* page = vm_page_allocate_page(reservation,
-				PAGE_STATE_WIRED | VM_PAGE_ALLOC_CLEAR);
-
-			DEBUG_PAGE_ACCESS_END(page);
-
-			phys_addr_t physicalPDPT
-				= (phys_addr_t)page->physical_page_number * B_PAGE_SIZE;
-
-			TRACE("EPTPagingMethod::PageTableForAddress(): creating PML4T"
-				" for va %#" B_PRIxADDR " at %#" B_PRIxPHYSADDR "\n",
-				virtualAddress, physicalPDPT);
-
-			SetTableEntry(pml5e, (physicalPDPT & X86_64_PML5E_ADDRESS_MASK)
-				| X86_64_PML5E_PRESENT
-				| X86_64_PML5E_WRITABLE
-				| X86_64_PML5E_USER);
-
-			mapCount++;
-		}
-
-		virtualPML4 = (uint64*)pageMapper->GetPageTableAt(
-			*pml5e & X86_64_PML5E_ADDRESS_MASK);
-	}
 
 	// Get the PDPT.
 	uint64* pml4e = &virtualPML4[VADDR_TO_PML4E(virtualAddress)];
-	if ((*pml4e & X86_64_PML4E_PRESENT) == 0) {
+	if ((*pml4e & EPT_PML4E_PRESENT) == 0) {
 		if (!allocateTables)
 			return NULL;
 
@@ -276,20 +79,20 @@ EPTPagingMethod::PageDirectoryForAddress(uint64* virtualPMLTop,
 			"for va %#" B_PRIxADDR " at %#" B_PRIxPHYSADDR "\n", virtualAddress,
 			physicalPDPT);
 
-		SetTableEntry(pml4e, (physicalPDPT & X86_64_PML4E_ADDRESS_MASK)
-			| X86_64_PML4E_PRESENT
-			| X86_64_PML4E_WRITABLE
-			| X86_64_PML4E_USER);
+		SetTableEntry(pml4e, (physicalPDPT & EPT_PML4E_ADDRESS_MASK)
+			| EPT_PML4E_PRESENT
+			| EPT_PML4E_WRITABLE
+			| EPT_PML4E_EXECUTABLE);
 
 		mapCount++;
 	}
 
 	uint64* virtualPDPT = (uint64*)pageMapper->GetPageTableAt(
-		*pml4e & X86_64_PML4E_ADDRESS_MASK);
+		*pml4e & EPT_PML4E_ADDRESS_MASK);
 
 	// Get the page directory.
 	uint64* pdpte = &virtualPDPT[VADDR_TO_PDPTE(virtualAddress)];
-	if ((*pdpte & X86_64_PDPTE_PRESENT) == 0) {
+	if ((*pdpte & EPT_PDPTE_PRESENT) == 0) {
 		if (!allocateTables)
 			return NULL;
 
@@ -306,16 +109,16 @@ EPTPagingMethod::PageDirectoryForAddress(uint64* virtualPMLTop,
 			"directory for va %#" B_PRIxADDR " at %#" B_PRIxPHYSADDR "\n",
 			virtualAddress, physicalPageDir);
 
-		SetTableEntry(pdpte, (physicalPageDir & X86_64_PDPTE_ADDRESS_MASK)
-			| X86_64_PDPTE_PRESENT
-			| X86_64_PDPTE_WRITABLE
-			| X86_64_PDPTE_USER);
+		SetTableEntry(pdpte, (physicalPageDir & EPT_PDPTE_ADDRESS_MASK)
+			| EPT_PDPTE_PRESENT
+			| EPT_PDPTE_WRITABLE
+			| EPT_PDPTE_EXECUTABLE);
 
 		mapCount++;
 	}
 
 	return (uint64*)pageMapper->GetPageTableAt(
-		*pdpte & X86_64_PDPTE_ADDRESS_MASK);
+		*pdpte & EPT_PDPTE_ADDRESS_MASK);
 }
 
 
@@ -352,7 +155,7 @@ EPTPagingMethod::PageTableForAddress(uint64* virtualPMLTop,
 	if (pde == NULL)
 		return NULL;
 
-	if ((*pde & X86_64_PDE_PRESENT) == 0) {
+	if ((*pde & EPT_PDE_PRESENT) == 0) {
 		if (!allocateTables)
 			return NULL;
 
@@ -369,20 +172,15 @@ EPTPagingMethod::PageTableForAddress(uint64* virtualPMLTop,
 			"table for va %#" B_PRIxADDR " at %#" B_PRIxPHYSADDR "\n",
 			virtualAddress, physicalPageTable);
 
-		SetTableEntry(pde, (physicalPageTable & X86_64_PDE_ADDRESS_MASK)
-			| X86_64_PDE_PRESENT
-			| X86_64_PDE_WRITABLE
-			| X86_64_PDE_USER);
+		SetTableEntry(pde, (physicalPageTable & EPT_PDE_ADDRESS_MASK)
+			| EPT_PDE_PRESENT
+			| EPT_PDE_WRITABLE
+			| EPT_PDE_EXECUTABLE);
 
 		mapCount++;
 	}
 
-	// No proper large page support at the moment, but they are used for the
-	// physical map area. Ensure that nothing tries to treat that as normal
-	// address space.
-	ASSERT(!(*pde & X86_64_PDE_LARGE_PAGE));
-
-	return (uint64*)pageMapper->GetPageTableAt(*pde & X86_64_PDE_ADDRESS_MASK);
+	return (uint64*)pageMapper->GetPageTableAt(*pde & EPT_PDE_ADDRESS_MASK);
 }
 
 
@@ -418,12 +216,3 @@ EPTPagingMethod::PutPageTableEntryInTable(uint64* entry,
 	// put it in the page table
 	SetTableEntry(entry, page);
 }
-
-
-/*static*/ void
-EPTPagingMethod::_EnableExecutionDisable(void* dummy, int cpu)
-{
-	x86_write_msr(IA32_MSR_EFER, x86_read_msr(IA32_MSR_EFER)
-		| IA32_MSR_EFER_NX);
-}
-

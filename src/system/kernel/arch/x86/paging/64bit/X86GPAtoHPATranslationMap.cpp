@@ -124,10 +124,8 @@ X86GPAtoHPATranslationMap::Init()
 	if (fPagingStructures == NULL)
 		return B_NO_MEMORY;
 
-	EPTPagingMethod* method = EPTPagingMethod::Method();
-
 	// Allocate a physical page mapper.
-	status_t error = method->PhysicalPageMapper()
+	status_t error = EPTPagingMethod::PhysicalPageMapper()
 		->CreateTranslationMapPhysicalPageMapper(&fPageMapper);
 	if (error != B_OK)
 		return error;

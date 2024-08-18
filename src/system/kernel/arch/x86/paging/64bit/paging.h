@@ -90,8 +90,25 @@ static const size_t k64BitTableEntryCount = 512;
 #define VADDR_TO_PDE(va)	(((va) % k64BitPageDirectoryRange) / k64BitPageTableRange)
 #define VADDR_TO_PTE(va)	(((va) % k64BitPageTableRange) / B_PAGE_SIZE)
 
+// EPT PML4E bits
+#define EPT_PML4E_PRESENT			(1LL << 0)
+#define EPT_PML4E_WRITABLE			(1LL << 1)
+#define EPT_PML4E_EXECUTABLE			(1LL << 2)
+#define EPT_PML4E_ADDRESS_MASK			0x0000fffffffff000L
 
-// EPT page table entry bits.
+// EPT PDPTE bits
+#define EPT_PDPTE_PRESENT			(1LL << 0)
+#define EPT_PDPTE_WRITABLE			(1LL << 1)
+#define EPT_PDPTE_EXECUTABLE			(1LL << 2)
+#define EPT_PDPTE_ADDRESS_MASK			0x0000fffffffff000L
+
+// EPT PDE bits
+#define EPT_PDE_PRESENT				(1LL << 0)
+#define EPT_PDE_WRITABLE			(1LL << 1)
+#define EPT_PDE_EXECUTABLE			(1LL << 2)
+#define EPT_PDE_ADDRESS_MASK			0x0000fffffffff000L
+
+// EPT PTE bits.
 #define EPT_PTE_PRESENT				(1LL << 0)
 #define EPT_PTE_WRITABLE			(1LL << 1)
 #define EPT_PTE_EXECUTABLE			(1LL << 2)
