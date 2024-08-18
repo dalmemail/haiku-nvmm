@@ -8,8 +8,8 @@ SEARCH_SOURCE += [ FDirName $(SUBDIR) x86 ] ;
 
 SubDirCcFlags [ FDefines _KERNEL=1 ] ;
 SubDirC++Flags [ FDefines _KERNEL=1 ] ;
-SubDirCcFlags -O0 ;
-SubDirC++Flags -O0 ;
+SubDirCcFlags -O3 ;
+SubDirC++Flags -O3 ;
 
 # Needed to include X86GPAtoHPATranslationMap
 UseHeaders [ FDirName $(HAIKU_TOP) src system kernel arch x86 ] : true ;
