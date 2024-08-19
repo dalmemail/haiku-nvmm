@@ -1,4 +1,6 @@
 /*
+ * Copyright 2024, Daniel Martin, dalmemail@gmail.com
+ * Forked from X86VMTranslationMap64Bit.h:
  * Copyright 2012, Alex Smith, alex@alex-smith.me.uk.
  * Copyright 2010, Ingo Weinhold, ingo_weinhold@gmx.de.
  * Distributed under the terms of the MIT License.

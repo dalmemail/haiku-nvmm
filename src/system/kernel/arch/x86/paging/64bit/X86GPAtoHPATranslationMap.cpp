@@ -1,4 +1,6 @@
 /*
+ * Copyright 2024, Daniel Martin, dalmemail@gmail.com
+ * Forked from X86VMTranslationMap64Bit.cpp:
  * Copyright 2012, Alex Smith, alex@alex-smith.me.uk
  * Copyright 2008-2011, Ingo Weinhold, ingo_weinhold@gmx.de.
  * Copyright 2002-2010, Axel Dörfler, axeld@pinc-software.de.
@@ -20,7 +22,7 @@
 #include <vm/VMAddressSpace.h>
 #include <vm/VMCache.h>
 
-#include "paging/64bit/X86PagingMethod64Bit.h"
+#include "paging/64bit/EPTPagingMethod.h"
 #include "paging/64bit/X86PagingStructures64Bit.h"
 #include "paging/x86_physical_page_mapper.h"
 
@@ -58,22 +60,22 @@ X86GPAtoHPATranslationMap::~X86GPAtoHPATranslationMap()
 		// Free all structures in the PMLTop.
 		uint64* virtualPML4 = fPagingStructures->VirtualPMLTop();
 		for (uint32 i = 0; i < 512; i++) {
-			if ((virtualPML4[i] & X86_64_PML4E_PRESENT) == 0)
+			if ((virtualPML4[i] & EPT_PML4E_PRESENT) == 0)
 				continue;
 
 			uint64* virtualPDPT = (uint64*)fPageMapper->GetPageTableAt(
-				virtualPML4[i] & X86_64_PML4E_ADDRESS_MASK);
+				virtualPML4[i] & EPT_PML4E_ADDRESS_MASK);
 			for (uint32 j = 0; j < 512; j++) {
-				if ((virtualPDPT[j] & X86_64_PDPTE_PRESENT) == 0)
+				if ((virtualPDPT[j] & EPT_PDPTE_PRESENT) == 0)
 					continue;
 
 				uint64* virtualPageDir = (uint64*)fPageMapper->GetPageTableAt(
-					virtualPDPT[j] & X86_64_PDPTE_ADDRESS_MASK);
+					virtualPDPT[j] & EPT_PDPTE_ADDRESS_MASK);
 				for (uint32 k = 0; k < 512; k++) {
-					if ((virtualPageDir[k] & X86_64_PDE_PRESENT) == 0)
+					if ((virtualPageDir[k] & EPT_PDE_PRESENT) == 0)
 						continue;
 
-					address = virtualPageDir[k] & X86_64_PDE_ADDRESS_MASK;
+					address = virtualPageDir[k] & EPT_PDE_ADDRESS_MASK;
 					page = vm_lookup_page(address / B_PAGE_SIZE);
 					if (page == NULL) {
 						panic("page table %u %u %u on invalid page %#"
@@ -84,7 +86,7 @@ X86GPAtoHPATranslationMap::~X86GPAtoHPATranslationMap()
 					vm_page_set_state(page, PAGE_STATE_FREE);
 				}
 
-				address = virtualPDPT[j] & X86_64_PDPTE_ADDRESS_MASK;
+				address = virtualPDPT[j] & EPT_PDPTE_ADDRESS_MASK;
 				page = vm_lookup_page(address / B_PAGE_SIZE);
 				if (page == NULL) {
 					panic("page directory %u %u on invalid page %#"
@@ -95,7 +97,7 @@ X86GPAtoHPATranslationMap::~X86GPAtoHPATranslationMap()
 				vm_page_set_state(page, PAGE_STATE_FREE);
 			}
 
-			address = virtualPML4[i] & X86_64_PML4E_ADDRESS_MASK;
+			address = virtualPML4[i] & EPT_PML4E_ADDRESS_MASK;
 			page = vm_lookup_page(address / B_PAGE_SIZE);
 			if (page == NULL) {
 				panic("PDPT %u on invalid page %#" B_PRIxPHYSADDR "\n", i,
@@ -124,10 +126,8 @@ X86GPAtoHPATranslationMap::Init()
 	if (fPagingStructures == NULL)
 		return B_NO_MEMORY;
 
-	X86PagingMethod64Bit* method = X86PagingMethod64Bit::Method();
-
 	// Allocate a physical page mapper.
-	status_t error = method->PhysicalPageMapper()
+	status_t error = EPTPagingMethod::PhysicalPageMapper()
 		->CreateTranslationMapPhysicalPageMapper(&fPageMapper);
 	if (error != B_OK)
 		return error;
@@ -189,18 +189,18 @@ X86GPAtoHPATranslationMap::Map(addr_t virtualAddress, phys_addr_t physicalAddres
 
 	// Look up the page table for the virtual address, allocating new tables
 	// if required. Shouldn't fail.
-	uint64* entry = X86PagingMethod64Bit::PageTableEntryForAddress(
+	uint64* entry = EPTPagingMethod::PageTableEntryForAddress(
 		fPagingStructures->VirtualPMLTop(), virtualAddress, fIsKernelMap,
 		true, reservation, fPageMapper, fMapCount);
 	ASSERT(entry != NULL);
 
 	// The entry should not already exist.
-	ASSERT_PRINT((*entry & X86_64_PTE_PRESENT) == 0,
+	ASSERT_PRINT((*entry & EPT_PTE_PRESENT) == 0,
 		"virtual address: %#" B_PRIxADDR ", existing pte: %#" B_PRIx64,
 		virtualAddress, *entry);
 
 	// Fill in the table entry.
-	X86PagingMethod64Bit::PutPageTableEntryInTable(entry, physicalAddress,
+	EPTPagingMethod::PutPageTableEntryInTable(entry, physicalAddress,
 		attributes, memoryType, fIsKernelMap);
 
 	// Note: We don't need to invalidate the TLB for this address, as previously
@@ -225,7 +225,7 @@ X86GPAtoHPATranslationMap::Unmap(addr_t start, addr_t end)
 	ThreadCPUPinner pinner(thread_get_current_thread());
 
 	do {
-		uint64* pageTable = X86PagingMethod64Bit::PageTableForAddress(
+		uint64* pageTable = EPTPagingMethod::PageTableForAddress(
 			fPagingStructures->VirtualPMLTop(), start, fIsKernelMap, false,
 			NULL, fPageMapper, fMapCount);
 		if (pageTable == NULL) {
@@ -237,18 +237,18 @@ X86GPAtoHPATranslationMap::Unmap(addr_t start, addr_t end)
 		for (uint32 index = start / B_PAGE_SIZE % k64BitTableEntryCount;
 				index < k64BitTableEntryCount && start < end;
 				index++, start += B_PAGE_SIZE) {
-			if ((pageTable[index] & X86_64_PTE_PRESENT) == 0)
+			if ((pageTable[index] & EPT_PTE_PRESENT) == 0)
 				continue;
 
 			TRACE("X86GPAtoHPATranslationMap::Unmap(): removing page %#"
 				B_PRIxADDR " (%#" B_PRIxPHYSADDR ")\n", start,
-				pageTable[index] & X86_64_PTE_ADDRESS_MASK);
+				pageTable[index] & EPT_PTE_ADDRESS_MASK);
 
-			uint64 oldEntry = X86PagingMethod64Bit::ClearTableEntryFlags(
-				&pageTable[index], X86_64_PTE_PRESENT);
+			uint64 oldEntry = EPTPagingMethod::ClearTableEntryFlags(
+				&pageTable[index], EPT_PTE_PRESENT);
 			fMapCount--;
 
-			if ((oldEntry & X86_64_PTE_ACCESSED) != 0) {
+			if ((oldEntry & EPT_PTE_ACCESSED) != 0) {
 				// Note, that we only need to invalidate the address, if the
 				// accessed flags was set, since only then the entry could have
 				// been in any TLB.
@@ -275,7 +275,7 @@ X86GPAtoHPATranslationMap::DebugMarkRangePresent(addr_t start, addr_t end,
 	ThreadCPUPinner pinner(thread_get_current_thread());
 
 	do {
-		uint64* pageTable = X86PagingMethod64Bit::PageTableForAddress(
+		uint64* pageTable = EPTPagingMethod::PageTableForAddress(
 			fPagingStructures->VirtualPMLTop(), start, fIsKernelMap, false,
 			NULL, fPageMapper, fMapCount);
 		if (pageTable == NULL) {
@@ -287,20 +287,20 @@ X86GPAtoHPATranslationMap::DebugMarkRangePresent(addr_t start, addr_t end,
 		for (uint32 index = start / B_PAGE_SIZE % k64BitTableEntryCount;
 				index < k64BitTableEntryCount && start < end;
 				index++, start += B_PAGE_SIZE) {
-			if ((pageTable[index] & X86_64_PTE_PRESENT) == 0) {
+			if ((pageTable[index] & EPT_PTE_PRESENT) == 0) {
 				if (!markPresent)
 					continue;
 
-				X86PagingMethod64Bit::SetTableEntryFlags(&pageTable[index],
-					X86_64_PTE_PRESENT);
+				EPTPagingMethod::SetTableEntryFlags(&pageTable[index],
+					EPT_PTE_PRESENT);
 			} else {
 				if (markPresent)
 					continue;
 
-				uint64 oldEntry = X86PagingMethod64Bit::ClearTableEntryFlags(
-					&pageTable[index], X86_64_PTE_PRESENT);
+				uint64 oldEntry = EPTPagingMethod::ClearTableEntryFlags(
+					&pageTable[index], EPT_PTE_PRESENT);
 
-				if ((oldEntry & X86_64_PTE_ACCESSED) != 0) {
+				if ((oldEntry & EPT_PTE_ACCESSED) != 0) {
 					// Note, that we only need to invalidate the address, if the
 					// accessed flags was set, since only then the entry could
 					// have been in any TLB.
@@ -325,7 +325,7 @@ X86GPAtoHPATranslationMap::UnmapPage(VMArea* area, addr_t address,
 	ThreadCPUPinner pinner(thread_get_current_thread());
 
 	// Look up the page table for the virtual address.
-	uint64* entry = X86PagingMethod64Bit::PageTableEntryForAddress(
+	uint64* entry = EPTPagingMethod::PageTableEntryForAddress(
 		fPagingStructures->VirtualPMLTop(), address, fIsKernelMap,
 		false, NULL, fPageMapper, fMapCount);
 	if (entry == NULL)
@@ -333,16 +333,16 @@ X86GPAtoHPATranslationMap::UnmapPage(VMArea* area, addr_t address,
 
 	RecursiveLocker locker(fLock);
 
-	uint64 oldEntry = X86PagingMethod64Bit::ClearTableEntry(entry);
+	uint64 oldEntry = EPTPagingMethod::ClearTableEntry(entry);
 
 	pinner.Unlock();
 
-	if ((oldEntry & X86_64_PTE_PRESENT) == 0)
+	if ((oldEntry & EPT_PTE_PRESENT) == 0)
 		return B_ENTRY_NOT_FOUND;
 
 	fMapCount--;
 
-	if ((oldEntry & X86_64_PTE_ACCESSED) != 0) {
+	if ((oldEntry & EPT_PTE_ACCESSED) != 0) {
 		// Note, that we only need to invalidate the address, if the
 		// accessed flags was set, since only then the entry could have been
 		// in any TLB.
@@ -365,9 +365,9 @@ X86GPAtoHPATranslationMap::UnmapPage(VMArea* area, addr_t address,
 	locker.Detach();
 		// PageUnmapped() will unlock for us
 
-	PageUnmapped(area, (oldEntry & X86_64_PTE_ADDRESS_MASK) / B_PAGE_SIZE,
-		(oldEntry & X86_64_PTE_ACCESSED) != 0,
-		(oldEntry & X86_64_PTE_DIRTY) != 0, updatePageQueue);
+	PageUnmapped(area, (oldEntry & EPT_PTE_ADDRESS_MASK) / B_PAGE_SIZE,
+		(oldEntry & EPT_PTE_ACCESSED) != 0,
+		(oldEntry & EPT_PTE_DIRTY) != 0, updatePageQueue);
 
 	return B_OK;
 }
@@ -392,7 +392,7 @@ X86GPAtoHPATranslationMap::UnmapPages(VMArea* area, addr_t base, size_t size,
 	ThreadCPUPinner pinner(thread_get_current_thread());
 
 	do {
-		uint64* pageTable = X86PagingMethod64Bit::PageTableForAddress(
+		uint64* pageTable = EPTPagingMethod::PageTableForAddress(
 			fPagingStructures->VirtualPMLTop(), start, fIsKernelMap, false,
 			NULL, fPageMapper, fMapCount);
 		if (pageTable == NULL) {
@@ -404,14 +404,14 @@ X86GPAtoHPATranslationMap::UnmapPages(VMArea* area, addr_t base, size_t size,
 		for (uint32 index = start / B_PAGE_SIZE % k64BitTableEntryCount;
 				index < k64BitTableEntryCount && start < end;
 				index++, start += B_PAGE_SIZE) {
-			uint64 oldEntry = X86PagingMethod64Bit::ClearTableEntry(
+			uint64 oldEntry = EPTPagingMethod::ClearTableEntry(
 				&pageTable[index]);
-			if ((oldEntry & X86_64_PTE_PRESENT) == 0)
+			if ((oldEntry & EPT_PTE_PRESENT) == 0)
 				continue;
 
 			fMapCount--;
 
-			if ((oldEntry & X86_64_PTE_ACCESSED) != 0) {
+			if ((oldEntry & EPT_PTE_ACCESSED) != 0) {
 				// Note, that we only need to invalidate the address, if the
 				// accessed flags was set, since only then the entry could have
 				// been in any TLB.
@@ -421,15 +421,15 @@ X86GPAtoHPATranslationMap::UnmapPages(VMArea* area, addr_t base, size_t size,
 			if (area->cache_type != CACHE_TYPE_DEVICE) {
 				// get the page
 				vm_page* page = vm_lookup_page(
-					(oldEntry & X86_64_PTE_ADDRESS_MASK) / B_PAGE_SIZE);
+					(oldEntry & EPT_PTE_ADDRESS_MASK) / B_PAGE_SIZE);
 				ASSERT(page != NULL);
 
 				DEBUG_PAGE_ACCESS_START(page);
 
 				// transfer the accessed/dirty flags to the page
-				if ((oldEntry & X86_64_PTE_ACCESSED) != 0)
+				if ((oldEntry & EPT_PTE_ACCESSED) != 0)
 					page->accessed = true;
-				if ((oldEntry & X86_64_PTE_DIRTY) != 0)
+				if ((oldEntry & EPT_PTE_DIRTY) != 0)
 					page->modified = true;
 
 				// remove the mapping object/decrement the wired_count of the
@@ -525,7 +525,7 @@ X86GPAtoHPATranslationMap::UnmapArea(VMArea* area, bool deletingAddressSpace,
 			addr_t address = area->Base()
 				+ ((page->cache_offset * B_PAGE_SIZE) - area->cache_offset);
 
-			uint64* entry = X86PagingMethod64Bit::PageTableEntryForAddress(
+			uint64* entry = EPTPagingMethod::PageTableEntryForAddress(
 				fPagingStructures->VirtualPMLTop(), address, fIsKernelMap,
 				false, NULL, fPageMapper, fMapCount);
 			if (entry == NULL) {
@@ -534,9 +534,9 @@ X86GPAtoHPATranslationMap::UnmapArea(VMArea* area, bool deletingAddressSpace,
 				continue;
 			}
 
-			uint64 oldEntry = X86PagingMethod64Bit::ClearTableEntry(entry);
+			uint64 oldEntry = EPTPagingMethod::ClearTableEntry(entry);
 
-			if ((oldEntry & X86_64_PTE_PRESENT) == 0) {
+			if ((oldEntry & EPT_PTE_PRESENT) == 0) {
 				panic("page %p has mapping for area %p (%#" B_PRIxADDR "), but "
 					"has no page table entry", page, area, address);
 				continue;
@@ -544,14 +544,14 @@ X86GPAtoHPATranslationMap::UnmapArea(VMArea* area, bool deletingAddressSpace,
 
 			// transfer the accessed/dirty flags to the page and invalidate
 			// the mapping, if necessary
-			if ((oldEntry & X86_64_PTE_ACCESSED) != 0) {
+			if ((oldEntry & EPT_PTE_ACCESSED) != 0) {
 				page->accessed = true;
 
 				if (!deletingAddressSpace)
 					InvalidatePage(address);
 			}
 
-			if ((oldEntry & X86_64_PTE_DIRTY) != 0)
+			if ((oldEntry & EPT_PTE_DIRTY) != 0)
 				page->modified = true;
 
 			if (pageFullyUnmapped) {
@@ -596,37 +596,25 @@ X86GPAtoHPATranslationMap::Query(addr_t virtualAddress,
 	// This function may be called on the physical map area, so we must handle
 	// large pages here. Look up the page directory entry for the virtual
 	// address.
-	uint64* pde = X86PagingMethod64Bit::PageDirectoryEntryForAddress(
+	uint64* pde = EPTPagingMethod::PageDirectoryEntryForAddress(
 		fPagingStructures->VirtualPMLTop(), virtualAddress, fIsKernelMap,
 		false, NULL, fPageMapper, fMapCount);
-	if (pde == NULL || (*pde & X86_64_PDE_PRESENT) == 0)
+	if (pde == NULL || (*pde & EPT_PDE_PRESENT) == 0)
 		return B_OK;
 
 	uint64 entry;
-	if ((*pde & X86_64_PDE_LARGE_PAGE) != 0) {
-		entry = *pde;
-		*_physicalAddress = (entry & X86_64_PDE_ADDRESS_MASK)
-			+ (virtualAddress % 0x200000);
-	} else {
-		uint64* virtualPageTable = (uint64*)fPageMapper->GetPageTableAt(
-			*pde & X86_64_PDE_ADDRESS_MASK);
-		entry = virtualPageTable[VADDR_TO_PTE(virtualAddress)];
-		*_physicalAddress = entry & X86_64_PTE_ADDRESS_MASK;
-	}
+	uint64* virtualPageTable = (uint64*)fPageMapper->GetPageTableAt(
+		*pde & EPT_PDE_ADDRESS_MASK);
+	entry = virtualPageTable[VADDR_TO_PTE(virtualAddress)];
+	*_physicalAddress = entry & EPT_PTE_ADDRESS_MASK;
 
 	// Translate the page state flags.
-	if ((entry & X86_64_PTE_USER) != 0) {
-		*_flags |= ((entry & X86_64_PTE_WRITABLE) != 0 ? B_WRITE_AREA : 0)
-			| B_READ_AREA
-			| ((entry & X86_64_PTE_NOT_EXECUTABLE) == 0 ? B_EXECUTE_AREA : 0);
-	}
-
-	*_flags |= ((entry & X86_64_PTE_WRITABLE) != 0 ? B_KERNEL_WRITE_AREA : 0)
-		| B_KERNEL_READ_AREA
-		| ((entry & X86_64_PTE_NOT_EXECUTABLE) == 0 ? B_KERNEL_EXECUTE_AREA : 0)
-		| ((entry & X86_64_PTE_DIRTY) != 0 ? PAGE_MODIFIED : 0)
-		| ((entry & X86_64_PTE_ACCESSED) != 0 ? PAGE_ACCESSED : 0)
-		| ((entry & X86_64_PTE_PRESENT) != 0 ? PAGE_PRESENT : 0);
+	*_flags |= ((entry & EPT_PTE_WRITABLE) != 0 ? B_WRITE_AREA : 0)
+		| B_READ_AREA
+		| ((entry & EPT_PTE_EXECUTABLE) != 0 ? B_EXECUTE_AREA : 0)
+		| ((entry & EPT_PTE_DIRTY) != 0 ? PAGE_MODIFIED : 0)
+		| ((entry & EPT_PTE_ACCESSED) != 0 ? PAGE_ACCESSED : 0)
+		| ((entry & EPT_PTE_PRESENT) != 0 ? PAGE_PRESENT : 0);
 
 	TRACE("X86GPAtoHPATranslationMap::Query(%#" B_PRIxADDR ") -> %#"
 		B_PRIxPHYSADDR " %#" B_PRIx32 " (entry: %#" B_PRIx64 ")\n",
@@ -650,6 +638,7 @@ status_t
 X86GPAtoHPATranslationMap::Protect(addr_t start, addr_t end, uint32 attributes,
 	uint32 memoryType)
 {
+	panic("X86GPAtoHPATranslationMap::Protect() called!\n");
 	start = ROUNDDOWN(start, B_PAGE_SIZE);
 	if (start >= end)
 		return B_OK;
@@ -673,7 +662,7 @@ X86GPAtoHPATranslationMap::Protect(addr_t start, addr_t end, uint32 attributes,
 	ThreadCPUPinner pinner(thread_get_current_thread());
 
 	do {
-		uint64* pageTable = X86PagingMethod64Bit::PageTableForAddress(
+		uint64* pageTable = EPTPagingMethod::PageTableForAddress(
 			fPagingStructures->VirtualPMLTop(), start, fIsKernelMap, false,
 			NULL, fPageMapper, fMapCount);
 		if (pageTable == NULL) {
@@ -696,12 +685,12 @@ X86GPAtoHPATranslationMap::Protect(addr_t start, addr_t end, uint32 attributes,
 			// without changing the accessed or dirty flag
 			uint64 oldEntry;
 			while (true) {
-				oldEntry = X86PagingMethod64Bit::TestAndSetTableEntry(
+				oldEntry = EPTPagingMethod::TestAndSetTableEntry(
 					&pageTable[index],
 					(entry & ~(X86_64_PTE_PROTECTION_MASK
 							| X86_64_PTE_MEMORY_TYPE_MASK))
 						| newProtectionFlags
-						| X86PagingMethod64Bit::MemoryTypeToPageTableEntryFlags(
+						| EPTPagingMethod::MemoryTypeToPageTableEntryFlags(
 							memoryType),
 					entry);
 				if (oldEntry == entry)
@@ -730,16 +719,16 @@ X86GPAtoHPATranslationMap::ClearFlags(addr_t address, uint32 flags)
 
 	ThreadCPUPinner pinner(thread_get_current_thread());
 
-	uint64* entry = X86PagingMethod64Bit::PageTableEntryForAddress(
+	uint64* entry = EPTPagingMethod::PageTableEntryForAddress(
 		fPagingStructures->VirtualPMLTop(), address, fIsKernelMap,
 		false, NULL, fPageMapper, fMapCount);
 	if (entry == NULL)
 		return B_OK;
 
-	uint64 flagsToClear = ((flags & PAGE_MODIFIED) ? X86_64_PTE_DIRTY : 0)
-		| ((flags & PAGE_ACCESSED) ? X86_64_PTE_ACCESSED : 0);
+	uint64 flagsToClear = ((flags & PAGE_MODIFIED) ? EPT_PTE_DIRTY : 0)
+		| ((flags & PAGE_ACCESSED) ? EPT_PTE_ACCESSED : 0);
 
-	uint64 oldEntry = X86PagingMethod64Bit::ClearTableEntryFlags(entry,
+	uint64 oldEntry = EPTPagingMethod::ClearTableEntryFlags(entry,
 		flagsToClear);
 
 	if ((oldEntry & flagsToClear) != 0)
@@ -761,7 +750,7 @@ X86GPAtoHPATranslationMap::ClearAccessedAndModified(VMArea* area, addr_t address
 	RecursiveLocker locker(fLock);
 	ThreadCPUPinner pinner(thread_get_current_thread());
 
-	uint64* entry = X86PagingMethod64Bit::PageTableEntryForAddress(
+	uint64* entry = EPTPagingMethod::PageTableEntryForAddress(
 		fPagingStructures->VirtualPMLTop(), address, fIsKernelMap,
 		false, NULL, fPageMapper, fMapCount);
 	if (entry == NULL)
@@ -772,20 +761,20 @@ X86GPAtoHPATranslationMap::ClearAccessedAndModified(VMArea* area, addr_t address
 	if (unmapIfUnaccessed) {
 		while (true) {
 			oldEntry = *entry;
-			if ((oldEntry & X86_64_PTE_PRESENT) == 0) {
+			if ((oldEntry & EPT_PTE_PRESENT) == 0) {
 				// page mapping not valid
 				return false;
 			}
 
-			if (oldEntry & X86_64_PTE_ACCESSED) {
+			if (oldEntry & EPT_PTE_ACCESSED) {
 				// page was accessed -- just clear the flags
-				oldEntry = X86PagingMethod64Bit::ClearTableEntryFlags(entry,
-					X86_64_PTE_ACCESSED | X86_64_PTE_DIRTY);
+				oldEntry = EPTPagingMethod::ClearTableEntryFlags(entry,
+					EPT_PTE_ACCESSED | EPT_PTE_DIRTY);
 				break;
 			}
 
 			// page hasn't been accessed -- unmap it
-			if (X86PagingMethod64Bit::TestAndSetTableEntry(entry, 0, oldEntry)
+			if (EPTPagingMethod::TestAndSetTableEntry(entry, 0, oldEntry)
 					== oldEntry) {
 				break;
 			}
@@ -793,15 +782,15 @@ X86GPAtoHPATranslationMap::ClearAccessedAndModified(VMArea* area, addr_t address
 			// something changed -- check again
 		}
 	} else {
-		oldEntry = X86PagingMethod64Bit::ClearTableEntryFlags(entry,
-			X86_64_PTE_ACCESSED | X86_64_PTE_DIRTY);
+		oldEntry = EPTPagingMethod::ClearTableEntryFlags(entry,
+			EPT_PTE_ACCESSED | EPT_PTE_DIRTY);
 	}
 
 	pinner.Unlock();
 
-	_modified = (oldEntry & X86_64_PTE_DIRTY) != 0;
+	_modified = (oldEntry & EPT_PTE_DIRTY) != 0;
 
-	if ((oldEntry & X86_64_PTE_ACCESSED) != 0) {
+	if ((oldEntry & EPT_PTE_ACCESSED) != 0) {
 		// Note, that we only need to invalidate the address, if the
 		// accessed flags was set, since only then the entry could have been
 		// in any TLB.
@@ -822,7 +811,7 @@ X86GPAtoHPATranslationMap::ClearAccessedAndModified(VMArea* area, addr_t address
 		// UnaccessedPageUnmapped() will unlock for us
 
 	UnaccessedPageUnmapped(area,
-		(oldEntry & X86_64_PTE_ADDRESS_MASK) / B_PAGE_SIZE);
+		(oldEntry & EPT_PTE_ADDRESS_MASK) / B_PAGE_SIZE);
 
 	return false;
 }
@@ -837,11 +826,5 @@ X86GPAtoHPATranslationMap::PagingStructures() const
 phys_addr_t
 X86GPAtoHPATranslationMap::PhysicalPML4() const
 {
-	// TODO: If Haiku runs with 5-level paging
-	// enabled the mapper will set up structures
-	// of 5-levels for EPT. We would have to
-	// return here a pointer to PML4 NOT PML5
-	// if (la57) ...
-
 	return fPagingStructures->PhysicalPMLTop();
 }
