@@ -427,6 +427,8 @@ os_vmobj_create(voff_t size)
 	}
 	ret->ref_count = 0;
 	ret->cache->temporary = 1;
+	ret->cache->virtual_base = 0;
+	ret->cache->virtual_end = size;
 
 	return ret;
 }
