@@ -66,6 +66,7 @@ AddHeaderDirectoryToPackage config ;
 AddHeaderDirectoryToPackage glibc ;
 AddHeaderDirectoryToPackage libs alm ;
 AddHeaderDirectoryToPackage libs glut GL ;
+AddHeaderDirectoryToPackage libs libnvmm ;
 AddHeaderDirectoryToPackage libs linprog ;
 AddHeaderDirectoryToPackage os ;
 AddHeaderDirectoryToPackage posix ;
@@ -78,6 +79,15 @@ CopyDirectoryToPackage develop headers private libs compat
 CopyDirectoryToPackage develop headers private libs compat
 	: [ FDirName $(HAIKU_TOP) src libs compat freebsd_wlan ]
 	: : -x *.c -x Jamfile ;
+CopyDirectoryToPackage develop headers private
+	: [ FDirName $(HAIKU_TOP) src add-ons kernel drivers nvmm ]
+	: : -x *.c -x *.cpp -x include -x Jamfile ;
+CopyDirectoryToPackage develop headers private nvmm
+	: [ FDirName $(HAIKU_TOP) src add-ons kernel drivers nvmm include sys ]
+	: : -x *.c -x *.cpp -x Jamfile ;
+CopyDirectoryToPackage develop headers private nvmm
+	: [ FDirName $(HAIKU_TOP) src add-ons kernel drivers nvmm include machine ]
+	: : -x *.c -x *.cpp -x Jamfile ;
 
 # create be -> os symlink for now
 AddSymlinkToPackage develop headers : os : be ;

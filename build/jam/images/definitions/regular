@@ -128,7 +128,7 @@ rule HaikuImageGetSystemLibs
 			libmedia.so
 			libmidi.so
 			libmidi2.so
-			libnetwork.so
+			libnetwork.so libnvmm.so@x86_64
 			libpackage.so
 			libscreensaver.so
 			libtextencoding.so
