@@ -144,7 +144,7 @@ EPTPagingMethod::MemoryTypeToPageTableEntryFlags(uint32 memoryType)
 			return EPT_PTE_WRITE_COMBINING;
 
 		case B_WRITE_THROUGH_MEMORY:
-			return X86_64_PTE_WRITE_THROUGH;
+			return EPT_PTE_WRITE_THROUGH;
 
 		case B_WRITE_PROTECTED_MEMORY:
 			return EPT_PTE_WRITE_PROTECT;
