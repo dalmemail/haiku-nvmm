@@ -156,6 +156,7 @@ protected:
 			friend struct VMAreasTreeDefinition;
 			friend struct VMKernelAddressSpace;
 			friend struct VMUserAddressSpace;
+			friend struct VMVirtualAddressSpace;
 
 protected:
 			void				SetBase(addr_t base)	{ fBase = base; }

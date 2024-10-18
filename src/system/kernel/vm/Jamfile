@@ -6,6 +6,9 @@ UseHeaders [ FDirName $(SUBDIR) $(DOTDOT) device_manager ] ;
 UsePrivateHeaders [ FDirName kernel disk_device_manager ] ;
 UsePrivateHeaders [ FDirName kernel util ] ;
 
+# VMAddressSpace.cpp needs this to include X86GPAtoHPATranslationMap
+UseHeaders [ FDirName $(HAIKU_TOP) src system kernel arch x86 ] : true ;
+
 KernelMergeObject kernel_vm.o :
 	PageCacheLocker.cpp
 	vm.cpp
@@ -25,6 +28,7 @@ KernelMergeObject kernel_vm.o :
 	VMTranslationMap.cpp
 	VMUserAddressSpace.cpp
 	VMUserArea.cpp
+	VMVirtualAddressSpace.cpp
 
 	: $(TARGET_KERNEL_PIC_CCFLAGS)
 ;

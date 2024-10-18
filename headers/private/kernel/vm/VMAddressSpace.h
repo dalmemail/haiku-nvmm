@@ -115,7 +115,7 @@ public:
 	virtual	void				Dump() const;
 
 	static	status_t			Create(team_id teamID, addr_t base, size_t size,
-									bool kernel,
+									bool kernel, bool virtual_space,
 									VMAddressSpace** _addressSpace);
 
 	static	team_id				KernelID()

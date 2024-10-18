@@ -159,6 +159,15 @@ void vm_memcpy_physical_page(phys_addr_t to, phys_addr_t from);
 status_t vm_debug_copy_page_memory(team_id teamID, void* unsafeMemory,
 			void* buffer, size_t size, bool copyToUnsafe);
 
+status_t map_backing_store(VMAddressSpace* addressSpace, VMCache* cache, off_t offset,
+			const char* areaName, addr_t size, int wiring, int protection,
+			int protectionMax, int mapping, uint32 flags,
+			const virtual_address_restrictions* addressRestrictions,
+			bool kernel, VMArea** _area, void** _virtualAddress);
+
+status_t vm_soft_fault(VMAddressSpace* addressSpace, addr_t address,
+			bool isWrite, bool isExecute, bool isUser, vm_page** wirePage);
+
 // user syscalls
 area_id _user_create_area(const char *name, void **address, uint32 addressSpec,
 			size_t size, uint32 lock, uint32 protection);

@@ -18,6 +18,7 @@
 #endif
 
 
+#ifdef __cplusplus
 namespace BKernel {
     struct Thread;
 }
@@ -104,5 +105,7 @@ arch_thread::GetFramePointer() const
 
 
 #endif	// __x86_64__
+
+#endif  // __cplusplus
 
 #endif	// _KERNEL_ARCH_x86_THREAD_TYPES_H
