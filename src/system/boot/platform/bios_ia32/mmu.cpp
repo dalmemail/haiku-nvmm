@@ -112,29 +112,29 @@ allocate_virtual(size_t size)
 
 
 static addr_t
-allocate_physical(size_t size, bool forKernel)
+allocate_physical(size_t size, bool inIdentityMap = true)
 {
-	uint64 base;
-	if (!forKernel) {
-		base = sNextPhysicalAddress;
-		if ((base + size) > kIdentityMapEnd) {
-			panic("Out of identity-map physical memory!");
+	if ((size % B_PAGE_SIZE) != 0)
+		panic("request for non-page-aligned physical memory!");
+
+	addr_t* nextAddress = &sNextPhysicalKernelAddress;
+	if (inIdentityMap) {
+		nextAddress = &sNextPhysicalAddress;
+		if ((*nextAddress + size) > kIdentityMapEnd) {
+			panic("request too large for identity-map physical memory!");
 			return 0;
 		}
-
-		sNextPhysicalAddress += size;
-		return base;
 	}
 
+	uint64 base = *nextAddress;
 	if (!get_free_address_range(gKernelArgs.physical_allocated_range,
-			gKernelArgs.num_physical_allocated_ranges, sNextPhysicalKernelAddress,
-			size, &base)) {
+			gKernelArgs.num_physical_allocated_ranges, base, size, &base)) {
 		panic("Out of physical memory!");
 		return 0;
 	}
 
 	insert_physical_allocated_range(base, size);
-	sNextPhysicalKernelAddress = base + size;
+	*nextAddress = base + size;
 		// TODO: Can overflow theoretically.
 
 	return base;
@@ -151,7 +151,7 @@ get_next_virtual_page()
 static addr_t
 get_next_physical_page()
 {
-	return allocate_physical(B_PAGE_SIZE, true);
+	return allocate_physical(B_PAGE_SIZE, false);
 }
 
 
@@ -164,7 +164,7 @@ get_next_page_table()
 
 	addr_t address = sNextPageTableAddress;
 	if (address >= kPageTableRegionEnd)
-		return (uint32 *)allocate_physical(B_PAGE_SIZE, false);
+		return (uint32 *)allocate_physical(B_PAGE_SIZE);
 
 	sNextPageTableAddress += B_PAGE_SIZE;
 	return (uint32 *)address;
@@ -334,7 +334,7 @@ init_page_directory(void)
 	TRACE("init_page_directory\n");
 
 	// allocate a new pgdir
-	sPageDirectory = (uint32 *)allocate_physical(B_PAGE_SIZE, false);
+	sPageDirectory = (uint32 *)allocate_physical(B_PAGE_SIZE);
 	gKernelArgs.arch_args.phys_pgdir = (uint32)sPageDirectory;
 
 	// clear out the pgdir
@@ -406,7 +406,7 @@ mmu_allocate(void *virtualAddress, size_t size)
 	TRACE("mmu_allocate: requested vaddr: %p, next free vaddr: 0x%lx, size: "
 		"%ld\n", virtualAddress, sNextVirtualAddress, size);
 
-	size = (size + B_PAGE_SIZE - 1) / B_PAGE_SIZE;
+	size = HOWMANY(size, B_PAGE_SIZE);
 		// get number of pages to map
 
 	if (virtualAddress != NULL) {
@@ -419,7 +419,7 @@ mmu_allocate(void *virtualAddress, size_t size)
 
 		// is the address within the valid range?
 		if (address < KERNEL_LOAD_BASE || address + size * B_PAGE_SIZE
-			>= KERNEL_LOAD_BASE + kMaxKernelSize)
+				>= KERNEL_LOAD_BASE + kMaxKernelSize)
 			return NULL;
 
 		for (uint32 i = 0; i < size; i++) {
@@ -497,7 +497,8 @@ mmu_free(void *virtualAddress, size_t size)
 	addr_t address = (addr_t)virtualAddress;
 	addr_t pageOffset = address % B_PAGE_SIZE;
 	address -= pageOffset;
-	size = (size + pageOffset + B_PAGE_SIZE - 1) / B_PAGE_SIZE * B_PAGE_SIZE;
+	size += pageOffset;
+	size = ROUNDUP(size, B_PAGE_SIZE);
 
 	// is the address within the valid range?
 	if (address < KERNEL_LOAD_BASE || address + size > sNextVirtualAddress) {
@@ -643,9 +644,11 @@ mmu_init(void)
 
 	gKernelArgs.arch_args.virtual_end = KERNEL_LOAD_BASE;
 
-	gKernelArgs.physical_allocated_range[0].start = sNextPhysicalKernelAddress;
+	gKernelArgs.physical_allocated_range[0].start = sNextPhysicalAddress;
 	gKernelArgs.physical_allocated_range[0].size = 0;
-	gKernelArgs.num_physical_allocated_ranges = 1;
+	gKernelArgs.physical_allocated_range[1].start = sNextPhysicalKernelAddress;
+	gKernelArgs.physical_allocated_range[1].size = 0;
+	gKernelArgs.num_physical_allocated_ranges = 2;
 		// remember the start of the allocated physical pages
 
 	init_page_directory();
@@ -827,7 +830,7 @@ ssize_t
 platform_allocate_heap_region(size_t size, void **_base)
 {
 	size = ROUNDUP(size, B_PAGE_SIZE);
-	addr_t base = allocate_physical(size, false);
+	addr_t base = allocate_physical(size);
 	if (base == 0)
 		return B_NO_MEMORY;
 
@@ -840,6 +843,7 @@ void
 platform_free_heap_region(void *_base, size_t size)
 {
 	addr_t base = (addr_t)_base;
+	remove_physical_allocated_range(base, size);
 	if (sNextPhysicalAddress == (base + size))
 		sNextPhysicalAddress -= size;
 

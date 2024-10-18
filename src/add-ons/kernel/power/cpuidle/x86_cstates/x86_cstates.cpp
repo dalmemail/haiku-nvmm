@@ -25,7 +25,7 @@
 
 #define MWAIT_INTERRUPTS_BREAK		(1 << 0)
 
-#define INTEL_CSTATES_MODULE_NAME	CPUIDLE_MODULES_PREFIX "/intel_cstates/v1"
+#define X86_CSTATES_MODULE_NAME	CPUIDLE_MODULES_PREFIX "/x86_cstates/v1"
 
 #define BASE_TIME_STEP				500
 
@@ -109,8 +109,10 @@ cstates_idle(void)
 static void
 cstates_wait(int32* variable, int32 test)
 {
-	if (!sEnableWait)
+	if (!sEnableWait) {
+		arch_cpu_pause();
 		return;
+	}
 
 	InterruptsLocker _;
 	x86_monitor(variable, 0, 0);
@@ -201,9 +203,9 @@ std_ops(int32 op, ...)
 }
 
 
-static cpuidle_module_info sIntelCStates = {
+static cpuidle_module_info sX86CStates = {
 	{
-		INTEL_CSTATES_MODULE_NAME,
+		X86_CSTATES_MODULE_NAME,
 		0,
 		std_ops,
 	},
@@ -218,7 +220,7 @@ static cpuidle_module_info sIntelCStates = {
 
 
 module_info* modules[] = {
-	(module_info*)&sIntelCStates,
+	(module_info*)&sX86CStates,
 	NULL
 };
 

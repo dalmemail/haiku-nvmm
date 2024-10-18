@@ -12,6 +12,7 @@ UseHeaders [ FDirName $(HAIKU_TOP) src system kernel arch x86 ] : true ;
 KernelMergeObject kernel_vm.o :
 	PageCacheLocker.cpp
 	vm.cpp
+	vm_debug.cpp
 	vm_page.cpp
 	VMAddressSpace.cpp
 	VMAddressSpaceLocking.cpp
@@ -27,7 +28,6 @@ KernelMergeObject kernel_vm.o :
 	VMTranslationMap.cpp
 	VMUserAddressSpace.cpp
 	VMUserArea.cpp
-	VMUtils.cpp
 	VMVirtualAddressSpace.cpp
 
 	: $(TARGET_KERNEL_PIC_CCFLAGS)
