@@ -137,18 +137,18 @@ EPTPagingMethod::ClearTableEntryFlags(uint64_t* entryPointer,
 EPTPagingMethod::MemoryTypeToPageTableEntryFlags(uint32 memoryType)
 {
 	switch (memoryType) {
-		case B_MTR_UC:
+		case B_UNCACHED_MEMORY:
 			return EPT_PTE_CACHING_DISABLED;
 
-		case B_MTR_WC:
+		case B_WRITE_COMBINING_MEMORY:
 			return EPT_PTE_WRITE_COMBINING;
 
-		case B_MTR_WT:
-			return X86_64_PTE_WRITE_THROUGH;
+		case B_WRITE_THROUGH_MEMORY:
+			return EPT_PTE_WRITE_THROUGH;
 
-		case B_MTR_WP:
+		case B_WRITE_PROTECTED_MEMORY:
 			return EPT_PTE_WRITE_PROTECT;
-		case B_MTR_WB:
+		case B_WRITE_BACK_MEMORY:
 		default:
 			return EPT_PTE_WRITE_BACK;
 	}
