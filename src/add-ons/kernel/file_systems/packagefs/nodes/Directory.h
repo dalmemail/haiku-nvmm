@@ -8,6 +8,9 @@
 
 #include "Node.h"
 
+#include <lock.h>
+#include <AutoLocker.h>
+
 
 struct DirectoryIterator : DoublyLinkedListLinkImpl<DirectoryIterator> {
 	Node*	node;
@@ -27,7 +30,12 @@ public:
 								Directory(ino_t id);
 	virtual						~Directory();
 
-	virtual	status_t			Init(Directory* parent, const String& name);
+	inline	bool				ReadLock();
+	inline	void				ReadUnlock();
+	inline	bool				WriteLock();
+	inline	void				WriteUnlock();
+
+	virtual	status_t			Init(const String& name);
 
 	virtual	mode_t				Mode() const;
 	virtual	off_t				FileSize() const;
@@ -50,11 +58,42 @@ public:
 			void				RemoveDirectoryIterator(
 									DirectoryIterator* iterator);
 
+protected:
+			rw_lock				fLock;
+
 private:
 			NodeNameHashTable	fChildTable;
 			NodeList			fChildList;
 			DirectoryIteratorList fIterators;
 };
+
+
+bool
+Directory::ReadLock()
+{
+	return rw_lock_read_lock(&fLock) == B_OK;
+}
+
+
+void
+Directory::ReadUnlock()
+{
+	rw_lock_read_unlock(&fLock);
+}
+
+
+bool
+Directory::WriteLock()
+{
+	return rw_lock_write_lock(&fLock) == B_OK;
+}
+
+
+void
+Directory::WriteUnlock()
+{
+	rw_lock_write_unlock(&fLock);
+}
 
 
 Node*
@@ -69,6 +108,10 @@ Directory::NextChild(Node* node) const
 {
 	return fChildList.GetNext(node);
 }
+
+
+typedef AutoLocker<Directory, AutoLockerReadLocking<Directory> > DirectoryReadLocker;
+typedef AutoLocker<Directory, AutoLockerWriteLocking<Directory> > DirectoryWriteLocker;
 
 
 #endif	// DIRECTORY_H

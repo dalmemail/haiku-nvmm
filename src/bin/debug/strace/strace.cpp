@@ -230,6 +230,7 @@ patch_syscalls()
 	// kernel/syscalls.h and have it parsed automatically
 
 	extern void patch_area();
+	extern void patch_events();
 	extern void patch_exec();
 	extern void patch_fcntl();
 	extern void patch_ioctl();
@@ -248,6 +249,7 @@ patch_syscalls()
 	}
 
 	patch_area();
+	patch_events();
 	patch_exec();
 	patch_fcntl();
 	patch_ioctl();
@@ -298,6 +300,9 @@ record_syscall_stats(const Syscall& syscall, debug_post_syscall& message)
 	syscall_stats& stats = sSyscallStats[syscall.Name()];
 	stats.count++;
 
+	if (message.start_time == 0)
+		return;
+
 	bigtime_t time = message.end_time - message.start_time;
 	stats.time += time;
 	sSyscallTime += time;
@@ -322,6 +327,9 @@ print_to_string(char **_buffer, int32 *_length, const char *format, ...)
 	va_start(list, format);
 	ssize_t length = vsnprintf(*_buffer, *_length, format, list);
 	va_end(list);
+
+	if (length > *_length)
+		length = *_length;
 
 	*_buffer += length;
 	*_length -= length;
@@ -452,12 +460,14 @@ print_syscall(FILE *outputFile, Syscall* syscall, debug_post_syscall &message,
 			print_to_string(&string, &length, ")");
 	}
 
+	bigtime_t duration = 0;
+	if (message.start_time != 0)
+		duration = message.end_time - message.start_time;
 	if (colorize) {
 		print_to_string(&string, &length, " %s(%lld us)%s\n", kTerminalTextMagenta,
-			message.end_time - message.start_time, kTerminalTextNormal);
+			duration, kTerminalTextNormal);
 	} else {
-		print_to_string(&string, &length, " (%lld us)\n",
-			message.end_time - message.start_time);
+		print_to_string(&string, &length, " (%lld us)\n", duration);
 	}
 
 //for (int32 i = 0; i < 16; i++) {
@@ -536,7 +546,7 @@ print_stats(FILE* outputFile)
 
 		print_to_string(&string, &length, "%6.2f %10" B_PRIu64 " %7" B_PRIu32
 			" %10" B_PRIu64 " %s\n", percent, stats.time, stats.count, perCall,
-			callIterator->first->c_str());
+			callIterator->first->c_str() + 6);
 	}
 
 	print_buffer(outputFile, buffer, sizeof(buffer) - length);
@@ -810,8 +820,8 @@ main(int argc, const char *const *argv)
 			exit(1);
 		}
 
-		// resume the target thread to be sure, it's running
-		resume_thread(threadID);
+		// resume the target thread to be sure it's running
+		continue_thread(nubPort, threadID);
 	}
 
 	thread_id currentThreadID = -1;

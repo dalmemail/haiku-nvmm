@@ -182,9 +182,12 @@ void DisallowFilenameKeys(BTextView*);
 bool ValidateStream(BMallocIO*, uint32, int32 version);
 
 float ReadOnlyTint(rgb_color base);
+rgb_color InvertColor(rgb_color color);
+rgb_color InvertedBackColor(rgb_color background);
 
 bool SecondaryMouseButtonDown(int32 modifiers, int32 buttons);
-uint32 HashString(const char* string, uint32 seed);
+
+uint32 SeededHashString(const char* string, uint32 seed);
 uint32 AttrHashString(const char* string, uint32 type);
 
 
@@ -554,6 +557,15 @@ inline uint64 SwapUInt64(uint64 value) { return B_SWAP_INT64(value); }
 extern const float kExactMatchScore;
 float ComputeTypeAheadScore(const char* text, const char* match,
 	bool wordMode = false);
+
+
+inline float
+ActualFontHeight(const BView* view)
+{
+	font_height height;
+	view->GetFontHeight(&height);
+	return height.ascent + height.descent + 1;
+}
 
 } // namespace BPrivate
 

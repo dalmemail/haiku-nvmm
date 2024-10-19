@@ -1,6 +1,6 @@
 /*
  * Copyright 2013-2014, Stephan Aßmus <superstippi@gmx.de>.
- * Copyright 2016-2023, Andrew Lindesay <apl@lindesay.co.nz>.
+ * Copyright 2016-2024, Andrew Lindesay <apl@lindesay.co.nz>.
  * All rights reserved. Distributed under the terms of the MIT License.
  */
 #ifndef PACKAGE_INFO_H
@@ -18,10 +18,8 @@
 #include "PackageCategory.h"
 #include "PackageInfoListener.h"
 #include "PublisherInfo.h"
-#include "RatingSummary.h"
 #include "ScreenshotInfo.h"
-#include "SharedBitmap.h"
-#include "UserRating.h"
+#include "UserRatingInfo.h"
 
 
 typedef std::set<int32> PackageInstallationLocationSet;
@@ -122,12 +120,8 @@ public:
 			int32				CountCategories() const;
 			CategoryRef			CategoryAtIndex(int32 index) const;
 
-			void				ClearUserRatings();
-			void				AddUserRating(const UserRatingRef& rating);
-			int32				CountUserRatings() const;
-			UserRatingRef		UserRatingAtIndex(int32 index) const;
-			void				SetRatingSummary(const RatingSummary& summary);
-			RatingSummary		CalculateRatingSummary() const;
+			UserRatingInfoRef	UserRatingInfo();
+			void				SetUserRatingInfo(UserRatingInfoRef userRatingInfo);
 
 			void				SetProminence(int64 prominence);
 			int64				Prominence() const
@@ -171,8 +165,6 @@ private:
 			void				_NotifyListeners(uint32 changes);
 			void				_NotifyListenersImmediate(uint32 changes);
 
-			bool				_HasScreenshot(const BitmapRef& screenshot);
-
 private:
 			BString				fName;
 			BString				fTitle;
@@ -184,12 +176,10 @@ private:
 			BString				fChangelog;
 			std::vector<CategoryRef>
 								fCategories;
-			std::vector<UserRatingRef>
-								fUserRatings;
-			RatingSummary		fCachedRatingSummary;
 			int64				fProminence;
 			std::vector<ScreenshotInfoRef>
 								fScreenshotInfos;
+			UserRatingInfoRef	fUserRatingInfo;
 
 			PackageState		fState;
 			PackageInstallationLocationSet

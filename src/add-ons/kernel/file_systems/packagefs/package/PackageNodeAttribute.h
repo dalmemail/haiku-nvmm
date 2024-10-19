@@ -6,7 +6,7 @@
 #define PACKAGE_NODE_ATTRIBUTE_H
 
 
-#include <util/DoublyLinkedList.h>
+#include <util/SinglyLinkedList.h>
 
 #include "PackageData.h"
 
@@ -16,8 +16,8 @@
 class PackageNode;
 
 
-class PackageNodeAttribute
-	: public DoublyLinkedListLinkImpl<PackageNodeAttribute> {
+class PackageNodeAttribute final
+	: public SinglyLinkedListLinkImpl<PackageNodeAttribute> {
 public:
 	static	void*				operator new(size_t size);
 	static	void				operator delete(void* block);
@@ -38,14 +38,14 @@ public:
 									{ return fIndexCookie; }
 
 protected:
-			PackageData			fData;
 			String				fName;
 			void*				fIndexCookie;
+			PackageData			fData;
 			uint32				fType;
 };
 
 
-typedef DoublyLinkedList<PackageNodeAttribute> PackageNodeAttributeList;
+typedef SinglyLinkedList<PackageNodeAttribute> PackageNodeAttributeList;
 
 
 #endif	// PACKAGE_NODE_ATTRIBUTE_H

@@ -410,9 +410,35 @@ AcpiOsVprintf(const char *fmt, va_list args)
 		vfprintf(AcpiGbl_OutputFile, fmt, args);
     }
 #else
+	// Buffer the output until we have a complete line to send to syslog, this avoids added
+	// "KERN:" entries in the middle of the line, and mixing up of the ACPI output with other
+	// messages from other CPUs
 	static char outputBuffer[1024];
-	vsnprintf(outputBuffer, 1024, fmt, args);
-	dprintf("%s", outputBuffer);
+	
+	// Append the new text to the buffer
+	size_t len = strlen(outputBuffer);
+	size_t printed = vsnprintf(outputBuffer + len, 1024 - len, fmt, args);
+	if (printed >= 1024 - len) {
+		// There was no space to fit the printed string in the outputBuffer. Remove what we added
+		// there, fush the buffer, and print the long string directly
+		outputBuffer[len] = '\0';
+		dprintf("%s\n", outputBuffer);
+		outputBuffer[0] = '\0';
+		dvprintf(fmt, args);
+		return;
+	}
+
+	// See if we have a complete line
+	char* eol = strchr(outputBuffer + len, '\n');
+	while (eol != nullptr) {
+		// Print the completed line, then remove it from the buffer
+		*eol = 0;
+		dprintf("%s\n", outputBuffer);
+		memmove(outputBuffer, eol + 1, strlen(eol + 1) + 1);
+		// See if there is another line to print still in the buffer (in case ACPICA would call
+		// this function with a single string containing multiple newlines)
+		eol = strchr(outputBuffer, '\n');
+	}
 #endif
 }
 
@@ -468,10 +494,14 @@ void *
 AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS where, ACPI_SIZE length)
 {
 #ifdef _KERNEL_MODE
+	// map_physical_memory() defaults to uncached memory if no type is specified.
+	// But ACPICA handles flushing caches itself, so we don't need it uncached,
+	// and on some architectures (e.g. ARM) uncached memory does not support
+	// unaligned accesses. Hence we specify "writeback" to avoid the default.
 	void *there;
-	area_id area = map_physical_memory("acpi_physical_mem_area",
-		(phys_addr_t)where, length, B_ANY_KERNEL_ADDRESS,
-		B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA, &there);
+	area_id area = map_physical_memory("acpi_physical_mem_area", (phys_addr_t)where, length,
+		B_ANY_KERNEL_ADDRESS | B_WRITE_BACK_MEMORY, B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA,
+		&there);
 
 	DEBUG_FUNCTION_F("addr: 0x%08lx; length: %lu; mapped: %p; area: %" B_PRId32,
 		(addr_t)where, (size_t)length, there, area);

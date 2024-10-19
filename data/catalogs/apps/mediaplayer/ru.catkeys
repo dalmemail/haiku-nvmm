@@ -1,4 +1,4 @@
-1	russian	x-vnd.Haiku-MediaPlayer	787895969
+1	russian	x-vnd.Haiku-MediaPlayer	390961765
 Remove Entry into Trash	MediaPlayer-RemovePLItemsCmd		Переместить запись в корзину
 Close	MediaPlayer-PlaylistWindow		Закрыть
 Volume of background clips	MediaPlayer-SettingsWindow		Проигрывать фоновые клипы
@@ -16,7 +16,6 @@ DrawBitmap	MediaPlayer-InfoWin		DrawBitmap
 File info	MediaPlayer-InfoWin		Информация о файле
 raw audio	MediaPlayer-InfoWin		raw аудио
 Select all	MediaPlayer-PlaylistWindow		Выделить все
-New player…	MediaPlayer-Main		Новый плеер…
 Move Entries	MediaPlayer-MovePLItemsCmd		Переместить записи
 OK	MediaPlayer-Main		ОК
 Remove	MediaPlayer-PlaylistWindow		Удалить
@@ -30,7 +29,6 @@ Open file…	MediaPlayer-Main		Открыть файл…
 Scale controls in full screen mode	MediaPlayer-SettingsWindow		Масштабировать кнопки управления в полноэкранном режиме
 View options	MediaPlayer-SettingsWindow		Настройки вида
 %d kHz	MediaPlayer-InfoWin		%d кГц
-Eject Device	MediaPlayer-Main		Извлечь устройство
 Full volume	MediaPlayer-SettingsWindow		На полной громкости
 <untitled>	PlaylistItem-title		<безымянный>
 Start media server	MediaPlayer-Main		Запустить медиа сервер
@@ -51,6 +49,7 @@ MediaPlayer settings	MediaPlayer-SettingsWindow		Настройки медиап
 Copyright	MediaPlayer-InfoWin		Авторские права
 Invalid URL inserted!	MediaPlayer-NetworkStream		Указан неверный URL!
 Aspect ratio	MediaPlayer-Main		Соотношение сторон
+Eject device	MediaPlayer-Main		Извлечь устройство
 Saving the playlist failed.\n\nError: 	MediaPlayer-PlaylistWindow		Ошибка сохранения плейлиста.\n\nОшибка: 
 <no media>	MediaPlayer-InfoWin		<нет данных>
 Hide interface	MediaPlayer-Main		Скрыть интерфейс
@@ -127,6 +126,7 @@ Full screen	MediaPlayer-Main		На весь экран
 OK	MediaPlayer-NetworkStream		ОК
 Internal error (locking failed). Saving the playlist failed.	MediaPlayer-PlaylistWindow		Внутренняя ошибка (не сработала блокировка). Не удалось сохранить плейлист.
 100% scale	MediaPlayer-Main		Масштаб 100%
+New player	MediaPlayer-Main		Новый Плеер
 <nothing to redo>	MediaPlayer-PlaylistWindow		<нечего возвращать>
 Bad URL	MediaPlayer-NetworkStream		Неверный URL
 Save	MediaPlayer-Main		Сохранить

@@ -20,25 +20,31 @@ struct EntryCacheKey {
 		dir_id(dirID),
 		name(name)
 	{
-		hash = (uint32)dir_id ^ (uint32)(dir_id >> 32) ^ hash_hash_string(name);
+		hash = Hash(dirID, name);
 			// We cache the hash value, so we can easily compute it before
 			// holding any locks.
 	}
 
+	static uint32 Hash(ino_t dirID, const char* name)
+	{
+		return (uint32)dirID ^ (uint32)(dirID >> 32) ^ hash_hash_string(name);
+	}
+
 	ino_t		dir_id;
 	const char*	name;
-	size_t		hash;
+	uint32		hash;
 };
 
 
 struct EntryCacheEntry {
-			EntryCacheEntry*	hash_link;
-			ino_t				node_id;
-			ino_t				dir_id;
-			int32				generation;
-			int32				index;
-			bool				missing;
-			char				name[1];
+	EntryCacheEntry*	hash_link;
+	ino_t				node_id;
+	ino_t				dir_id;
+	uint32				hash;
+	int32				generation;
+	int32				index;
+	bool				missing;
+	char				name[1];
 };
 
 
@@ -63,14 +69,15 @@ struct EntryCacheHashDefinition {
 		return key.hash;
 	}
 
-	size_t Hash(const EntryCacheEntry* value) const
+	uint32 Hash(const EntryCacheEntry* value) const
 	{
-		return (uint32)value->dir_id ^ (uint32)(value->dir_id >> 32)
-			^ hash_hash_string(value->name);
+		return value->hash;
 	}
 
 	bool Compare(const EntryCacheKey& key, const EntryCacheEntry* value) const
 	{
+		if (key.hash != value->hash)
+			return false;
 		return value->dir_id == key.dir_id
 			&& strcmp(value->name, key.name) == 0;
 	}

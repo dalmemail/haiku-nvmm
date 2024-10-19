@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <new>
+#include <StackOrHeapArray.h>
 
 #include "Options.h"
 #include "ProfiledEntity.h"
@@ -119,9 +120,17 @@ BasicProfileResult::BasicProfileResult()
 	:
 	fTotalTicks(0),
 	fUnkownTicks(0),
+	fExpectedTicks(0),
 	fDroppedTicks(0),
 	fTotalSampleCount(0)
 {
+}
+
+
+void
+BasicProfileResult::AddExpectedTicks(int32 expected)
+{
+	fExpectedTicks += expected;
 }
 
 
@@ -136,8 +145,8 @@ void
 BasicProfileResult::PrintResults(ImageProfileResultContainer* container)
 {
 	// get hit images
-	BasicImageProfileResult* images[container->CountImages()];
-	int32 imageCount = GetHitImages(container, images);
+	BStackOrHeapArray<BasicImageProfileResult*, 128> images(container->CountImages());
+	int32 imageCount = GetHitImages(container, &*images);
 
 	// count symbols
 	int32 symbolCount = 0;
@@ -148,7 +157,7 @@ BasicProfileResult::PrintResults(ImageProfileResultContainer* container)
 	}
 
 	// find and sort the hit symbols
-	HitSymbol hitSymbols[symbolCount];
+	BStackOrHeapArray<HitSymbol, 128> hitSymbols(symbolCount);
 	int32 hitSymbolCount = 0;
 
 	for (int32 k = 0; k < imageCount; k++) {
@@ -169,9 +178,11 @@ BasicProfileResult::PrintResults(ImageProfileResultContainer* container)
 	}
 
 	if (hitSymbolCount > 1)
-		std::sort(hitSymbols, hitSymbols + hitSymbolCount);
+		std::sort(&*hitSymbols, hitSymbols + hitSymbolCount);
 
 	int64 totalTicks = fTotalTicks;
+	const int64 missedTicks = fExpectedTicks - fTotalTicks;
+
 	fprintf(gOptions.output, "\nprofiling results for %s \"%s\" "
 		"(%" B_PRId32 "):\n", fEntity->EntityType(), fEntity->EntityName(),
 		fEntity->EntityID());
@@ -180,8 +191,14 @@ BasicProfileResult::PrintResults(ImageProfileResultContainer* container)
 	fprintf(gOptions.output,
 		"  total ticks:    %" B_PRId64 " (%" B_PRId64 " us)\n",
 		totalTicks, totalTicks * fInterval);
+	if (fExpectedTicks != 0) {
+		fprintf(gOptions.output,
+			"  expected ticks: %" B_PRId64 " (missed %" B_PRId64 ")\n",
+			fExpectedTicks, missedTicks);
+	}
 	if (totalTicks == 0)
 		totalTicks = 1;
+
 	fprintf(gOptions.output,
 		"  unknown ticks:  %" B_PRId64 " (%" B_PRId64 " us, %6.2f%%)\n",
 		fUnkownTicks, fUnkownTicks * fInterval,
@@ -332,6 +349,7 @@ ExclusiveProfileResult::AddSamples(ImageProfileResultContainer* container,
 				break;
 			if (firstImage == NULL)
 				firstImage = image;
+			image = NULL;
 		}
 	}
 

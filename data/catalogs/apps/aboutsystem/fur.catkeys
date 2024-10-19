@@ -1,7 +1,6 @@
-1	friulian	x-vnd.Haiku-About	4264836225
+1	friulian	x-vnd.Haiku-About	3675341430
 The Haikuware team and their bounty program\n	AboutView		Il grup Haikuware e il lôr program di premiazion\n
 Copyright © 1999-2007 Michael C. Ring. All rights reserved.	AboutView		Copyright © 1999-2007 Michael C. Ring. Ducj i dirits riservâts.
-Copyright © 2002-2004 Vivek Mohan. All rights reserved.	AboutView		Copyright © 2002-2004 Vivek Mohan. Ducj i dirits riservâts.
 \n\nSpecial thanks to:\n	AboutView		\n\nRingraciaments speciâi a:\n
 Travis Geiselbrecht (and his NewOS kernel)\n	AboutView		Travis Geiselbrecht (e il so kernel NewOS)\n
 Copyright © 1999-2000 Y.Takagi. All rights reserved.	AboutView		Copyright © 1999-2000 Y.Takagi. Ducj i dirits riservâts.
@@ -25,13 +24,14 @@ Copyright © 1987-1988 Digital Equipment Corporation, Maynard, Massachusetts.\nA
 Past maintainers:\n	AboutView		Assegnâts ae manutenzion passâts:\n
 Unknown	AboutView		No cognossût
 Be Inc. and its developer team, for having created BeOS!\n\n	AboutView		Be Inc. e i siei disvilupadôrs, par vê creât BeOS!\n\n
-Copyright © 2002-2014 Industrial Light & Magic, a division of Lucas Digital Ltd. LLC.	AboutView		Copyright © 2002-2014 Industrial Light & Magic, une division di Lucas Digital Ltd. LLC.
 Licenses: 	AboutView		Licence: 
 %ld MHz	AboutView	750 Mhz (CPU clock speed)	%ld MHz
 The copyright to the Haiku code is property of Haiku, Inc. or of the respective authors where expressly noted in the source. Haiku® and the HAIKU logo® are registered trademarks of Haiku, Inc.\n\n	AboutView		I dirits sul codiç di Haiku a son di proprietât di Haiku, Inc. o dai relatîfs autôrs cuant che al è indicât a clâr tal codiç sorzint. Haiku® e il logo di HAIKU® a son marchis regjistradis di Haiku, Inc.\n\n
 Copyright © 2009 Colin Percival	AboutView		Copyright © 2009 Colin Percival
 Time running:	AboutView		Timp in esecuzion:
+Visit the Haiku website	AboutView		Visite il sît web di Haiku
 Version: %s	AboutView	Version: R1 or hrev99999	Version: %s
+Make a donation	AboutView		Fâs une donazion
 %d MiB Memory:	AboutView	2048 MiB Memory:	%d MiB di memorie:
 Copyright © 1996-2005 Julian R Seward. All rights reserved.	AboutView		Copyright © 1996-2005 Julian R Seward. Ducj i dirits riservâts.
 GNU LGPL v2	AboutWindow		GNU LGPL v2
@@ -66,6 +66,7 @@ GNU LGPL v2.1	AboutWindow		GNU LGPL v.21
 Intel (2xxx firmware)	AboutWindow		Intel (firmware 2xxx)
 License: 	AboutView		Licence: 
 GNU GPL v2	AboutWindow		GNU GPL v2
+%d MiB used (%d%%)	AboutView	326 MiB used (16%)	%d MiB doprâts (%d%%)
 The University of Auckland and Christof Lutteroth\n\n	AboutView		La universitât di Auckland e Christof Lutteroth\n\n
 Copyright © 2012-2016 Google Internationalization team.	AboutView		Copyright © 2012-2016 grup Google Internationalization.
 Copyright © 2001-%ld The Haiku project. 	AboutView		Copyright © 2001-%ld Il progjet Haiku. 
@@ -74,6 +75,7 @@ Copyright © 1995-2004 Jean-loup Gailly and Mark Adler.	AboutView		Copyright © 
 Copyright © 2001-2003 Expat maintainers.	AboutView		Copyright © 2001-2003 assegnâts ae manutenzion di Expat.
 Copyright © 2002-2006 Maxim Shemanarev (McSeem).	AboutView		Copyright © 2002-2006 Maxim Shemanarev (McSeem).
 Translations:\n	AboutView		Traduzions:\n
+Copyright © 2014-2024 Florian Bernd and Joel Höner. All rights reserved.	AboutView		Copyright © 2014-2024 Florian Bernd e Joel Höner. Ducj i dirits riservâts.
 \n…and probably some more we forgot to mention (sorry!)\n\n	AboutView		\n…e forsit cualchidun altri che si sin dismenteâts di nomenâ (perdonainus!)\n\n
 Copyright © 2006-2015 Intel Corporation. All rights reserved.	AboutView		Copyright © 2006-2015 Intel Corporation. Ducj i dirits riservâts.
 BSD (2-clause)	AboutWindow		BSD (2-clausulis)

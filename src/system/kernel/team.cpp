@@ -1636,17 +1636,16 @@ team_create_thread_start_internal(void* args)
 		return B_BAD_ADDRESS;
 	}
 
-	TRACE(("team_create_thread_start: loading elf binary '%s'\n", path));
-
-	// set team args and update state
-	team->Lock();
-	team->SetArgs(path, teamArgs->flat_args + 1, argCount - 1);
-	team->state = TEAM_STATE_NORMAL;
-	team->Unlock();
-
 	free_team_arg(teamArgs);
 		// the arguments are already on the user stack, we no longer need
 		// them in this form
+
+	TRACE(("team_create_thread_start: loading elf binary '%s'\n", path));
+
+	// update state
+	team->Lock();
+	team->state = TEAM_STATE_NORMAL;
+	team->Unlock();
 
 	// Clone commpage area
 	area_id commPageArea = clone_commpage_area(team->id,
@@ -1677,6 +1676,7 @@ team_create_thread_start_internal(void* args)
 			strerror(image)));
 		return image;
 	}
+	user_debug_image_created(&imageInfo.basic_info);
 
 	// NOTE: Normally arch_thread_enter_userspace() never returns, that is
 	// automatic variables with function scope will never be destroyed.
@@ -1808,6 +1808,8 @@ load_image_internal(char**& _flatArgs, size_t flatArgsSize, int32 argCount,
 	_flatArgs = NULL;
 		// args are owned by the team_arg structure now
 
+	team->SetArgs(path, teamArgs->flat_args + 1, argCount - 1);
+
 	// create a new io_context for this team
 	team->io_context = vfs_new_io_context(parentIOContext, true);
 	if (!team->io_context) {
@@ -1885,6 +1887,10 @@ load_image_internal(char**& _flatArgs, size_t flatArgsSize, int32 argCount,
 	// more precisely: It's owned by the team's main thread, now.
 	teamReference.Detach();
 
+	// notify the debugger while the main thread is still suspended so that it
+	// has a chance to attach early to the child.
+	user_debug_team_created(teamID);
+
 	// wait for the loader of the new team to finish its work
 	if ((flags & B_WAIT_TILL_LOADED) != 0) {
 		if (mainThread != NULL) {
@@ -1909,9 +1915,6 @@ load_image_internal(char**& _flatArgs, size_t flatArgsSize, int32 argCount,
 		if (loadingInfo.result < B_OK)
 			return loadingInfo.result;
 	}
-
-	// notify the debugger
-	user_debug_team_created(teamID);
 
 	return thread;
 
@@ -2013,6 +2016,8 @@ exec_team(const char* path, char**& _flatArgs, size_t flatArgsSize,
 
 	_flatArgs = NULL;
 		// args are owned by the team_arg structure now
+
+	team->SetArgs(path, teamArgs->flat_args + 1, argCount - 1);
 
 	// TODO: remove team resources if there are any left
 	// thread_atkernel_exit() might not be called at all
@@ -3341,9 +3346,31 @@ team_delete_team(Team* team, port_id debuggerPort)
 		}
 	}
 
+	// get team exit information
+	status_t exitStatus = -1;
+	int signal = -1;
+
+	switch (team->exit.reason) {
+		case CLD_EXITED:
+			exitStatus = team->exit.status;
+			break;
+		case CLD_KILLED:
+			signal = team->exit.signal;
+			break;
+	}
+
 	teamLocker.Unlock();
 
 	sNotificationService.Notify(TEAM_REMOVED, team);
+
+	// get team usage information
+	InterruptsSpinLocker timeLocker(team->time_lock);
+
+	team_usage_info usageInfo;
+	usageInfo.kernel_time = team->dead_threads_kernel_time;
+	usageInfo.user_time = team->dead_threads_user_time;
+
+	timeLocker.Unlock();
 
 	// free team resources
 
@@ -3356,7 +3383,7 @@ team_delete_team(Team* team, port_id debuggerPort)
 	team->ReleaseReference();
 
 	// notify the debugger, that the team is gone
-	user_debug_team_deleted(teamID, debuggerPort);
+	user_debug_team_deleted(teamID, debuggerPort, exitStatus, signal, &usageInfo);
 }
 
 

@@ -1,4 +1,4 @@
-1	hungarian	x-vnd.Haiku-libtracker	2585450844
+1	hungarian	x-vnd.Haiku-libtracker	636899528
 Created	ContainerWindow		Létrehozva
 Icon	AttributesView		Ikon
 Open and make preferred	OpenWithWindow		Megnyitás és előnyben részesítés
@@ -7,14 +7,18 @@ Open with…	ContainerWindow		Megnyitás…
 Error moving \"%name\" to Trash. (%error)	FSUtils		Hiba történt a Szemetesbe mozgatásakor: \"%name\" (%error)
 Or	FindPanel		Vagy
 MIME Description	AttributesView		MIME leírása
+Query	FindPanel		Keresés
 before	FindPanel		előtte
+New folder%d	FSUtils		Új mappa %d
 Volume icons	TrackerSettingsWindow		Lemez ikonok
 Ignore case	SelectionWindow		Nem betűérzékeny
+Save query:	FindPanel		Keresés mentése:
+Save as query template:	FindPanel		Mentés keresési sablonként:
 Current folder	ContainerWindow		Jelenlegi mappa
 Finish: %time - Over %finishtime left	StatusWindow		Befejezés: %time - Több, mint %finishtime van hátra
 Mount all disks now	AutoMounterSettings		Összes lemez csatolása most
-Location:	InfoWindow		Útvonal:
 Name	PoseView		Név
+Location:	InfoWindow		Útvonal:
 Kind:	InfoWindow		Típus:
 contains	FindPanel		tartalmazza
 Open	FilePanelPriv		Megnyitás
@@ -26,6 +30,7 @@ Unmount	ContainerWindow		Leválasztás
 Eject when unmounting	AutoMounterSettings		Kiadás leválasztáskor
 Searching for disks to mount…	StatusWindow		Csatolandó lemezek keresése…
 Value	AttributesView		Érték
+Multiple selections	FindPanel		Többszörös kijelölés
 Information	InfoWindow		Információ
 Error emptying Trash	FSUtils		Hiba történt a Szemetes ürítése közben.
 Opens with:	InfoWindow		Megnyitás ezzel:
@@ -57,6 +62,7 @@ starts with	FindPanel		eleje
 Replace	FSUtils		Csere
 ?+* follows nothing.	libtracker		?+* nem követ semmit.
 Rectangle	AttributesView		Téglalap
+Include Trash	FindPanel		A Szemetesben is
 Move to	ContainerWindow		Mozgatás
 Status	Email Query Columns		Állapot
 New folder	FSUtils		Új mappa
@@ -75,7 +81,6 @@ Moving: 	StatusWindow		Áthelyezés:
 Select	SelectionWindow		Kijelölés
 Select	InfoWindow		Kijelölés
 OK	OpenWithWindow		Rendben
-Include trash	FindPanel		A Szemetesben is
 Clean up	ContainerWindow		Rendrakás
 Modified	FindPanel		Módosítva
  (block size: 	InfoWindow		 (blokk-méret: 
@@ -103,8 +108,8 @@ Window	ContainerWindow		Ablak
 %BytesPerSecond/s	StatusWindow		%BytesPerSecond/mp
 Remove	FindPanel		Eltávolítás
 Company	Person Query Columns		Szervezet
+Select folders…	FindPanel		Mappák megadása…
 Recent documents	FavoritesMenu		Legutóbbi dokumentumok
-Save as Query template:	FindPanel		Mentés keresési sablonként:
 Edit templates…	TemplatesMenu		Sablonok szerkesztése…
 {0, plural, one{# byte} other{# bytes}}	FSUtils		{0, plural, one{# bájt} other{# bájt}}
 8-bit integer	AttributesView		8-bites egész
@@ -115,27 +120,26 @@ Hide dotfiles	SettingsView		Ponttal kezdődő fájlnevek elrejtése
 Trash	Model		Szemetes
 Enable type-ahead filtering	SettingsView		Gépelés közbeni szűrés engedélyezése
 copy	FSUtils	filename copy	másolata
-New folder%ld	FSUtils		Új mappa%ld
 Location	OpenWithWindow		Hely
 Resize to fit	QueryContainerWindow		Átméretezés hogy elférjen
 List folders first	SettingsView		A mappákat listázza elsőként
 Find	FSUtils		Keresés
 An item named \"%name\" already exists in this folder. Would you like to replace it with the symbolic link you are creating?	FSUtils		Már van ebben a mappában egy elem ezzel a névvel: \"%name\". Szeretnéd felülírni a most elkészítendő szimbolikus hivatkozást?
 List view	ContainerWindow		Lista nézet
-Temporary	FindPanel		Ideiglenes megőrzés
 Modified	QueryPoseView		Módosítva
 Create relative link	ContainerWindow		Relatív hivatkozás létrehozása
 Owner	FilePermissionsView		Tulajdonos
 Cancel	FSClipBoard		Mégse
 Modified	PoseView		Módosítva
+Save as template…	FindPanel		Mentés sablonként…
 Move to Trash	ContainerWindow		Mozgatás a Szemetesbe
 All files and folders	FindPanel		Minden fájl és mappa
 Add-ons	ContainerWindow		Kiegészítők
 Too many parenthesis.	libtracker		Túl sok zárójel.
+Save query template:	FindPanel		Keresési sablon mentése:
 Increase size	ContainerWindow		Méret növelése
 \nShould this be fixed?	FSUtils		\nKi kell ezt javítani?
 URL	Bookmark Query Columns		URL
-Move	PoseView		Mozgatás
 Floating point number	AttributesView		Lebegőpontos szám
 Cancel	ContainerWindow		Mégse
 Attributes	ContainerWindow		Jellemzők
@@ -145,6 +149,7 @@ Disks	Model		Lemezek
 Create a Query template	FindPanel		Keresési sablon készítése
 Size	FindPanel		Méret
 Window	FilePanelPriv		Ablak
+New submenu	ContainerWindow	Folder name of New-template submenu	Új almenü
 OK	Email Query Columns		Rendben
 Location	QueryPoseView		Hely
 Edit query	ContainerWindow		Keresés szerkesztése
@@ -173,6 +178,7 @@ Open selection with:	OpenWithWindow		Kijelölés megnyitása ezzel:
 Preferences…	ContainerWindow		Beállítások…
 Could not open \"%document\" because application \"%app\" is in the Trash. 	FSUtils		Nem sikerült megnyitni a dokumentumot (\"%document\"), mert a program (\"%app\") a Szemetesben van.
 Work Phone	Person Query Columns		Munkahelyi telefonszám
+Select folders	FindPanel		Mappák megadása
 Close	ContainerWindow		Bezárás
 Get info	ContainerWindow		Információ
 MIME Type	AttributesView		MIME Típus
@@ -209,6 +215,7 @@ Cancel	FSUtils		Mégse
 Original name	ContainerWindow		Eredeti név
 Unknown	WidgetAttributeText		Ismeretlen
 32-bit integer	AttributesView		32-bites egész
+Save as query…	FindPanel		Keresés mentése…
 The specified name is already used as the name of a folder. Please choose another name.	FilePanelPriv		A megadott név már egy létező mappa neve. Kérlek válassz egy másik nevet.
 Modified	ContainerWindow		Módosítva
 Mini icon view	ContainerWindow		Mini ikon nézet
@@ -266,6 +273,7 @@ Don't automount	AutoMounterSettings		Ne csatoljon automatikusan
 Node ref	AttributesView		Node ref
 Could not find application \"%appname\"	OpenWithWindow		A program (\"%appname\") nem található
 Unmatched parenthesis.	libtracker		Páratlan zárójel.
+New folder %d	FSUtils		Új mappa %d
 Extended attribute	AttributesView		Kiegészített jellemzők
 Unmatched brackets.	libtracker		Páratlan kapcsos-zárójel.
 Error %error loading Add-On %name.	ContainerWindow		Hiba történt a bővítmény (%name) betöltése közben: %error.
@@ -275,9 +283,9 @@ no supporting apps	OpenWithWindow		nincs használható program
 32-bit unsigned integer	AttributesView		32-bites előjel nélküli egész
 Preparing to empty Trash…	StatusWindow		Felkészülés a Szemetes ürítésére…
 Deleting: 	StatusWindow		Törlés:
+label too long	PoseView		túl hosszú címke
 the MIME settings	FSUtils		MIME beállítások
 You can't move or copy the trash.	FSUtils		A Szemetest nem lehet mozgatni vagy másolni.
-label too long	PoseView		túl hosszú címke
 Error creating link to \"%name\".	FSUtils		Hiba történt a hivatkozás (\"%name\") létrehozása közben.
 Unknown	FilePermissionsView		Ismeretlen
 Paste links	ContainerWindow		Hivatkozások beillesztése
@@ -311,10 +319,12 @@ Open	ContainerWindow		Megnyitás
 Settings…	MountMenu		Beállítások…
 You cannot put the selected item(s) into the trash.	FSUtils		A kijelölt elem(ek) nem rakható(k) a Szemetesbe.
 Increase size	DeskWindow		Méret növelése
+Target:	FindPanel	The disks/folders that are searched. Similar to TextSearch's 'Set target'.	Cél:
 starts with	SelectionWindow		eleje
 Any	AttributesView		Bármely
 New	DeskWindow		Új
 Invert	SelectionWindow		Megfordítás
+Open…	FindPanel		Megnyitás…
 Would you like to find some other suitable application?	FSUtils		Szeretne keresni egy másik megfelelő programot?
 *+? operand may be empty.	libtracker		*+? művelet lehet üres.
 (unknown)	AttributesView		(ismeretlen)
@@ -326,13 +336,14 @@ MIME Path	AttributesView		MIME útvonala
 less than	FindPanel		kisebb, mint
 Error copying file \"%name\":\n\t%error\n\nWould you like to continue?	FSUtils		Hiba történt a másolás közben: \"%name\"\n\t%error\n\nSzeretnéd folytatni?
 Creating links: 	StatusWindow		Hivatkozások készítése:
-Could not open \"%document\" with application \"%app\" (%error). 	FSUtils		Nem sikerült megnyitni a dokumentumot (\"%document\") a programmal (\"%app\"): %error.
 Create %s clipping	PoseView		%s kivágás készítése
+Could not open \"%document\" with application \"%app\" (%error). 	FSUtils		Nem sikerült megnyitni a dokumentumot (\"%document\") a programmal (\"%app\"): %error.
 Error moving \"%name\"	FSUtils		Hiba történt a mozgatás közben: \"%name\"
 To: %dir	StatusWindow		Ide: %dir
 Paste layout	ContainerWindow		Elrendezés beillesztése
 Cancel	Tracker		Mégse
 yes	AttributesView		igen
+Error copying file \"%name\":\n\t%error\n\n	FSUtils		Hia történt a fájl \"%name\" másolása közben:\n\t%error\n\n
 Make active printer	ContainerWindow		Beállítás aktív nyomtatónak
 Copy to	ContainerWindow		Másolás
 Name	SelectionWindow		A név
@@ -350,7 +361,6 @@ Version	OpenWithWindow		Verzió
 Some of the selected items cannot be moved to the Trash. Would you like to delete them instead? (This operation cannot be reverted.)	PoseView		Néhányat a kiválasztott elem közül nem lehet a Szemetesbe mozgatni. Szeretnéd inkább törölni? (Nem vonható vissza.)
 The entered file name is too long.	FSUtils		A megadott fájlnév túl hosszú.
 Add printer…	ContainerWindow		Nyomtató hozzáadása…
-On	FindPanel		Hol:
 Permissions	ContainerWindow		Engedélyek
 Size:	InfoWindow		Méret:
 The selected item cannot be moved to the Trash. Would you like to delete it instead? (This operation cannot be reverted.)	PoseView		A kiválasztott elemet nem lehet a Szemetesbe mozgatni. Szeretnéd inkább törölni? (Nem vonható vissza.)
@@ -359,7 +369,6 @@ Sorry, the 'Character' attribute cannot store a multi-byte glyph.	WidgetAttribut
 Open parent	VirtualDirectoryWindow		Szülő mappa megnyitása
 And	FindPanel		És
 Palette-indexed picture	AttributesView		Paletta-indexelt kép
-multiple disks	FindPanel		több lemez
 Drawing pattern	AttributesView		Rajz minta
 File offset	AttributesView		Fájl eltolás
 Name = %name	FindPanel	FindResultTitle	Név = %name
@@ -375,7 +384,6 @@ Force identify	ContainerWindow		Kikényszerített azonosítás
 no items	CountView		nincs elem
 Time	AttributesView		Idő
 Disks	DirMenu		Lemezek
-Query name:	FindPanel		Keresés neve:
 Open parent	ContainerWindow		Szülő megnyitása
 Find…	ContainerWindow		Keresés…
 moving	FSUtils		mozgatni
@@ -416,6 +424,7 @@ Revert	TrackerSettingsWindow		Visszaállít
 trash	B_TRASH_DIRECTORY		Szemetes
 %ld × %ld	DeskWindow	The '×' is the Unicode multiplication sign U+00D7	%ld × %ld
 If you move the system folder or its contents, you won't be able to boot %osName!\n\nAre you sure you want to do this?\n\nTo move the system folder or its contents anyway, hold down the Shift key and click \"Move\".	FSUtils		Ha áthelyezed a rendszermappát vagy annak tartalmát, akkor a %osName nem induln!\n\nBiztosan ezt akarod tenni?\n\nA rendszermappa vagy annak tartalmának bármilyen módon történő mozgatásához tartsd lenyomva a Shift billentyűt, és kattints az \"Áthelyezés\" gombra.
+Open query:	FindPanel		Keresés megnyitása:
 Close all in workspace	ContainerWindow		Bezárás minden munkaasztalon
 Corrupted expression.	libtracker		Sérült kifejezés.
 Network address	AttributesView		Hálózati cím
@@ -430,6 +439,7 @@ Name	QueryPoseView		Név
 Error %error loading add-On %name.	ContainerWindow		Hiba a bővítmény (%name) betöltése közben: %error.
 Does not handle file	OpenWithWindow		Nem kezeli a fájlt
 E-mail	Person Query Columns		E-mail
+Templates	FindPanel		Sablonok
 Arrange by	ContainerWindow		Rendezés
 Attributes	AttributesView		Jellemzők
 Sorry, saving more than one item is not allowed.	FilePanelPriv		Sajnálom, de egyszerre csak egy elemet lehet elmenteni.
@@ -456,7 +466,6 @@ Move to Trash	FilePanelPriv		Mozgatás a Szemetesbe
 is	FindPanel		egyenlő
 If you rename the system folder or its contents, you won't be able to boot %osName!\n\nAre you sure you want to do this?\n\nTo rename the system folder or its contents anyway, hold down the Shift key and click \"Rename\".	FSUtils		Ha átnevezed a rendszermappát vagy annak tartalmát, akkor a %osName nem indítható!\n\nBiztosan ezt akarod tenni?\n\nA rendszermappa vagy annak tartalmának átnevezéséhez tartsd lenyomva a Shift billentyűt, és kattints az \"Átnevezés\" gombra.
 Permissions	FilePermissionsView		Jogosultságok
-New folder %ld	FSUtils		Új mappa %ld
 \"%name\" is a legacy executable. Please obtain an updated version or recompile the application.	FSUtils		\"%name\" egy régebbi futtatható fájl. Frissítés vagy újra felépítés szükséges.
 Only the boot disk	AutoMounterSettings		Csak a rendszer lemezt
 Message	AttributesView		Üzenet
@@ -480,13 +489,14 @@ Copy layout	ContainerWindow		Elrendezés másolása
 Duplicate	ContainerWindow		Megkettőzés
 16-bit integer	AttributesView		16-bites egész
 Untitled clipping	PoseView		Névtelen kivágás
+Note: file names in the destination file system are not case-sensitive.\n	FSUtils		Megjegyzés: a fájlnevek a cél-fájlrendszeren nem kis-/nagybetű érzékenyek.\n
 The file \"%name\" already exists in the specified folder. Do you want to replace it?	FilePanelPriv		A megadott mappában már létezik egy ilyen nevű fájl: \"%name\". Szeretnéd felülírni?
 , indexed	InfoWindow		, indexelt
 You must drop items on one of the disk icons in the \"Disks\" window.	PoseView		Húzzon elemeket a \"Lemezek\" ablakban az egyik lemez ikonjára.
 Version:	InfoWindow		Verzió:
 OK	PoseView		Rendben
 Add-ons	DeskWindow		Kiegészítők
-Are you sure you want to move or copy the selected item(s) to this folder?	PoseView		Biztos át szeretnéd mozgatni vagy másolni a kijelölt elemeket ebbe a mappába?
+Add new submenu…	TemplatesMenu		Új almenü hozzáadása…
 Find	FindPanel		Keresés
 Empty folder	NavMenu		Üres mappa
 Defaults	TrackerSettingsWindow		Alapértékek
@@ -495,9 +505,10 @@ True-color picture	AttributesView		Valódi színű kép
 Add-ons	FilePanelPriv		Kiegészítők
 Alignment	AttributesView		Igazítás
 Move to Trash	FSUtils		Mozgatás a Szemetesbe
-Handles %type	OpenWithWindow		Ezt kezeli: %type
 Cancel	PoseView		Mégse
+Handles %type	OpenWithWindow		Ezt kezeli: %type
 Delete	PoseView		Törlés
+Options	FindPanel		Beállítások
 Media parameter	AttributesView		Média paraméter
 If you alter the home folder, %osName may not behave properly!\n\nAre you sure you want to do this?\n\nTo alter the home folder anyway, hold down the Shift key and click \"I know what I'm doing\".	FSUtils		Ha módosítod a saját mappát, akkor a %osName nem biztos, hogy megfelelően működik!\n\nBiztosan ezt akarod tenni?\n\nA saját mappa megváltoztatásához tartsd lenyomva a Shift billentyűt, és kattints a \"Tudom, mit csinálok\" gombra.
 Sorry, you can't copy items to the Trash.	PoseView		Sajnálom, de nem lehet a Szemetesbe másolni.

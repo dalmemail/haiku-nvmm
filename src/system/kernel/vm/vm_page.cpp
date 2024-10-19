@@ -780,7 +780,7 @@ list_page(vm_page* page)
 	if (page->busy_writing) kprintf("W"); else kprintf("-");
 	if (page->accessed)     kprintf("A"); else kprintf("-");
 	if (page->modified)     kprintf("M"); else kprintf("-");
-	if (page->unused)       kprintf("U"); else kprintf("-");
+	kprintf("-");
 
 	kprintf(" usage:%3u", page->usage_count);
 	kprintf(" wired:%5u", page->WiredCount());
@@ -955,11 +955,30 @@ dump_page_long(int argc, char **argv)
 		page = vm_lookup_page(pageAddress / B_PAGE_SIZE);
 	}
 
+	if (page == NULL) {
+		kprintf("Page not found.\n");
+		return 0;
+	}
+
 	kprintf("PAGE: %p\n", page);
+
+	const off_t pageOffset = (addr_t)page - (addr_t)sPages;
+	const off_t pageIndex = pageOffset / (off_t)sizeof(vm_page);
+	if (pageIndex < 0) {
+		kprintf("\taddress is before start of page array!"
+			" (offset %" B_PRIdOFF ")\n", pageOffset);
+	} else if ((page_num_t)pageIndex >= sNumPages) {
+		kprintf("\taddress is after end of page array!"
+			" (offset %" B_PRIdOFF ")\n", pageOffset);
+	} else if ((pageIndex * (off_t)sizeof(vm_page)) != pageOffset) {
+		kprintf("\taddress isn't a multiple of page structure size!"
+			" (offset %" B_PRIdOFF ", expected align %" B_PRIuSIZE ")\n",
+			pageOffset, sizeof(vm_page));
+	}
+
 	kprintf("queue_next,prev: %p, %p\n", page->queue_link.next,
 		page->queue_link.previous);
-	kprintf("physical_number: %#" B_PRIxPHYSADDR "\n",
-		page->physical_page_number);
+	kprintf("physical_number: %#" B_PRIxPHYSADDR "\n", page->physical_page_number);
 	kprintf("cache:           %p\n", page->Cache());
 	kprintf("cache_offset:    %" B_PRIuPHYSADDR "\n", page->cache_offset);
 	kprintf("cache_next:      %p\n", page->cache_next);
@@ -970,14 +989,19 @@ dump_page_long(int argc, char **argv)
 	kprintf("busy_writing:    %d\n", page->busy_writing);
 	kprintf("accessed:        %d\n", page->accessed);
 	kprintf("modified:        %d\n", page->modified);
-	#if DEBUG_PAGE_QUEUE
-		kprintf("queue:           %p\n", page->queue);
-	#endif
-	#if DEBUG_PAGE_ACCESS
-		kprintf("accessor:        %" B_PRId32 "\n", page->accessing_thread);
-	#endif
-	kprintf("area mappings:\n");
+#if DEBUG_PAGE_QUEUE
+	kprintf("queue:           %p\n", page->queue);
+#endif
+#if DEBUG_PAGE_ACCESS
+	kprintf("accessor:        %" B_PRId32 "\n", page->accessing_thread);
+#endif
 
+	if (pageIndex < 0 || (page_num_t)pageIndex >= sNumPages) {
+		// Don't try to read the mappings.
+		return 0;
+	}
+
+	kprintf("area mappings:\n");
 	vm_page_mappings::Iterator iterator = page->mappings.GetIterator();
 	vm_page_mapping *mapping;
 	while ((mapping = iterator.Next()) != NULL) {
@@ -986,37 +1010,45 @@ dump_page_long(int argc, char **argv)
 	}
 
 	if (searchMappings) {
+		struct Callback : VMTranslationMap::ReverseMappingInfoCallback {
+			VMAddressSpace*	fAddressSpace;
+
+			virtual bool HandleVirtualAddress(addr_t virtualAddress)
+			{
+				phys_addr_t physicalAddress;
+				uint32 flags = 0;
+				if (fAddressSpace->TranslationMap()->QueryInterrupt(virtualAddress,
+						&physicalAddress, &flags) != B_OK) {
+					kprintf(" aspace %" B_PRId32 ": %#"	B_PRIxADDR " (querying failed)\n",
+						fAddressSpace->ID(), virtualAddress);
+					return false;
+				}
+				VMArea* area = fAddressSpace->LookupArea(virtualAddress);
+				kprintf("  aspace %" B_PRId32 ", area %" B_PRId32 ": %#"
+					B_PRIxADDR " (%c%c%s%s)\n", fAddressSpace->ID(),
+					area != NULL ? area->id : -1, virtualAddress,
+					(flags & B_KERNEL_READ_AREA) != 0 ? 'r' : '-',
+					(flags & B_KERNEL_WRITE_AREA) != 0 ? 'w' : '-',
+					(flags & PAGE_MODIFIED) != 0 ? " modified" : "",
+					(flags & PAGE_ACCESSED) != 0 ? " accessed" : "");
+				return false;
+			}
+		} callback;
+
 		kprintf("all mappings:\n");
 		VMAddressSpace* addressSpace = VMAddressSpace::DebugFirst();
 		while (addressSpace != NULL) {
-			size_t pageCount = addressSpace->Size() / B_PAGE_SIZE;
-			for (addr_t address = addressSpace->Base(); pageCount != 0;
-					address += B_PAGE_SIZE, pageCount--) {
-				phys_addr_t physicalAddress;
-				uint32 flags = 0;
-				if (addressSpace->TranslationMap()->QueryInterrupt(address,
-						&physicalAddress, &flags) == B_OK
-					&& (flags & PAGE_PRESENT) != 0
-					&& physicalAddress / B_PAGE_SIZE
-						== page->physical_page_number) {
-					VMArea* area = addressSpace->LookupArea(address);
-					kprintf("  aspace %" B_PRId32 ", area %" B_PRId32 ": %#"
-						B_PRIxADDR " (%c%c%s%s)\n", addressSpace->ID(),
-						area != NULL ? area->id : -1, address,
-						(flags & B_KERNEL_READ_AREA) != 0 ? 'r' : '-',
-						(flags & B_KERNEL_WRITE_AREA) != 0 ? 'w' : '-',
-						(flags & PAGE_MODIFIED) != 0 ? " modified" : "",
-						(flags & PAGE_ACCESSED) != 0 ? " accessed" : "");
-				}
-			}
+			callback.fAddressSpace = addressSpace;
+			addressSpace->TranslationMap()->DebugGetReverseMappingInfo(
+				page->physical_page_number * B_PAGE_SIZE, callback);
 			addressSpace = VMAddressSpace::DebugNext(addressSpace);
 		}
 	}
 
 	set_debug_variable("_cache", (addr_t)page->Cache());
-	#if DEBUG_PAGE_ACCESS
-		set_debug_variable("_accessor", page->accessing_thread);
-	#endif
+#if DEBUG_PAGE_ACCESS
+	set_debug_variable("_accessor", page->accessing_thread);
+#endif
 
 	return 0;
 }
@@ -1751,9 +1783,11 @@ mark_page_range_in_use(page_num_t startPage, page_num_t length, bool wired)
 			case PAGE_STATE_FREE:
 			case PAGE_STATE_CLEAR:
 			{
-// TODO: This violates the page reservation policy, since we remove pages from
-// the free/clear queues without having reserved them before. This should happen
-// in the early boot process only, though.
+				// This violates the page reservation policy, since we remove pages
+				// from the free/clear queues without having reserved them before.
+				// This should happen in the early boot process only, though.
+				ASSERT(gKernelStartup);
+
 				DEBUG_PAGE_ACCESS_START(page);
 				VMPageQueue& queue = page->State() == PAGE_STATE_FREE
 					? sFreePageQueue : sClearPageQueue;
@@ -1773,7 +1807,7 @@ mark_page_range_in_use(page_num_t startPage, page_num_t length, bool wired)
 			case PAGE_STATE_CACHED:
 			default:
 				// uh
-				dprintf("mark_page_range_in_use: page %#" B_PRIxPHYSADDR
+				panic("mark_page_range_in_use: page %#" B_PRIxPHYSADDR
 					" in non-free state %d!\n", startPage + i, page->State());
 				break;
 		}
@@ -1963,6 +1997,7 @@ public:
 
 	virtual void IOFinished(status_t status, bool partialTransfer,
 		generic_size_t bytesTransferred);
+
 private:
 	PageWriterRun*		fRun;
 	struct VMCache*		fCache;
@@ -3371,6 +3406,9 @@ vm_page_init(kernel_args *args)
 			args->physical_allocated_range[i].size / B_PAGE_SIZE, true);
 	}
 
+	// prevent future allocations from the kernel args ranges
+	args->num_physical_allocated_ranges = 0;
+
 	// The target of actually free pages. This must be at least the system
 	// reserve, but should be a few more pages, so we don't have to extract
 	// a cached page with each allocation.
@@ -3619,7 +3657,7 @@ vm_page_allocate_page(vm_page_reservation* reservation, uint32 flags)
 	}
 
 	if (page->CacheRef() != NULL)
-		panic("supposed to be free page %p has cache\n", page);
+		panic("supposed to be free page %p has cache @! page %p; cache _cache", page, page);
 
 	DEBUG_PAGE_ACCESS_START(page);
 
@@ -3962,8 +4000,10 @@ vm_page_allocate_page_run(uint32 flags, page_num_t length,
 
 		if (foundRun) {
 			i = allocate_page_run(start, length, flags, freeClearQueueLocker);
-			if (i == length)
+			if (i == length) {
+				reservation.count = 0;
 				return &sPages[start];
+			}
 
 			// apparently a cached page couldn't be allocated -- skip it and
 			// continue

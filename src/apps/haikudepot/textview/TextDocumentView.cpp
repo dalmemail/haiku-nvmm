@@ -16,6 +16,9 @@
 #include <Window.h>
 
 
+const char* kMimeTypePlainText = "text/plain";
+
+
 enum {
 	MSG_BLINK_CARET		= 'blnk',
 };
@@ -24,6 +27,8 @@ enum {
 TextDocumentView::TextDocumentView(const char* name)
 	:
 	BView(name, B_WILL_DRAW | B_FULL_UPDATE_ON_RESIZE | B_FRAME_EVENTS),
+	fTextDocument(NULL),
+	fTextEditor(NULL),
 	fInsetLeft(0.0f),
 	fInsetTop(0.0f),
 	fInsetRight(0.0f),
@@ -33,8 +38,7 @@ TextDocumentView::TextDocumentView(const char* name)
 	fCaretBlinker(NULL),
 	fCaretBlinkToken(0),
 	fSelectionEnabled(true),
-	fShowCaret(false),
-	fMouseDown(false)
+	fShowCaret(false)
 {
 	fTextDocumentLayout.SetWidth(_TextLayoutWidth(Bounds().Width()));
 
@@ -60,6 +64,9 @@ TextDocumentView::MessageReceived(BMessage* message)
 	switch (message->what) {
 		case B_COPY:
 			Copy(be_clipboard);
+			break;
+		case B_PASTE:
+			Paste(be_clipboard);
 			break;
 		case B_SELECT_ALL:
 			SelectAll();
@@ -137,6 +144,9 @@ TextDocumentView::MakeFocus(bool focus)
 void
 TextDocumentView::MouseDown(BPoint where)
 {
+	if (!fTextEditor.IsSet() || !fTextDocument.IsSet())
+		return BView::MouseDown(where);
+
 	BMessage* currentMessage = NULL;
 	if (Window() != NULL)
 		currentMessage = Window()->CurrentMessage();
@@ -160,25 +170,21 @@ TextDocumentView::MouseDown(BPoint where)
 	if (currentMessage != NULL)
 		currentMessage->FindInt32("modifiers", &modifiers);
 
-	fMouseDown = true;
 	SetMouseEventMask(B_POINTER_EVENTS, B_LOCK_WINDOW_FOCUS);
 
 	bool extendSelection = (modifiers & B_SHIFT_KEY) != 0;
 	SetCaret(where, extendSelection);
+
+	BView::MouseDown(where);
 }
 
 
 void
-TextDocumentView::MouseUp(BPoint where)
+TextDocumentView::MouseMoved(BPoint where, uint32 transit, const BMessage* dragMessage)
 {
-	fMouseDown = false;
-}
+	if (!fTextEditor.IsSet() || !fTextDocument.IsSet())
+		return BView::MouseMoved(where, transit, dragMessage);
 
-
-void
-TextDocumentView::MouseMoved(BPoint where, uint32 transit,
-	const BMessage* dragMessage)
-{
 	BCursor cursor(B_CURSOR_ID_I_BEAM);
 
 	if (transit != B_EXITED_VIEW) {
@@ -196,8 +202,13 @@ TextDocumentView::MouseMoved(BPoint where, uint32 transit,
 
 	SetViewCursor(&cursor);
 
-	if (fMouseDown)
+	uint32 buttons = 0;
+	if (Window() != NULL)
+		Window()->CurrentMessage()->FindInt32("buttons", (int32*)&buttons);
+	if (buttons > 0)
 		SetCaret(where, true);
+
+	BView::MouseMoved(where, transit, dragMessage);
 }
 
 
@@ -219,12 +230,17 @@ TextDocumentView::KeyDown(const char* bytes, int32 numBytes)
 		message->FindInt32("modifiers", &event.modifiers);
 	}
 
+	float viewHeightPrior = fTextEditor->Layout()->Height();
+
 	fTextEditor->KeyDown(event);
 	_ShowCaret(true);
 	// TODO: It is necessary to invalidate all, since neither the caret bounds
-	// are updated in a way that would work here, nor is the text updated 
-	// correcty which has been edited.
+	// are updated in a way that would work here, nor is the text updated
+	// correctly which has been edited.
 	Invalidate();
+
+	if (fTextEditor->Layout()->Height() != viewHeightPrior)
+		_UpdateScrollBars();
 }
 
 
@@ -416,6 +432,63 @@ TextDocumentView::GetSelection(int32& start, int32& end) const
 
 
 void
+TextDocumentView::Paste(BClipboard* clipboard)
+{
+	if (!fTextDocument.IsSet() || !fTextEditor.IsSet())
+		return;
+
+	if (!clipboard->Lock())
+		return;
+
+	BMessage* clip = clipboard->Data();
+
+	if (clip != NULL) {
+		const void* plainTextData;
+		ssize_t plainTextDataSize;
+
+		if (clip->FindData(kMimeTypePlainText, B_MIME_TYPE, &plainTextData, &plainTextDataSize)
+			== B_OK) {
+
+			if (plainTextDataSize > 0) {
+				if (_PastePossiblyDisallowedChars(static_cast<const char*>(plainTextData),
+					static_cast<int32>(plainTextDataSize)) != B_OK) {
+					fprintf(stderr, "unable to paste text owing to internal error");
+						// don't use HaikuDepot logging system as this is in the text engine
+				}
+			}
+		}
+	}
+
+	clipboard->Unlock();
+}
+
+
+/*!	This method will check that all of the characters in the provided
+	string are allowed in the text document. Returns true if this is the case.
+*/
+/*static*/ bool
+TextDocumentView::_AreCharsAllowed(const char* str, int32 maxLength)
+{
+	for (int32 i = 0; str[i] != 0 && i < maxLength; i++) {
+		if (!TextDocumentView::_IsAllowedChar(i))
+			return false;
+	}
+	return true;
+}
+
+
+/*static*/ bool
+TextDocumentView::_IsAllowedChar(char c)
+{
+	return c >= ' '
+		|| c == '\t'
+		|| c == '\n'
+		|| c == 127 // delete
+		;
+}
+
+
+void
 TextDocumentView::Copy(BClipboard* clipboard)
 {
 	if (!HasSelection() || !fTextDocument.IsSet()) {
@@ -435,8 +508,7 @@ TextDocumentView::Copy(BClipboard* clipboard)
 		GetSelection(start, end);
 
 		BString text = fTextDocument->Text(start, end - start);
-		clip->AddData("text/plain", B_MIME_TYPE, text.String(),
-			text.Length());
+		clip->AddData(kMimeTypePlainText, B_MIME_TYPE, text.String(), text.Length());
 
 		// TODO: Support for "application/x-vnd.Be-text_run_array"
 
@@ -667,3 +739,67 @@ TextDocumentView::_GetSelectionShape(BShape& shape, int32 start, int32 end)
 }
 
 
+/*!	The data provided in the `str` parameter may contain characters that are
+	not allowed. This method should filter those out and then apply them to
+	the text body.
+*/
+status_t
+TextDocumentView::_PastePossiblyDisallowedChars(const char* str, int32 maxLength)
+{
+	if (maxLength <= 0)
+		return B_OK;
+
+	if (TextDocumentView::_AreCharsAllowed(str, maxLength)) {
+		_PasteAllowedChars(str, maxLength);
+	} else {
+		char* strFiltered = new(std::nothrow) char[maxLength];
+
+		if (strFiltered == NULL)
+			return B_NO_MEMORY;
+
+		int32 strFilteredLength = 0;
+
+		for (int i = 0; str[i] != '\0' && i < maxLength; i++) {
+			if (_IsAllowedChar(str[i])) {
+				strFiltered[strFilteredLength] = str[i];
+				strFilteredLength++;
+			}
+		}
+
+		strFiltered[strFilteredLength] = '\0';
+		_PasteAllowedChars(strFiltered, strFilteredLength);
+
+		delete[] strFiltered;
+	}
+
+	return B_OK;
+}
+
+
+/*! Here the data in `str` should be clean of control characters.
+ */
+void
+TextDocumentView::_PasteAllowedChars(const char* str, int32 maxLength)
+{
+	BString plainText(str, maxLength);
+
+	if (plainText.IsEmpty())
+		return;
+
+	if (fTextEditor.IsSet()) {
+		if (fTextEditor->HasSelection()) {
+			int32 start = fTextEditor->SelectionStart();
+			int32 end = fTextEditor->SelectionEnd();
+			fTextEditor->Replace(start, end - start, plainText);
+			Invalidate();
+			_UpdateScrollBars();
+		} else {
+			int32 caretOffset = fTextEditor->CaretOffset();
+			if (caretOffset >= 0) {
+				fTextEditor->Insert(caretOffset, plainText);
+				Invalidate();
+				_UpdateScrollBars();
+			}
+		}
+	}
+}

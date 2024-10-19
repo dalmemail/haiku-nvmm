@@ -109,7 +109,7 @@ static uint32 sCpuRendezvous3;
 static vint32 sTSCSyncRendezvous;
 
 /* Some specials for the double fault handler */
-static uint8* sDoubleFaultStacks;
+static addr_t sDoubleFaultStacks = 0;
 static const size_t kDoubleFaultStackSize = 4096;	// size per CPU
 
 static x86_cpu_module_info* sCpuModule;
@@ -127,6 +127,8 @@ static void* sUcodeData = NULL;
 static size_t sUcodeDataSize = 0;
 static void* sLoadedUcodeUpdate;
 static spinlock sUcodeUpdateLock = B_SPINLOCK_INITIALIZER;
+
+static bool sUsePAT = false;
 
 
 static status_t
@@ -263,6 +265,17 @@ init_mtrrs(void* _unused, int cpu)
 uint32
 x86_count_mtrrs(void)
 {
+	if (sUsePAT) {
+		// When PAT is supported, we completely ignore MTRRs and leave them as
+		// initialized by firmware. This follows the suggestion in Intel SDM
+		// that these don't usually need to be touched by anything after system
+		// init. Using page attributes is the more flexible and modern approach
+		// to memory type handling and they can override MTRRs in the critical
+		// case of write-combining, usually used for framebuffers.
+		dprintf("ignoring MTRRs due to PAT support\n");
+		return 0;
+	}
+
 	if (sCpuModule == NULL)
 		return 0;
 
@@ -306,6 +319,25 @@ x86_set_mtrrs(uint8 defaultType, const x86_mtrr_info* infos, uint32 count)
 
 	sCpuRendezvous = sCpuRendezvous2 = 0;
 	call_all_cpus(&set_mtrrs, &parameter);
+}
+
+
+static void
+init_pat(int cpu)
+{
+	disable_caches();
+
+	uint64 value = x86_read_msr(IA32_MSR_PAT);
+	dprintf("PAT MSR on CPU %d before init: %#" B_PRIx64 "\n", cpu, value);
+
+	// Use PAT entry 4 for write-combining, leave the rest as is
+	value &= ~(IA32_MSR_PAT_ENTRY_MASK << IA32_MSR_PAT_ENTRY_SHIFT(4));
+	value |= IA32_MSR_PAT_TYPE_WRITE_COMBINING << IA32_MSR_PAT_ENTRY_SHIFT(4);
+
+	dprintf("PAT MSR on CPU %d after init: %#" B_PRIx64 "\n", cpu, value);
+	x86_write_msr(IA32_MSR_PAT, value);
+
+	enable_caches();
 }
 
 
@@ -624,6 +656,14 @@ dump_feature_string(int currentCPU, cpu_ent* cpu)
 		strlcat(features, "msr_arch ", sizeof(features));
 	if (cpu->arch.feature[FEATURE_7_EDX] & IA32_FEATURE_SSBD)
 		strlcat(features, "ssbd ", sizeof(features));
+	if (cpu->arch.feature[FEATURE_EXT_7_EDX] & IA32_FEATURE_AMD_HW_PSTATE)
+		strlcat(features, "hwpstate ", sizeof(features));
+	if (cpu->arch.feature[FEATURE_EXT_7_EDX] & IA32_FEATURE_INVARIANT_TSC)
+		strlcat(features, "constant_tsc ", sizeof(features));
+	if (cpu->arch.feature[FEATURE_EXT_7_EDX] & IA32_FEATURE_CPB)
+		strlcat(features, "cpb ", sizeof(features));
+	if (cpu->arch.feature[FEATURE_EXT_7_EDX] & IA32_FEATURE_PROC_FEEDBACK)
+		strlcat(features, "proc_feedback ", sizeof(features));
 	if (cpu->arch.feature[FEATURE_D_1_EAX] & IA32_FEATURE_XSAVEOPT)
 		strlcat(features, "xsaveopt ", sizeof(features));
 	if (cpu->arch.feature[FEATURE_D_1_EAX] & IA32_FEATURE_XSAVEC)
@@ -1476,11 +1516,18 @@ x86_check_feature(uint32 feature, enum x86_feature_type type)
 }
 
 
+bool
+x86_use_pat()
+{
+	return sUsePAT;
+}
+
+
 void*
 x86_get_double_fault_stack(int32 cpu, size_t* _size)
 {
 	*_size = kDoubleFaultStackSize;
-	return sDoubleFaultStacks + kDoubleFaultStackSize * cpu;
+	return (void*)(sDoubleFaultStacks + kDoubleFaultStackSize * cpu);
 }
 
 
@@ -1491,7 +1538,7 @@ int32
 x86_double_fault_get_cpu(void)
 {
 	addr_t stack = x86_get_stack_frame();
-	return (stack - (addr_t)sDoubleFaultStacks) / kDoubleFaultStackSize;
+	return (stack - sDoubleFaultStacks) / kDoubleFaultStackSize;
 }
 
 
@@ -1501,6 +1548,12 @@ x86_double_fault_get_cpu(void)
 status_t
 arch_cpu_preboot_init_percpu(kernel_args* args, int cpu)
 {
+	if (cpu == 0) {
+		// We can't allocate pages at this stage in the boot process, only virtual addresses.
+		sDoubleFaultStacks = vm_allocate_early(args,
+			kDoubleFaultStackSize * smp_get_num_cpus(), 0, 0, 0);
+	}
+
 	// On SMP system we want to synchronize the CPUs' TSCs, so system_time()
 	// will return consistent values.
 	if (smp_get_num_cpus() > 1) {
@@ -1569,6 +1622,7 @@ init_tsc_with_cpuid(kernel_args* args, uint32* conversionFactor)
 	cpu_ent* cpu = get_cpu_struct();
 	if (cpu->arch.vendor != VENDOR_INTEL)
 		return;
+
 	uint32 model = (cpu->arch.extended_model << 4) | cpu->arch.model;
 	cpuid_info cpuid;
 	get_current_cpuid(&cpuid, 0, 0);
@@ -1594,6 +1648,7 @@ init_tsc_with_cpuid(kernel_args* args, uint32* conversionFactor)
 	}
 	if (khz == 0)
 		return;
+
 	dprintf("CPU: using TSC frequency from CPUID\n");
 	// compute for microseconds as follows (1000000 << 32) / (tsc freq in Hz),
 	// or (1000 << 32) / (tsc freq in kHz)
@@ -1609,6 +1664,7 @@ init_tsc_with_msr(kernel_args* args, uint32* conversionFactor)
 	cpu_ent* cpuEnt = get_cpu_struct();
 	if (cpuEnt->arch.vendor != VENDOR_AMD)
 		return;
+
 	uint32 family = cpuEnt->arch.family + cpuEnt->arch.extended_family;
 	if (family < 0x10)
 		return;
@@ -1648,12 +1704,9 @@ init_tsc(kernel_args* args)
 
 	// try to find the TSC frequency with CPUID
 	uint32 conversionFactor = args->arch_args.system_time_cv_factor;
-	if (!x86_check_feature(IA32_FEATURE_EXT_HYPERVISOR, FEATURE_EXT)) {
-		init_tsc_with_cpuid(args, &conversionFactor);
-		init_tsc_with_msr(args, &conversionFactor);
-	}
+	init_tsc_with_cpuid(args, &conversionFactor);
+	init_tsc_with_msr(args, &conversionFactor);
 	uint64 conversionFactorNsecs = (uint64)conversionFactor * 1000;
-
 
 #ifdef __x86_64__
 	// The x86_64 system_time() implementation uses 64-bit multiplication and
@@ -1694,6 +1747,35 @@ arch_cpu_init_percpu(kernel_args* args, int cpu)
 	if (x86_check_feature(IA32_FEATURE_MCE, FEATURE_COMMON))
 		x86_write_cr4(x86_read_cr4() | IA32_CR4_MCE);
 
+	cpu_ent* cpuEnt = get_cpu_struct();
+	if (cpu == 0) {
+		bool supportsPAT = x86_check_feature(IA32_FEATURE_PAT, FEATURE_COMMON);
+
+		// Pentium II Errata A52 and Pentium III Errata E27 say the upper four
+		// entries of the PAT are not useable as the PAT bit is ignored for 4K
+		// PTEs. Pentium 4 Errata N46 says the PAT bit can be assumed 0 in some
+		// specific cases. To avoid issues, disable PAT on such CPUs.
+		bool brokenPAT = cpuEnt->arch.vendor == VENDOR_INTEL
+			&& cpuEnt->arch.extended_family == 0
+			&& cpuEnt->arch.extended_model == 0
+			&& ((cpuEnt->arch.family == 6 && cpuEnt->arch.model <= 13)
+				|| (cpuEnt->arch.family == 15 && cpuEnt->arch.model <= 6));
+
+		sUsePAT = supportsPAT && !brokenPAT
+			&& !get_safemode_boolean_early(args, B_SAFEMODE_DISABLE_PAT, false);
+
+		if (sUsePAT) {
+			dprintf("using PAT for memory type configuration\n");
+		} else {
+			dprintf("not using PAT for memory type configuration (%s)\n",
+				supportsPAT ? (brokenPAT ? "broken" : "disabled")
+					: "unsupported");
+		}
+	}
+
+	if (sUsePAT)
+		init_pat(cpu);
+
 #ifdef __x86_64__
 	// if RDTSCP or RDPID are available write cpu number in TSC_AUX
 	if (x86_check_feature(IA32_FEATURE_AMD_EXT_RDTSCP, FEATURE_EXT_AMD)
@@ -1702,7 +1784,6 @@ arch_cpu_init_percpu(kernel_args* args, int cpu)
 	}
 
 	// make LFENCE a dispatch serializing instruction on AMD 64bit
-	cpu_ent* cpuEnt = get_cpu_struct();
 	if (cpuEnt->arch.vendor == VENDOR_AMD) {
 		uint32 family = cpuEnt->arch.family + cpuEnt->arch.extended_family;
 		if (family >= 0x10 && family != 0x11) {
@@ -1774,24 +1855,20 @@ enable_xsavemask(void* dummy, int cpu)
 status_t
 arch_cpu_init_post_vm(kernel_args* args)
 {
-	uint32 i;
-
-	// allocate an area for the double fault stacks
-	virtual_address_restrictions virtualRestrictions = {};
-	virtualRestrictions.address_specification = B_ANY_KERNEL_ADDRESS;
-	physical_address_restrictions physicalRestrictions = {};
-	create_area_etc(B_SYSTEM_TEAM, "double fault stacks",
-		kDoubleFaultStackSize * smp_get_num_cpus(), B_FULL_LOCK,
-		B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA, CREATE_AREA_DONT_WAIT, 0,
-		&virtualRestrictions, &physicalRestrictions,
-		(void**)&sDoubleFaultStacks);
+	// allocate the area for the double fault stacks
+	area_id stacks = create_area("double fault stacks",
+		(void**)&sDoubleFaultStacks, B_EXACT_ADDRESS,
+		kDoubleFaultStackSize * smp_get_num_cpus(),
+		B_FULL_LOCK, B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA);
+	if (stacks < B_OK)
+		panic("failed to create double fault stacks area: %" B_PRId32, stacks);
 
 	X86PagingStructures* kernelPagingStructures
 		= static_cast<X86VMTranslationMap*>(
 			VMAddressSpace::Kernel()->TranslationMap())->PagingStructures();
 
 	// Set active translation map on each CPU.
-	for (i = 0; i < args->num_cpus; i++) {
+	for (uint32 i = 0; i < args->num_cpus; i++) {
 		gCPU[i].arch.active_paging_structures = kernelPagingStructures;
 		kernelPagingStructures->AddReference();
 	}
@@ -1847,7 +1924,6 @@ arch_cpu_init_post_vm(kernel_args* args)
 		dprintf("enable %s 0x%" B_PRIx64 " %" B_PRId64 "\n",
 			gHasXsavec ? "XSAVEC" : "XSAVE", gXsaveMask, gFPUSaveLength);
 	}
-
 #endif
 
 	return B_OK;

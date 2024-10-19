@@ -1,7 +1,6 @@
-1	turkish	x-vnd.Haiku-About	3595470255
+1	turkish	x-vnd.Haiku-About	3675341430
 The Haikuware team and their bounty program\n	AboutView		Haikuware takımı ve onların ödül programı\n
 Copyright © 1999-2007 Michael C. Ring. All rights reserved.	AboutView		Telif hakkı © 1999–2007 Michael C. Ring. Tüm hakları saklıdır.
-Copyright © 2002-2004 Vivek Mohan. All rights reserved.	AboutView		Telif hakkı © 2002–2004 Vivek Mohan. Tüm hakları saklıdır.
 \n\nSpecial thanks to:\n	AboutView		\n\nÖzel teşekkürlerimizle:\n
 Travis Geiselbrecht (and his NewOS kernel)\n	AboutView		Travis Geiselbrecht (ve kendisinin NewOS çekirdeği)\n
 Copyright © 1999-2000 Y.Takagi. All rights reserved.	AboutView		Telif Hakkı © 1999–2000 Y. Takagi. Tüm hakları saklıdır.
@@ -25,7 +24,6 @@ Copyright © 1987-1988 Digital Equipment Corporation, Maynard, Massachusetts.\nA
 Past maintainers:\n	AboutView		Önceki geliştiriciler:\n
 Unknown	AboutView		Bilinmeyen
 Be Inc. and its developer team, for having created BeOS!\n\n	AboutView		Be Inc. ve geliştirici takımına BeOS’u yarattıkları için!\n\n
-Copyright © 2002-2014 Industrial Light & Magic, a division of Lucas Digital Ltd. LLC.	AboutView		Telif hakkı © 2002–2014 Industrial Light & Magic, Lucas Digital Ltd. LLC’nin bir bölümü.
 Licenses: 	AboutView		Lisanslar: 
 %ld MHz	AboutView	750 Mhz (CPU clock speed)	%ld MHz
 The copyright to the Haiku code is property of Haiku, Inc. or of the respective authors where expressly noted in the source. Haiku® and the HAIKU logo® are registered trademarks of Haiku, Inc.\n\n	AboutView		Haiku işletim sistemi kodunun telif hakkı Haiku, Inc.’in veya kaynak kodunda belirtilen yazarların mülkiyetine tabidir. Haiku® ve HAIKU logosu® Haiku Inc.’in tescilli markalarıdır.\n\n
@@ -77,6 +75,7 @@ Copyright © 1995-2004 Jean-loup Gailly and Mark Adler.	AboutView		Telif hakkı 
 Copyright © 2001-2003 Expat maintainers.	AboutView		Telif hakkı © 2001–2003 Expat geliştiricileri.
 Copyright © 2002-2006 Maxim Shemanarev (McSeem).	AboutView		Telif hakkı © 2002–2006 Maxim Shemanarev (McSeem).
 Translations:\n	AboutView		Çeviriler:\n
+Copyright © 2014-2024 Florian Bernd and Joel Höner. All rights reserved.	AboutView		Telif hakkı © 2014–2024 Florian Bernd ve Joel Höner. Tüm hakları saklıdır.
 \n…and probably some more we forgot to mention (sorry!)\n\n	AboutView		\n…ve bahsetmeyi unuttuğumuz diğerleri (üzgünüz!)\n\n
 Copyright © 2006-2015 Intel Corporation. All rights reserved.	AboutView		Telif hakkı © 2006–2015 Intel Corporation. Tüm hakları saklıdır.
 BSD (2-clause)	AboutWindow		BSD (2 koşullu)

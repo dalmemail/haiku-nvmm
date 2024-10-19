@@ -1,6 +1,6 @@
 /*
  * Copyright 2013-2014, Stephan Aßmus <superstippi@gmx.de>.
- * Copyright 2016-2023, Andrew Lindesay <apl@lindesay.co.nz>.
+ * Copyright 2016-2024, Andrew Lindesay <apl@lindesay.co.nz>.
  * All rights reserved. Distributed under the terms of the MIT License.
  */
 #ifndef MODEL_H
@@ -12,7 +12,8 @@
 
 #include "AbstractProcess.h"
 #include "DepotInfo.h"
-#include "LanguageModel.h"
+#include "LanguageRepository.h"
+#include "PackageFilterModel.h"
 #include "PackageIconTarRepository.h"
 #include "PackageInfo.h"
 #include "PackageScreenshotRepository.h"
@@ -30,17 +31,6 @@ typedef enum package_list_view_mode {
 	PROMINENT,
 	ALL
 } package_list_view_mode;
-
-
-class PackageFilter : public BReferenceable {
-public:
-	virtual						~PackageFilter();
-
-	virtual	bool				AcceptsPackage(
-									const PackageInfoRef& package) const = 0;
-};
-
-typedef BReference<PackageFilter> PackageFilterRef;
 
 
 class ModelListener : public BReferenceable {
@@ -69,7 +59,7 @@ public:
 								Model();
 	virtual						~Model();
 
-			LanguageModel*		Language();
+			PackageFilterModel*	PackageFilter();
 			PackageIconRepository&
 								GetPackageIconRepository();
 			status_t			InitPackageIconRepository();
@@ -81,9 +71,11 @@ public:
 
 			void				AddListener(const ModelListenerRef& listener);
 
+			LanguageRef			PreferredLanguage() const;
+			void				SetPreferredLanguage(LanguageRef value);
+			LanguageRepository*	Languages();
+
 			PackageInfoRef		PackageForName(const BString& name);
-			bool				MatchesFilter(
-									const PackageInfoRef& package) const;
 
 			void				MergeOrAddDepot(const DepotInfoRef& depot);
 			bool				HasDepot(const BString& name) const;
@@ -110,47 +102,19 @@ public:
 									BStringList& packageNames,
 									PackageState state);
 
-			// Configure PackageFilters
-			void				SetCategory(const BString& category);
-			BString				Category() const;
-			void				SetDepot(const BString& depot);
-			BString				Depot() const;
-			void				SetSearchTerms(const BString& searchTerms);
-			BString				SearchTerms() const;
 
 			void				SetPackageListViewMode(
 									package_list_view_mode mode);
 			package_list_view_mode
 								PackageListViewMode() const
 									{ return fPackageListViewMode; }
-			void				SetShowAvailablePackages(bool show);
-			bool				ShowAvailablePackages() const
-									{ return fShowAvailablePackages; }
-			void				SetShowInstalledPackages(bool show);
-			bool				ShowInstalledPackages() const
-									{ return fShowInstalledPackages; }
-			void				SetShowSourcePackages(bool show);
-			bool				ShowSourcePackages() const
-									{ return fShowSourcePackages; }
-			void				SetShowDevelopPackages(bool show);
-			bool				ShowDevelopPackages() const
-									{ return fShowDevelopPackages; }
+
 			void				SetCanShareAnonymousUsageData(bool value);
 			bool				CanShareAnonymousUsageData() const
 									{ return fCanShareAnonymousUsageData; }
 
-			// Retrieve package information
-	static	const uint32		POPULATE_CACHED_RATING	= 1 << 0;
-	static	const uint32		POPULATE_CACHED_ICON	= 1 << 1;
-	static	const uint32		POPULATE_USER_RATINGS	= 1 << 2;
-	static	const uint32		POPULATE_CHANGELOG		= 1 << 3;
-	static	const uint32		POPULATE_CATEGORIES		= 1 << 4;
-	static	const uint32		POPULATE_FORCE			= 1 << 5;
-
 			bool				CanPopulatePackage(
 									const PackageInfoRef& package);
-			void				PopulatePackage(const PackageInfoRef& package,
-									uint32 flags);
 
 			void				SetNickname(BString nickname);
 			const BString&		Nickname();
@@ -160,12 +124,6 @@ public:
 
 			WebAppInterface*    GetWebAppInterface()
 									{ return &fWebAppInterface; }
-
-			status_t			IconTarPath(BPath& path) const;
-			status_t			DumpExportReferenceDataPath(BPath& path);
-			status_t			DumpExportRepositoryDataPath(BPath& path);
-			status_t			DumpExportPkgDataPath(BPath& path,
-									const BString& repositorySourceCode);
 
 			// PackageScreenshotRepositoryListener
     virtual	void				ScreenshotCached(const ScreenshotCoordinate& coord);
@@ -180,16 +138,13 @@ private:
 									const BMessage &responsePayload,
 									const char *sourceDescription) const;
 
-	static	int32				_PopulateAllPackagesEntry(void* cookie);
-
-			void				_PopulatePackageChangelog(
-									const PackageInfoRef& package);
-
 			void				_NotifyAuthorizationChanged();
 			void				_NotifyCategoryListChanged();
 
 private:
 			BLocker				fLock;
+
+			LanguageRef			fPreferredLanguage;
 
 			std::vector<DepotInfoRef>
 								fDepots;
@@ -200,20 +155,16 @@ private:
 
 			BStringList			fPopulatedPackageNames;
 
-			PackageFilterRef	fCategoryFilter;
-			BString				fDepotFilter;
-			PackageFilterRef	fSearchTermsFilter;
-
 			package_list_view_mode
 								fPackageListViewMode;
-			bool				fShowAvailablePackages;
-			bool				fShowInstalledPackages;
-			bool				fShowSourcePackages;
-			bool				fShowDevelopPackages;
+
 			bool				fCanShareAnonymousUsageData;
 
 			WebAppInterface		fWebAppInterface;
-			LanguageModel		fLanguageModel;
+
+			PackageFilterModel*	fPackageFilterModel;
+
+			LanguageRepository*	fLanguageRepository;
 			PackageIconTarRepository
 								fPackageIconRepository;
 			PackageScreenshotRepository*

@@ -688,13 +688,16 @@ BListView::MouseDown(BPoint where)
 void
 BListView::MouseUp(BPoint where)
 {
+	bool wasDragging = fTrack->is_dragging;
+
 	// drag is over
 	fTrack->buttons = 0;
 	fTrack->try_drag = false;
 	fTrack->is_dragging = false;
 
 	// selection updating on drag is for single selection lists only
-	if (fListType == B_MULTIPLE_SELECTION_LIST)
+	// do not alter selection on drag and drop end
+	if (fListType == B_MULTIPLE_SELECTION_LIST || wasDragging)
 		return BView::MouseUp(where);
 
 	int32 index = IndexOf(where);
@@ -1235,9 +1238,9 @@ BListView::ScrollTo(int32 index)
 	BRect itemFrame = ItemFrame(index);
 	BRect bounds = Bounds();
 	if (itemFrame.top < bounds.top)
-		ScrollTo(itemFrame.LeftTop());
+		BListView::ScrollTo(itemFrame.LeftTop());
 	else if (itemFrame.bottom > bounds.bottom)
-		ScrollTo(BPoint(0, itemFrame.bottom - bounds.Height()));
+		BListView::ScrollTo(BPoint(0, itemFrame.bottom - bounds.Height()));
 }
 
 

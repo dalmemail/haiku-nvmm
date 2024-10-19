@@ -9,9 +9,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <time_private.h>
+
 #include "DebugSupport.h"
 #include "Package.h"
 #include "Utils.h"
+
+
+DEFINE_INLINE_REFERENCEABLE_METHODS(PackageNode, fReferenceable);
 
 
 PackageNode::PackageNode(Package* package, mode_t mode)
@@ -19,9 +24,7 @@ PackageNode::PackageNode(Package* package, mode_t mode)
 	fPackage(package),
 	fParent(NULL),
 	fName(),
-	fMode(mode),
-	fUserID(0),
-	fGroupID(0)
+	fMode(mode)
 {
 }
 
@@ -73,6 +76,23 @@ PackageNode::VFSUninit()
 }
 
 
+void
+PackageNode::SetModifiedTime(const timespec& time)
+{
+	if (!timespec_to_bigtime(time, fModifiedTime))
+		fModifiedTime = 0;
+}
+
+
+timespec
+PackageNode::ModifiedTime() const
+{
+	timespec modifiedTime;
+	bigtime_to_timespec(fModifiedTime, modifiedTime);
+	return modifiedTime;
+}
+
+
 off_t
 PackageNode::FileSize() const
 {
@@ -84,13 +104,6 @@ void
 PackageNode::AddAttribute(PackageNodeAttribute* attribute)
 {
 	fAttributes.Add(attribute);
-}
-
-
-void
-PackageNode::RemoveAttribute(PackageNodeAttribute* attribute)
-{
-	fAttributes.Remove(attribute);
 }
 
 
@@ -132,5 +145,5 @@ PackageNode::HasPrecedenceOver(const PackageNode* other) const
 		return true;
 	if (!isSystemPkg && otherIsSystemPkg)
 		return false;
-	return fModifiedTime > other->fModifiedTime;
+	return ModifiedTime() > other->ModifiedTime();
 }

@@ -41,158 +41,8 @@
 static const char* kHaikuDepotKeyring = "HaikuDepot";
 
 
-PackageFilter::~PackageFilter()
-{
-}
-
-
 ModelListener::~ModelListener()
 {
-}
-
-
-// #pragma mark - PackageFilters
-
-
-class AnyFilter : public PackageFilter {
-public:
-	virtual bool AcceptsPackage(const PackageInfoRef& package) const
-	{
-		return true;
-	}
-};
-
-
-class CategoryFilter : public PackageFilter {
-public:
-	CategoryFilter(const BString& category)
-		:
-		fCategory(category)
-	{
-	}
-
-	virtual bool AcceptsPackage(const PackageInfoRef& package) const
-	{
-		if (!package.IsSet())
-			return false;
-
-		for (int i = package->CountCategories() - 1; i >= 0; i--) {
-			const CategoryRef& category = package->CategoryAtIndex(i);
-			if (!category.IsSet())
-				continue;
-			if (category->Code() == fCategory)
-				return true;
-		}
-		return false;
-	}
-
-	const BString& Category() const
-	{
-		return fCategory;
-	}
-
-private:
-	BString		fCategory;
-};
-
-
-class StateFilter : public PackageFilter {
-public:
-	StateFilter(PackageState state)
-		:
-		fState(state)
-	{
-	}
-
-	virtual bool AcceptsPackage(const PackageInfoRef& package) const
-	{
-		return package->State() == NONE;
-	}
-
-private:
-	PackageState	fState;
-};
-
-
-class SearchTermsFilter : public PackageFilter {
-public:
-	SearchTermsFilter(const BString& searchTerms)
-	{
-		// Separate the string into terms at spaces
-		int32 index = 0;
-		while (index < searchTerms.Length()) {
-			int32 nextSpace = searchTerms.FindFirst(" ", index);
-			if (nextSpace < 0)
-				nextSpace = searchTerms.Length();
-			if (nextSpace > index) {
-				BString term;
-				searchTerms.CopyInto(term, index, nextSpace - index);
-				term.ToLower();
-				fSearchTerms.Add(term);
-			}
-			index = nextSpace + 1;
-		}
-	}
-
-	virtual bool AcceptsPackage(const PackageInfoRef& package) const
-	{
-		if (!package.IsSet())
-			return false;
-		// Every search term must be found in one of the package texts
-		for (int32 i = fSearchTerms.CountStrings() - 1; i >= 0; i--) {
-			const BString& term = fSearchTerms.StringAt(i);
-			if (!_TextContains(package->Name(), term)
-				&& !_TextContains(package->Title(), term)
-				&& !_TextContains(package->Publisher().Name(), term)
-				&& !_TextContains(package->ShortDescription(), term)
-				&& !_TextContains(package->FullDescription(), term)) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	BString SearchTerms() const
-	{
-		BString searchTerms;
-		for (int32 i = 0; i < fSearchTerms.CountStrings(); i++) {
-			const BString& term = fSearchTerms.StringAt(i);
-			if (term.IsEmpty())
-				continue;
-			if (!searchTerms.IsEmpty())
-				searchTerms.Append(" ");
-			searchTerms.Append(term);
-		}
-		return searchTerms;
-	}
-
-private:
-	bool _TextContains(BString text, const BString& string) const
-	{
-		text.ToLower();
-		int32 index = text.FindFirst(string);
-		return index >= 0;
-	}
-
-private:
-	BStringList fSearchTerms;
-};
-
-
-static inline bool
-is_source_package(const PackageInfoRef& package)
-{
-	const BString& packageName = package->Name();
-	return packageName.EndsWith("_source");
-}
-
-
-static inline bool
-is_develop_package(const PackageInfoRef& package)
-{
-	const BString& packageName = package->Name();
-	return packageName.EndsWith("_devel")
-		|| packageName.EndsWith("_debuginfo");
 }
 
 
@@ -201,18 +51,19 @@ is_develop_package(const PackageInfoRef& package)
 
 Model::Model()
 	:
+	fPreferredLanguage(LanguageRef(new Language(LANGUAGE_DEFAULT_ID, "English", true), true)),
 	fDepots(),
 	fCategories(),
-	fCategoryFilter(PackageFilterRef(new AnyFilter(), true)),
-	fDepotFilter(""),
-	fSearchTermsFilter(PackageFilterRef(new AnyFilter(), true)),
 	fPackageListViewMode(PROMINENT),
-	fShowAvailablePackages(true),
-	fShowInstalledPackages(true),
-	fShowSourcePackages(false),
-	fShowDevelopPackages(false),
 	fCanShareAnonymousUsageData(false)
 {
+
+	// setup the language into a default state with a hard-coded language so
+	// that there is a language at all.
+	fLanguageRepository = new LanguageRepository();
+	fLanguageRepository->AddLanguage(fPreferredLanguage);
+
+	fPackageFilterModel = new PackageFilterModel();
 	fPackageScreenshotRepository = new PackageScreenshotRepository(
 		PackageScreenshotRepositoryListenerRef(this),
 		&fWebAppInterface);
@@ -221,14 +72,23 @@ Model::Model()
 
 Model::~Model()
 {
+	delete fPackageFilterModel;
 	delete fPackageScreenshotRepository;
+	delete fLanguageRepository;
 }
 
 
-LanguageModel*
-Model::Language()
+LanguageRepository*
+Model::Languages()
 {
-	return &fLanguageModel;
+	return fLanguageRepository;
+}
+
+
+PackageFilterModel*
+Model::PackageFilter()
+{
+	return fPackageFilterModel;
 }
 
 
@@ -243,7 +103,7 @@ status_t
 Model::InitPackageIconRepository()
 {
 	BPath tarPath;
-	status_t result = IconTarPath(tarPath);
+	status_t result = StorageUtils::IconTarPath(tarPath);
 	if (result == B_OK)
 		result = fPackageIconRepository.Init(tarPath);
 	return result;
@@ -264,6 +124,23 @@ Model::AddListener(const ModelListenerRef& listener)
 }
 
 
+LanguageRef
+Model::PreferredLanguage() const
+{
+	return fPreferredLanguage;
+}
+
+
+void
+Model::SetPreferredLanguage(LanguageRef value)
+{
+	if (value.IsSet()) {
+		if (fPreferredLanguage != value)
+			fPreferredLanguage = value;
+	}
+}
+
+
 // TODO; part of a wider change; cope with the package being in more than one
 // depot
 PackageInfoRef
@@ -277,19 +154,6 @@ Model::PackageForName(const BString& name)
 			return packageInfoRef;
 	}
 	return PackageInfoRef();
-}
-
-
-bool
-Model::MatchesFilter(const PackageInfoRef& package) const
-{
-	return fCategoryFilter->AcceptsPackage(package)
-			&& fSearchTermsFilter->AcceptsPackage(package)
-			&& (fDepotFilter.IsEmpty() || fDepotFilter == package->DepotName())
-			&& (fShowAvailablePackages || package->State() != NONE)
-			&& (fShowInstalledPackages || package->State() != ACTIVATED)
-			&& (fShowSourcePackages || !is_source_package(package))
-			&& (fShowDevelopPackages || !is_develop_package(package));
 }
 
 
@@ -386,73 +250,6 @@ Model::SetStateForPackagesByName(BStringList& packageNames, PackageState state)
 }
 
 
-// #pragma mark - filters
-
-
-void
-Model::SetCategory(const BString& category)
-{
-	PackageFilter* filter;
-
-	if (category.Length() == 0)
-		filter = new AnyFilter();
-	else
-		filter = new CategoryFilter(category);
-
-	fCategoryFilter.SetTo(filter, true);
-}
-
-
-BString
-Model::Category() const
-{
-	CategoryFilter* filter
-		= dynamic_cast<CategoryFilter*>(fCategoryFilter.Get());
-	if (filter == NULL)
-		return "";
-	return filter->Category();
-}
-
-
-void
-Model::SetDepot(const BString& depot)
-{
-	fDepotFilter = depot;
-}
-
-
-BString
-Model::Depot() const
-{
-	return fDepotFilter;
-}
-
-
-void
-Model::SetSearchTerms(const BString& searchTerms)
-{
-	PackageFilter* filter;
-
-	if (searchTerms.Length() == 0)
-		filter = new AnyFilter();
-	else
-		filter = new SearchTermsFilter(searchTerms);
-
-	fSearchTermsFilter.SetTo(filter, true);
-}
-
-
-BString
-Model::SearchTerms() const
-{
-	SearchTermsFilter* filter
-		= dynamic_cast<SearchTermsFilter*>(fSearchTermsFilter.Get());
-	if (filter == NULL)
-		return "";
-	return filter->SearchTerms();
-}
-
-
 void
 Model::SetPackageListViewMode(package_list_view_mode mode)
 {
@@ -464,34 +261,6 @@ void
 Model::SetCanShareAnonymousUsageData(bool value)
 {
 	fCanShareAnonymousUsageData = value;
-}
-
-
-void
-Model::SetShowAvailablePackages(bool show)
-{
-	fShowAvailablePackages = show;
-}
-
-
-void
-Model::SetShowInstalledPackages(bool show)
-{
-	fShowInstalledPackages = show;
-}
-
-
-void
-Model::SetShowSourcePackages(bool show)
-{
-	fShowSourcePackages = show;
-}
-
-
-void
-Model::SetShowDevelopPackages(bool show)
-{
-	fShowDevelopPackages = show;
 }
 
 
@@ -517,207 +286,6 @@ Model::CanPopulatePackage(const PackageInfoRef& package)
 		return false;
 
 	return !depot->WebAppRepositoryCode().IsEmpty();
-}
-
-
-/*! Initially only superficial data is loaded from the server into the data
-    model of the packages.  When the package is viewed, additional data needs
-    to be populated including ratings.  This method takes care of that.
-*/
-
-void
-Model::PopulatePackage(const PackageInfoRef& package, uint32 flags)
-{
-	HDTRACE("will populate package for [%s]", package->Name().String());
-
-	if (!CanPopulatePackage(package)) {
-		HDINFO("unable to populate package [%s]", package->Name().String());
-		return;
-	}
-
-	// TODO: There should probably also be a way to "unpopulate" the
-	// package information. Maybe a cache of populated packages, so that
-	// packages loose their extra information after a certain amount of
-	// time when they have not been accessed/displayed in the UI. Otherwise
-	// HaikuDepot will consume more and more resources in the packages.
-	{
-		BAutolock locker(&fLock);
-		bool alreadyPopulated = fPopulatedPackageNames.HasString(
-			package->Name());
-		if ((flags & POPULATE_FORCE) == 0 && alreadyPopulated)
-			return;
-		if (!alreadyPopulated)
-			fPopulatedPackageNames.Add(package->Name());
-	}
-
-	if ((flags & POPULATE_CHANGELOG) != 0 && package->HasChangelog()) {
-		_PopulatePackageChangelog(package);
-	}
-
-	if ((flags & POPULATE_USER_RATINGS) != 0) {
-		// Retrieve info from web-app
-		BMessage info;
-
-		BString packageName;
-		BString webAppRepositoryCode;
-		BString webAppRepositorySourceCode;
-
-		{
-			BAutolock locker(&fLock);
-			packageName = package->Name();
-			const DepotInfo* depot = DepotForName(package->DepotName());
-
-			if (depot != NULL) {
-				webAppRepositoryCode = depot->WebAppRepositoryCode();
-				webAppRepositorySourceCode
-					= depot->WebAppRepositorySourceCode();
-			}
-		}
-
-		status_t status = fWebAppInterface
-			.RetrieveUserRatingsForPackageForDisplay(packageName,
-				webAppRepositoryCode, webAppRepositorySourceCode, 0,
-				PACKAGE_INFO_MAX_USER_RATINGS, info);
-		if (status == B_OK) {
-			// Parse message
-			BMessage result;
-			BMessage items;
-			if (info.FindMessage("result", &result) == B_OK
-				&& result.FindMessage("items", &items) == B_OK) {
-
-				BAutolock locker(&fLock);
-				package->ClearUserRatings();
-
-				int32 index = 0;
-				while (true) {
-					BString name;
-					name << index++;
-
-					BMessage item;
-					if (items.FindMessage(name, &item) != B_OK)
-						break;
-
-					BString code;
-					if (item.FindString("code", &code) != B_OK) {
-						HDERROR("corrupt user rating at index %" B_PRIi32,
-							index);
-						continue;
-					}
-
-					BString user;
-					BMessage userInfo;
-					if (item.FindMessage("user", &userInfo) != B_OK
-							|| userInfo.FindString("nickname", &user) != B_OK) {
-						HDERROR("ignored user rating [%s] without a user "
-							"nickname", code.String());
-						continue;
-					}
-
-					// Extract basic info, all items are optional
-					BString languageCode;
-					BString comment;
-					double rating;
-					item.FindString("naturalLanguageCode", &languageCode);
-					item.FindString("comment", &comment);
-					if (item.FindDouble("rating", &rating) != B_OK)
-						rating = -1;
-					if (comment.Length() == 0 && rating == -1) {
-						HDERROR("rating [%s] has no comment or rating so will"
-							" be ignored", code.String());
-						continue;
-					}
-
-					// For which version of the package was the rating?
-					BString major = "?";
-					BString minor = "?";
-					BString micro = "";
-					double revision = -1;
-					BString architectureCode = "";
-					BMessage version;
-					if (item.FindMessage("pkgVersion", &version) == B_OK) {
-						version.FindString("major", &major);
-						version.FindString("minor", &minor);
-						version.FindString("micro", &micro);
-						version.FindDouble("revision", &revision);
-						version.FindString("architectureCode",
-							&architectureCode);
-					}
-					BString versionString = major;
-					versionString << ".";
-					versionString << minor;
-					if (!micro.IsEmpty()) {
-						versionString << ".";
-						versionString << micro;
-					}
-					if (revision > 0) {
-						versionString << "-";
-						versionString << (int) revision;
-					}
-
-					if (!architectureCode.IsEmpty()) {
-						versionString << " " << STR_MDASH << " ";
-						versionString << architectureCode;
-					}
-
-					double createTimestamp;
-					item.FindDouble("createTimestamp", &createTimestamp);
-
-					// Add the rating to the PackageInfo
-					UserRatingRef userRating(new UserRating(
-						UserInfo(user), rating,
-						comment,
-						languageCode,
-							// note that language identifiers are "code" in HDS and "id" in Haiku
-						versionString,
-						(uint64) createTimestamp), true);
-					package->AddUserRating(userRating);
-					HDDEBUG("rating [%s] retrieved from server", code.String());
-				}
-				HDDEBUG("did retrieve %" B_PRIi32 " user ratings for [%s]",
-						index - 1, packageName.String());
-			} else {
-				BString message;
-				message.SetToFormat("failure to retrieve user ratings for [%s]",
-					packageName.String());
-				_MaybeLogJsonRpcError(info, message.String());
-			}
-		} else
-			HDERROR("unable to retrieve user ratings");
-	}
-}
-
-
-void
-Model::_PopulatePackageChangelog(const PackageInfoRef& package)
-{
-	BMessage info;
-	BString packageName;
-
-	{
-		BAutolock locker(&fLock);
-		packageName = package->Name();
-	}
-
-	status_t status = fWebAppInterface.GetChangelog(packageName, info);
-
-	if (status == B_OK) {
-		// Parse message
-		BMessage result;
-		BString content;
-		if (info.FindMessage("result", &result) == B_OK) {
-			if (result.FindString("content", &content) == B_OK
-				&& 0 != content.Length()) {
-				BAutolock locker(&fLock);
-				package->SetChangelog(content);
-				HDDEBUG("changelog populated for [%s]", packageName.String());
-			} else
-				HDDEBUG("no changelog present for [%s]", packageName.String());
-		} else
-			_MaybeLogJsonRpcError(info, "populate package changelog");
-	} else {
-		HDERROR("unable to obtain the changelog for the package [%s]",
-			packageName.String());
-	}
 }
 
 
@@ -820,55 +388,6 @@ Model::SetCredentials(const BString& nickname, const BString& passwordClear,
 
 	if (nickname != existingNickname)
 		_NotifyAuthorizationChanged();
-}
-
-
-/*! When bulk repository data comes down from the server, it will
-    arrive as a json.gz payload.  This is stored locally as a cache
-    and this method will provide the on-disk storage location for
-    this file.
-*/
-
-status_t
-Model::DumpExportRepositoryDataPath(BPath& path)
-{
-	BString leaf;
-	leaf.SetToFormat("repository-all_%s.json.gz",
-		Language()->PreferredLanguage()->ID());
-	return StorageUtils::LocalWorkingFilesPath(leaf, path);
-}
-
-
-/*! When the system downloads reference data (eg; categories) from the server
-    then the downloaded data is stored and cached at the path defined by this
-    method.
-*/
-
-status_t
-Model::DumpExportReferenceDataPath(BPath& path)
-{
-	BString leaf;
-	leaf.SetToFormat("reference-all_%s.json.gz",
-		Language()->PreferredLanguage()->ID());
-	return StorageUtils::LocalWorkingFilesPath(leaf, path);
-}
-
-
-status_t
-Model::IconTarPath(BPath& path) const
-{
-	return StorageUtils::LocalWorkingFilesPath("pkgicon-all.tar", path);
-}
-
-
-status_t
-Model::DumpExportPkgDataPath(BPath& path,
-	const BString& repositorySourceCode)
-{
-	BString leaf;
-	leaf.SetToFormat("pkg-all-%s-%s.json.gz", repositorySourceCode.String(),
-		Language()->PreferredLanguage()->ID());
-	return StorageUtils::LocalWorkingFilesPath(leaf, path);
 }
 
 

@@ -176,7 +176,6 @@ struct fs_mount {
 namespace {
 
 struct advisory_lock : public DoublyLinkedListLinkImpl<advisory_lock> {
-	list_link		link;
 	void*			bound_to;
 	team_id			team;
 	pid_t			session;
@@ -358,6 +357,10 @@ static status_t file_read(struct file_descriptor* descriptor, off_t pos,
 	void* buffer, size_t* _bytes);
 static status_t file_write(struct file_descriptor* descriptor, off_t pos,
 	const void* buffer, size_t* _bytes);
+static ssize_t file_readv(struct file_descriptor* descriptor, off_t pos,
+	const struct iovec *vecs, int count);
+static ssize_t file_writev(struct file_descriptor* descriptor, off_t pos,
+	const struct iovec *vecs, int count);
 static off_t file_seek(struct file_descriptor* descriptor, off_t pos,
 	int seekType);
 static void file_free_fd(struct file_descriptor* descriptor);
@@ -431,24 +434,28 @@ static int open_vnode(struct vnode* vnode, int openMode, bool kernel);
 
 
 static struct fd_ops sFileOps = {
+	file_close,
+	file_free_fd,
 	file_read,
 	file_write,
+	file_readv,
+	file_writev,
 	file_seek,
 	common_ioctl,
-	NULL,		// set_flags
+	NULL,		// set_flags()
 	file_select,
 	file_deselect,
 	NULL,		// read_dir()
 	NULL,		// rewind_dir()
 	common_read_stat,
 	common_write_stat,
-	file_close,
-	file_free_fd
 };
 
 static struct fd_ops sDirectoryOps = {
-	NULL,		// read()
-	NULL,		// write()
+	dir_close,
+	dir_free_fd,
+	NULL, NULL,	// read(), write()
+	NULL, NULL,	// readv(), writev()
 	NULL,		// seek()
 	common_ioctl,
 	NULL,		// set_flags
@@ -458,13 +465,13 @@ static struct fd_ops sDirectoryOps = {
 	dir_rewind,
 	common_read_stat,
 	common_write_stat,
-	dir_close,
-	dir_free_fd
 };
 
 static struct fd_ops sAttributeDirectoryOps = {
-	NULL,		// read()
-	NULL,		// write()
+	attr_dir_close,
+	attr_dir_free_fd,
+	NULL, NULL,	// read(), write()
+	NULL, NULL,	// readv(), writev()
 	NULL,		// seek()
 	common_ioctl,
 	NULL,		// set_flags
@@ -474,46 +481,48 @@ static struct fd_ops sAttributeDirectoryOps = {
 	attr_dir_rewind,
 	common_read_stat,
 	common_write_stat,
-	attr_dir_close,
-	attr_dir_free_fd
 };
 
 static struct fd_ops sAttributeOps = {
+	attr_close,
+	attr_free_fd,
 	attr_read,
 	attr_write,
+	NULL,		// readv()
+	NULL,		// writev()
 	attr_seek,
 	common_ioctl,
-	NULL,		// set_flags
+	NULL,		// set_flags()
 	NULL,		// select()
 	NULL,		// deselect()
 	NULL,		// read_dir()
 	NULL,		// rewind_dir()
 	attr_read_stat,
 	attr_write_stat,
-	attr_close,
-	attr_free_fd
 };
 
 static struct fd_ops sIndexDirectoryOps = {
-	NULL,		// read()
-	NULL,		// write()
+	index_dir_close,
+	index_dir_free_fd,
+	NULL, NULL,	// read(), write()
+	NULL, NULL,	// readv(), writev()
 	NULL,		// seek()
 	NULL,		// ioctl()
-	NULL,		// set_flags
+	NULL,		// set_flags()
 	NULL,		// select()
 	NULL,		// deselect()
 	index_dir_read,
 	index_dir_rewind,
 	NULL,		// read_stat()
 	NULL,		// write_stat()
-	index_dir_close,
-	index_dir_free_fd
 };
 
 #if 0
 static struct fd_ops sIndexOps = {
-	NULL,		// read()
-	NULL,		// write()
+	NULL,		// dir_close()
+	NULL,		// free_fd()
+	NULL, NULL,	// read(), write()
+	NULL, NULL,	// readv(), writev()
 	NULL,		// seek()
 	NULL,		// ioctl()
 	NULL,		// set_flags
@@ -523,25 +532,23 @@ static struct fd_ops sIndexOps = {
 	NULL,		// dir_rewind()
 	index_read_stat,	// read_stat()
 	NULL,		// write_stat()
-	NULL,		// dir_close()
-	NULL		// free_fd()
 };
 #endif
 
 static struct fd_ops sQueryOps = {
-	NULL,		// read()
-	NULL,		// write()
+	query_close,
+	query_free_fd,
+	NULL, NULL,	// read(), write()
+	NULL, NULL,	// readv(), writev()
 	NULL,		// seek()
 	NULL,		// ioctl()
-	NULL,		// set_flags
+	NULL,		// set_flags()
 	NULL,		// select()
 	NULL,		// deselect()
 	query_read,
 	query_rewind,
 	NULL,		// read_stat()
 	NULL,		// write_stat()
-	query_close,
-	query_free_fd
 };
 
 
@@ -1206,12 +1213,14 @@ restart:
 
 		rw_lock_write_unlock(&sVnodeLock);
 
-		int type;
-		uint32 flags;
+		int type = 0;
+		uint32 flags = 0;
 		status = FS_MOUNT_CALL(vnode->mount, get_vnode, vnodeID, vnode, &type,
 			&flags, reenter);
-		if (status == B_OK && vnode->private_node == NULL)
+		if (status == B_OK && (vnode->private_node == NULL || vnode->ops == NULL)) {
+			KDEBUG_ONLY(panic("filesystem get_vnode returned 0 with unset fields"));
 			status = B_BAD_VALUE;
+		}
 
 		bool gotNode = status == B_OK;
 		bool publishSpecialSubNode = false;
@@ -2405,7 +2414,7 @@ fd_and_path_to_dir_vnode(int fd, char* path, VnodePutter& _vnode,
 		return B_BAD_VALUE;
 	if (*path == '\0')
 		return B_ENTRY_NOT_FOUND;
-	if (fd < 0)
+	if (fd == AT_FDCWD || fd == -1 || *path == '/')
 		return path_to_dir_vnode(path, _vnode, filename, kernel);
 
 	status_t status = get_dir_path_and_leaf(path, filename);
@@ -2760,7 +2769,7 @@ fd_and_path_to_vnode(int fd, char* path, bool traverseLeafLink,
 	if (path != NULL && *path == '\0')
 		return B_ENTRY_NOT_FOUND;
 
-	if (fd < 0 || (path != NULL && path[0] == '/')) {
+	if ((fd == AT_FDCWD || fd == -1) || (path != NULL && path[0] == '/')) {
 		// no FD or absolute path
 		return path_to_vnode(path, traverseLeafLink, _vnode, _parentID, kernel);
 	}
@@ -2785,8 +2794,28 @@ fd_and_path_to_vnode(int fd, char* path, bool traverseLeafLink,
 }
 
 
+struct vnode*
+fd_vnode(struct file_descriptor* descriptor)
+{
+	if (descriptor->ops == &sFileOps
+			|| descriptor->ops == &sDirectoryOps
+			|| descriptor->ops == &sAttributeOps
+			|| descriptor->ops == &sAttributeDirectoryOps)
+		return descriptor->u.vnode;
+
+	return NULL;
+}
+
+
+bool
+fd_is_file(struct file_descriptor* descriptor)
+{
+	return descriptor->ops == &sFileOps;
+}
+
+
 static int
-get_new_fd(int type, struct fs_mount* mount, struct vnode* vnode,
+get_new_fd(struct fd_ops* ops, struct fs_mount* mount, struct vnode* vnode,
 	void* cookie, int openMode, bool kernel)
 {
 	struct file_descriptor* descriptor;
@@ -2795,7 +2824,7 @@ get_new_fd(int type, struct fs_mount* mount, struct vnode* vnode,
 	// If the vnode is locked, we don't allow creating a new file/directory
 	// file_descriptor for it
 	if (vnode && vnode->mandatory_locked_by != NULL
-		&& (type == FDTYPE_FILE || type == FDTYPE_DIR))
+		&& (ops == &sFileOps || ops == &sDirectoryOps))
 		return B_BUSY;
 
 	if ((openMode & O_RDWR) != 0 && (openMode & O_WRONLY) != 0)
@@ -2811,34 +2840,7 @@ get_new_fd(int type, struct fs_mount* mount, struct vnode* vnode,
 		descriptor->u.mount = mount;
 	descriptor->cookie = cookie;
 
-	switch (type) {
-		// vnode types
-		case FDTYPE_FILE:
-			descriptor->ops = &sFileOps;
-			break;
-		case FDTYPE_DIR:
-			descriptor->ops = &sDirectoryOps;
-			break;
-		case FDTYPE_ATTR:
-			descriptor->ops = &sAttributeOps;
-			break;
-		case FDTYPE_ATTR_DIR:
-			descriptor->ops = &sAttributeDirectoryOps;
-			break;
-
-		// mount types
-		case FDTYPE_INDEX_DIR:
-			descriptor->ops = &sIndexDirectoryOps;
-			break;
-		case FDTYPE_QUERY:
-			descriptor->ops = &sQueryOps;
-			break;
-
-		default:
-			panic("get_new_fd() called with unknown type %d\n", type);
-			break;
-	}
-	descriptor->type = type;
+	descriptor->ops = ops;
 	descriptor->open_mode = openMode;
 
 	if (descriptor->ops->fd_seek != NULL) {
@@ -3241,7 +3243,7 @@ dump_vnode(int argc, char** argv)
 		argi++;
 	}
 
-	if (argi >= argc || argi + 2 < argc) {
+	if (argi >= argc || argi + 2 < argc || strcmp(argv[argi], "--help") == 0) {
 		print_debugger_command_usage(argv[0]);
 		return 0;
 	}
@@ -3376,7 +3378,7 @@ dump_io_context(int argc, char** argv)
 	kprintf(" max fds:\t%" B_PRIu32 "\n", context->table_size);
 
 	if (context->num_used_fds) {
-		kprintf("   no.  type    %*s  ref  open  mode         pos    %*s\n",
+		kprintf("   no.    %*s  ref  open  mode         pos    %*s\n",
 			B_PRINTF_POINTER_WIDTH, "ops", B_PRINTF_POINTER_WIDTH, "cookie");
 	}
 
@@ -3385,12 +3387,11 @@ dump_io_context(int argc, char** argv)
 		if (fd == NULL)
 			continue;
 
-		kprintf("  %3" B_PRIu32 ":  %4" B_PRId32 "  %p  %3" B_PRId32 "  %4"
+		kprintf("  %3" B_PRIu32 ":  %p  %3" B_PRId32 "  %4"
 			B_PRIu32 "  %4" B_PRIx32 "  %10" B_PRIdOFF "  %p  %s %p\n", i,
-			fd->type, fd->ops, fd->ref_count, fd->open_count, fd->open_mode,
+			fd->ops, fd->ref_count, fd->open_count, fd->open_mode,
 			fd->pos, fd->cookie,
-			fd->type >= FDTYPE_INDEX && fd->type <= FDTYPE_QUERY
-				? "mount" : "vnode",
+			(fd_vnode(fd) != NULL) ? "vnode" : "mount",
 			fd->u.vnode);
 	}
 
@@ -5361,7 +5362,7 @@ open_vnode(struct vnode* vnode, int openMode, bool kernel)
 	if (status != B_OK)
 		return status;
 
-	int fd = get_new_fd(FDTYPE_FILE, NULL, vnode, cookie, openMode, kernel);
+	int fd = get_new_fd(&sFileOps, NULL, vnode, cookie, openMode, kernel);
 	if (fd < 0) {
 		FS_CALL(vnode, close, cookie);
 		FS_CALL(vnode, free_cookie, cookie);
@@ -5476,7 +5477,7 @@ create_vnode(struct vnode* directory, const char* name, int openMode,
 		return B_BAD_VALUE;
 	}
 
-	int fd = get_new_fd(FDTYPE_FILE, NULL, vnode.Get(), cookie, openMode, kernel);
+	int fd = get_new_fd(&sFileOps, NULL, vnode.Get(), cookie, openMode, kernel);
 	if (fd >= 0) {
 		vnode.Detach();
 		return fd;
@@ -5510,7 +5511,7 @@ open_dir_vnode(struct vnode* vnode, bool kernel)
 		return status;
 
 	// directory is opened, create a fd
-	status = get_new_fd(FDTYPE_DIR, NULL, vnode, cookie, O_CLOEXEC, kernel);
+	status = get_new_fd(&sDirectoryOps, NULL, vnode, cookie, O_CLOEXEC, kernel);
 	if (status >= 0)
 		return status;
 
@@ -5537,7 +5538,7 @@ open_attr_dir_vnode(struct vnode* vnode, bool kernel)
 		return status;
 
 	// directory is opened, create a fd
-	status = get_new_fd(FDTYPE_ATTR_DIR, NULL, vnode, cookie, O_CLOEXEC,
+	status = get_new_fd(&sAttributeDirectoryOps, NULL, vnode, cookie, O_CLOEXEC,
 		kernel);
 	if (status >= 0)
 		return status;
@@ -5611,7 +5612,7 @@ file_open_entry_ref(dev_t mountID, ino_t directoryID, const char* name,
 
 	int newFD = open_vnode(vnode.Get(), openMode, kernel);
 	if (newFD >= 0) {
-		cache_node_opened(vnode.Get(), FDTYPE_FILE, vnode->cache, mountID,
+		cache_node_opened(vnode.Get(), vnode->cache, mountID,
 			directoryID, vnode->id, name);
 
 		// The vnode reference has been transferred to the FD
@@ -5644,7 +5645,7 @@ file_open(int fd, char* path, int openMode, bool kernel)
 	// open the vnode
 	int newFD = open_vnode(vnode.Get(), openMode, kernel);
 	if (newFD >= 0) {
-		cache_node_opened(vnode.Get(), FDTYPE_FILE, vnode->cache,
+		cache_node_opened(vnode.Get(), vnode->cache,
 			vnode->device, parentID, vnode->id, NULL);
 
 		// The vnode reference has been transferred to the FD
@@ -5663,7 +5664,7 @@ file_close(struct file_descriptor* descriptor)
 
 	FUNCTION(("file_close(descriptor = %p)\n", descriptor));
 
-	cache_node_closed(vnode, FDTYPE_FILE, vnode->cache, vnode->device,
+	cache_node_closed(vnode, vnode->cache, vnode->device,
 		vnode->id);
 	if (HAS_FS_CALL(vnode, close)) {
 		status = FS_CALL(vnode, close, descriptor->cookie);
@@ -5726,6 +5727,63 @@ file_write(struct file_descriptor* descriptor, off_t pos, const void* buffer,
 		return B_READ_ONLY_DEVICE;
 
 	return FS_CALL(vnode, write, descriptor->cookie, pos, buffer, length);
+}
+
+
+static ssize_t
+file_vector_io(struct file_descriptor* descriptor, off_t pos,
+	const struct iovec *vecs, int count, bool write)
+{
+	struct vnode* vnode = descriptor->u.vnode;
+	if (pos != -1 && descriptor->pos == -1)
+		return ESPIPE;
+	if (S_ISDIR(vnode->Type()))
+		return B_IS_A_DIRECTORY;
+
+	if (pos == -1)
+		return B_UNSUPPORTED;
+	if (!HAS_FS_CALL(vnode, io))
+		return B_UNSUPPORTED;
+
+	// We can only perform real vectored I/O for vnodes that have no cache,
+	// because the I/O hook bypasses the cache entirely.
+	if (vnode->cache != NULL)
+		return B_UNSUPPORTED;
+
+	BStackOrHeapArray<generic_io_vec, 8> iovecs(count);
+	if (!iovecs.IsValid())
+		return B_NO_MEMORY;
+
+	generic_size_t length = 0;
+	for (int i = 0; i < count; i++) {
+		iovecs[i].base = (generic_addr_t)vecs[i].iov_base;
+		iovecs[i].length = vecs[i].iov_len;
+		length += vecs[i].iov_len;
+	}
+
+	status_t status = (write ? vfs_write_pages : vfs_read_pages)(vnode,
+		descriptor->cookie, pos, iovecs, count, 0, &length);
+	if (length > 0)
+		return length;
+	return status;
+}
+
+
+static ssize_t
+file_readv(struct file_descriptor* descriptor, off_t pos,
+	const struct iovec *vecs, int count)
+{
+	FUNCTION(("file_readv: pos %" B_PRIdOFF "\n", pos));
+	return file_vector_io(descriptor, pos, vecs, count, false);
+}
+
+
+static ssize_t
+file_writev(struct file_descriptor* descriptor, off_t pos,
+	const struct iovec *vecs, int count)
+{
+	FUNCTION(("file_writev: pos %" B_PRIdOFF "\n", pos));
+	return file_vector_io(descriptor, pos, vecs, count, true);
 }
 
 
@@ -5847,9 +5905,8 @@ file_select(struct file_descriptor* descriptor, uint8 event,
 	// If the FS has no select() hook, notify select() now.
 	if (!HAS_FS_CALL(vnode, select)) {
 		if (!SELECT_TYPE_IS_OUTPUT_ONLY(event))
-			return notify_select_event(sync, event);
-		else
-			return B_OK;
+			notify_select_event(sync, event);
+		return B_UNSUPPORTED;
 	}
 
 	return FS_CALL(vnode, select, descriptor->cookie, event, sync);
@@ -5943,7 +6000,7 @@ dir_open_entry_ref(dev_t mountID, ino_t parentID, const char* name, bool kernel)
 
 	int newFD = open_dir_vnode(vnode.Get(), kernel);
 	if (newFD >= 0) {
-		cache_node_opened(vnode.Get(), FDTYPE_DIR, vnode->cache, mountID, parentID,
+		cache_node_opened(vnode.Get(), vnode->cache, mountID, parentID,
 			vnode->id, name);
 
 		// The vnode reference has been transferred to the FD
@@ -5971,7 +6028,7 @@ dir_open(int fd, char* path, bool kernel)
 	// open the dir
 	int newFD = open_dir_vnode(vnode.Get(), kernel);
 	if (newFD >= 0) {
-		cache_node_opened(vnode.Get(), FDTYPE_DIR, vnode->cache, vnode->device,
+		cache_node_opened(vnode.Get(), vnode->cache, vnode->device,
 			parentID, vnode->id, NULL);
 
 		// The vnode reference has been transferred to the FD
@@ -5989,7 +6046,7 @@ dir_close(struct file_descriptor* descriptor)
 
 	FUNCTION(("dir_close(descriptor = %p)\n", descriptor));
 
-	cache_node_closed(vnode, FDTYPE_DIR, vnode->cache, vnode->device,
+	cache_node_closed(vnode, vnode->cache, vnode->device,
 		vnode->id);
 	if (HAS_FS_CALL(vnode, close_dir))
 		return FS_CALL(vnode, close_dir, descriptor->cookie);
@@ -6167,7 +6224,7 @@ common_fcntl(int fd, int op, size_t argument, bool kernel)
 	status_t status = B_OK;
 
 	if (op == F_SETLK || op == F_SETLKW || op == F_GETLK) {
-		if (descriptor->type != FDTYPE_FILE)
+		if (descriptor->ops != &sFileOps)
 			status = B_BAD_VALUE;
 		else if (kernel)
 			memcpy(&flock, (struct flock*)argument, sizeof(struct flock));
@@ -6202,10 +6259,13 @@ common_fcntl(int fd, int op, size_t argument, bool kernel)
 		}
 
 		case F_SETFL:
+		{
 			// Set file descriptor open mode
 
-			// we only accept changes to O_APPEND and O_NONBLOCK
-			argument &= O_APPEND | O_NONBLOCK;
+			// we only accept changes to certain flags
+			const int32 modifiableFlags = O_APPEND | O_NONBLOCK;
+			argument &= modifiableFlags;
+
 			if (descriptor->ops->fd_set_flags != NULL) {
 				status = descriptor->ops->fd_set_flags(descriptor.Get(), argument);
 			} else if (vnode != NULL && HAS_FS_CALL(vnode, set_flags)) {
@@ -6217,10 +6277,11 @@ common_fcntl(int fd, int op, size_t argument, bool kernel)
 			if (status == B_OK) {
 				// update this descriptor's open_mode field
 				descriptor->open_mode = (descriptor->open_mode
-					& ~(O_APPEND | O_NONBLOCK)) | argument;
+					& ~modifiableFlags) | argument;
 			}
 
 			break;
+		}
 
 		case F_GETFL:
 			// Get file descriptor open mode
@@ -6777,7 +6838,7 @@ attr_create(int fd, char* path, const char* name, uint32 type,
 	if (status != B_OK)
 		return status;
 
-	fd = get_new_fd(FDTYPE_ATTR, NULL, vnode.Get(), cookie, openMode, kernel);
+	fd = get_new_fd(&sAttributeOps, NULL, vnode.Get(), cookie, openMode, kernel);
 	if (fd >= 0) {
 		vnode.Detach();
 		return fd;
@@ -6819,7 +6880,7 @@ attr_open(int fd, char* path, const char* name, int openMode, bool kernel)
 		return status;
 
 	// now we only need a file descriptor for this attribute and we're done
-	fd = get_new_fd(FDTYPE_ATTR, NULL, vnode.Get(), cookie, openMode, kernel);
+	fd = get_new_fd(&sAttributeOps, NULL, vnode.Get(), cookie, openMode, kernel);
 	if (fd >= 0) {
 		vnode.Detach();
 		return fd;
@@ -7047,7 +7108,7 @@ index_dir_open(dev_t mountID, bool kernel)
 
 	// get fd for the index directory
 	int fd;
-	fd = get_new_fd(FDTYPE_INDEX_DIR, mount, NULL, cookie, O_CLOEXEC, kernel);
+	fd = get_new_fd(&sIndexDirectoryOps, mount, NULL, cookie, O_CLOEXEC, kernel);
 	if (fd >= 0)
 		return fd;
 
@@ -7250,7 +7311,7 @@ query_open(dev_t device, const char* query, uint32 flags, port_id port,
 
 	// get fd for the index directory
 	int fd;
-	fd = get_new_fd(FDTYPE_QUERY, mount, NULL, cookie, O_CLOEXEC, kernel);
+	fd = get_new_fd(&sQueryOps, mount, NULL, cookie, O_CLOEXEC, kernel);
 	if (fd >= 0)
 		return fd;
 
@@ -9220,7 +9281,7 @@ _user_flock(int fd, int operation)
 	if (!descriptor.IsSet())
 		return B_FILE_ERROR;
 
-	if (descriptor->type != FDTYPE_FILE)
+	if (descriptor->ops != &sFileOps)
 		return B_BAD_VALUE;
 
 	struct flock flock;
@@ -9543,10 +9604,12 @@ _user_create_pipe(int* userFDs)
 	}
 
 	// Everything looks good so far. Open two FDs for reading respectively
-	// writing.
+	// writing, O_NONBLOCK to avoid blocking on open with O_RDONLY
 	int fds[2];
-	fds[0] = open_vnode(vnode, O_RDONLY, false);
+	fds[0] = open_vnode(vnode, O_RDONLY | O_NONBLOCK, false);
 	fds[1] = open_vnode(vnode, O_WRONLY, false);
+	// Reset O_NONBLOCK
+	_kern_fcntl(fds[0], F_SETFL, 0);
 
 	FDCloser closer0(fds[0], false);
 	FDCloser closer1(fds[1], false);

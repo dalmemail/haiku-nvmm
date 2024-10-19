@@ -7,6 +7,7 @@
 #include <condition_variable.h>
 #include <lock.h>
 #include <StackOrHeapArray.h>
+#include <util/AutoLock.h>
 #include <virtio.h>
 
 #include "virtio_blk.h"
@@ -71,7 +72,6 @@ typedef struct {
 	mutex					lock;
 	int32					currentRequest;
 	ConditionVariable		interruptCondition;
-	ConditionVariableEntry 	interruptConditionEntry;
 } virtio_block_driver_info;
 
 
@@ -192,7 +192,8 @@ do_io(void* cookie, IOOperation* operation)
 {
 	virtio_block_driver_info* info = (virtio_block_driver_info*)cookie;
 
-	if (mutex_trylock(&info->lock) != B_OK)
+	MutexTryLocker locker(&info->lock);
+	if (!locker.IsLocked())
 		return B_BUSY;
 
 	BStackOrHeapArray<physical_entry, 16> entries(operation->VecCount() + 2);
@@ -215,15 +216,17 @@ do_io(void* cookie, IOOperation* operation)
 		* sizeof(physical_entry));
 
 	atomic_add(&info->currentRequest, 1);
-	info->interruptCondition.Add(&info->interruptConditionEntry);
 
-	info->virtio->queue_request_v(info->virtio_queue, entries,
+	ConditionVariableEntry entry;
+	info->interruptCondition.Add(&entry);
+
+	status_t result = info->virtio->queue_request_v(info->virtio_queue, entries,
 		1 + (operation->IsWrite() ? operation->VecCount() : 0 ),
 		1 + (operation->IsWrite() ? 0 : operation->VecCount()),
 		(void *)(addr_t)info->currentRequest);
 
-	status_t result = info->interruptConditionEntry.Wait(B_RELATIVE_TIMEOUT,
-		10 * 1000 * 1000);
+	if (result == B_OK)
+		result = entry.Wait(B_RELATIVE_TIMEOUT, 10 * 1000 * 1000);
 
 	size_t bytesTransferred = 0;
 	status_t status = B_OK;
@@ -246,7 +249,6 @@ do_io(void* cookie, IOOperation* operation)
 
 	info->io_scheduler->OperationCompleted(operation, status,
 		bytesTransferred);
-	mutex_unlock(&info->lock);
 	return status;
 }
 
@@ -284,12 +286,18 @@ virtio_block_init_device(void* _info, void** _cookie)
 	TRACE("virtio_block: capacity: %" B_PRIu64 ", block_size %" B_PRIu32 "\n",
 		info->capacity, info->block_size);
 
+	uint16 requestedSize = 0;
+	if ((info->features & VIRTIO_BLK_F_SEG_MAX) != 0)
+		requestedSize = info->config.seg_max + 2;
+			// two entries are taken up by the header and result
+
 	status = info->virtio->alloc_queues(info->virtio_device, 1,
-		&info->virtio_queue);
+		&info->virtio_queue, &requestedSize);
 	if (status != B_OK) {
 		ERROR("queue allocation failed (%s)\n", strerror(status));
 		return status;
 	}
+
 	status = info->virtio->setup_interrupt(info->virtio_device,
 		virtio_block_config_callback, info);
 

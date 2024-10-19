@@ -1,6 +1,6 @@
-1	russian	x-vnd.Haiku-PowerStatus	1085070685
+1	russian	x-vnd.Haiku-PowerStatus	4080343264
 Run in window	PowerStatus		Запустить в окне
-Extended battery info	PowerStatus		Расширенная информация о батарее
+Extended battery info	PowerStatus		Расширенные сведения о батарее
 Show status icon	PowerStatus		Показать значок статуса
 Battery charging	PowerStatus		Батарея заряжается
 Design capacity low warning: 	PowerStatus		Уровень полного разряда: 
@@ -11,13 +11,14 @@ Last full charge: 	PowerStatus		Последняя полная зарядка:
 Current rate: 	PowerStatus		Текущее значение: 
 Show text label	PowerStatus		Показать текстовую метку
 Quit	PowerStatus		Выход
+Battery not charging	PowerStatus		Батарея не заряжается
 Battery low	PowerStatus		Низкий заряд батареи
 Model number: 	PowerStatus		Номер модели: 
 Battery unused	PowerStatus		Батарея не используется
 Type: 	PowerStatus		Тип: 
-Damaged battery	PowerStatus		Поврежденная батарея
-You can run PowerStatus in a window or install it in the Deskbar.	PowerStatus		Вы можете запустить состояние электропитания в окне или установить его в Deskbar.
- mAh	PowerStatus		 мАч
+Damaged battery	PowerStatus		Повреждённая батарея
+You can run PowerStatus in a window or install it in the Deskbar.	PowerStatus		Вы можете запустить PowerStatus в окне или установить его в Deskbar.
+ mAh	PowerStatus		 мА·ч
 Battery discharging	PowerStatus		Батарея разряжается
 Design voltage: 	PowerStatus		Штатное напряжение: 
 discharging	PowerStatus		разрядка
@@ -28,9 +29,9 @@ Show time	PowerStatus		Показать время
 About…	PowerStatus		О программе…
 Serial number: 	PowerStatus		Серийный номер: 
 Battery critical	PowerStatus		Критический заряд батареи
-Capacity: 	PowerStatus		Емкость: 
+Capacity: 	PowerStatus		Ёмкость: 
  mW	PowerStatus		 мВт
-No supported battery detected. PowerStatus cannot be used on your system.	PowerStatus		Поддерживаемые аккумуляторы не были найдены. PowerStatus невозможно использовать на этой системе.
+No supported battery detected. PowerStatus cannot be used on your system.	PowerStatus		Поддерживаемые аккумуляторы не найдены. PowerStatus невозможно использовать на этой системе.
 Show percent	PowerStatus		Показать в процентах
 Capacity granularity 1: 	PowerStatus		Детализация ёмкости 1: 
 The battery level is getting low, please plug in the device.	PowerStatus		Заряд батареи становится слишком низким, пожалуйста, подключите устройство к сети.
@@ -38,9 +39,10 @@ Design capacity warning: 	PowerStatus		Уровень низкого заряд�
 Capacity granularity 2: 	PowerStatus		Детализация ёмкости 2: 
 Too bad!	PowerStatus		Очень жаль!
 Technology: 	PowerStatus		Технология: 
- mWh	PowerStatus		 мВтч
+not charging	PowerStatus		нет зарядки
+ mWh	PowerStatus		 мВт⋅ч
 PowerStatus	System name		Электропитание
-Design capacity: 	PowerStatus		Штатная емкость: 
+Design capacity: 	PowerStatus		Штатная ёмкость: 
 OEM info: 	PowerStatus		Изготовитель: 
 no battery	PowerStatus		без батареи
 Empty battery slot	PowerStatus		Пустой слот батареи

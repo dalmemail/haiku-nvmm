@@ -7,6 +7,20 @@
  *		Axel Dörfler, axeld@pinc-software.de.
  */
 
+#include <debug.h>
+
+#if KDEBUG
+#define KDEBUG_STATIC static
+static status_t _mutex_lock(struct mutex* lock, void* locker);
+static void _mutex_unlock(struct mutex* lock);
+#else
+#define KDEBUG_STATIC
+#define mutex_lock		mutex_lock_inline
+#define mutex_unlock	mutex_unlock_inline
+#define mutex_trylock	mutex_trylock_inline
+#define mutex_lock_with_timeout	mutex_lock_with_timeout_inline
+#endif
+
 #include <lock.h>
 
 #include <stdlib.h>
@@ -730,7 +744,7 @@ _mutex_lock_threads_locked(mutex* lock)
 }
 
 
-status_t
+KDEBUG_STATIC status_t
 _mutex_lock(mutex* lock, void*)
 {
 	AutoLocker<ThreadSpinlock> locker(sThreadSpinlock);
@@ -779,7 +793,7 @@ _mutex_unlock_threads_locked(mutex* lock)
 }
 
 
-void
+KDEBUG_STATIC void
 _mutex_unlock(mutex* lock)
 {
 	AutoLocker<ThreadSpinlock> locker(sThreadSpinlock);
@@ -787,8 +801,9 @@ _mutex_unlock(mutex* lock)
 }
 
 
+#undef mutex_trylock
 status_t
-_mutex_trylock(mutex* lock)
+mutex_trylock(mutex* lock)
 {
 #if KDEBUG
 	AutoLocker<ThreadSpinlock> _(sThreadSpinlock);
@@ -799,4 +814,28 @@ _mutex_trylock(mutex* lock)
 	}
 #endif
 	return B_WOULD_BLOCK;
+}
+
+
+#undef mutex_lock
+status_t
+mutex_lock(mutex* lock)
+{
+#if KDEBUG
+	return _mutex_lock(lock, NULL);
+#else
+	return mutex_lock_inline(lock);
+#endif
+}
+
+
+#undef mutex_unlock
+void
+mutex_unlock(mutex* lock)
+{
+#if KDEBUG
+	_mutex_unlock(lock);
+#else
+	mutex_unlock_inline(lock);
+#endif
 }

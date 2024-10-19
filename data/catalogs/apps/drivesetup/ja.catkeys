@@ -1,4 +1,4 @@
-1	japanese	x-vnd.Haiku-DriveSetup	63900332
+1	japanese	x-vnd.Haiku-DriveSetup	2521240656
 Could not unmount partition %s.	MainWindow		パーティション %s をマウント解除できません。
 Mount all	MainWindow		すべてマウント
 Disk	MainWindow		ディスク
@@ -6,6 +6,7 @@ Are you sure you want to write the changes back to disk now?\n\nAll data on the 
 Device	PartitionList		デバイス
 Initialize	MainWindow		初期化
 Could not change the parameters of the selected partition.	MainWindow		選択されたパーティションのパラメーター変更ができません。
+Are you sure you want to write the changes back to disk now?\n\nAll data on the partition \"%s\" will be irretrievably lost if you do so!	MainWindow		本当に変更をディスクに保存しますか?\n\nその場合、選択されたパーティション\"%s\"のすべてのデータが回復不能までに破壊されます!
 PGP encrypted	Encryption utils		PGP で暗号化された
 Delete partition	MainWindow		パーティションの削除
 Error: 	MainWindow	in any error alert	エラー : 
@@ -22,12 +23,12 @@ Validation of the given parameters failed.	MainWindow		指定されたパラメ�
 Are you sure you want to format the partition \"%s\"? You will be asked again before changes are written to the disk.	MainWindow		パーティション \"%s\" をフォーマットしますか? 変更をディスクに書き込む直前に再度確認します。
 DriveSetup	System name		DriveSetup
 Mounted at	PartitionList		マウント先
+Disk system %s not found!	MainWindow		ディスクシステム%sが見つかりません!
 Create…	MainWindow		新規作成...
 Write changes	MainWindow		変更を書き込む
 Initialization of the partition %s failed. (Nothing has been written to disk.)	MainWindow		パーティション %s の初期化に失敗しました (ディスクに何も書き込まれていません)。
 Validation of the given creation parameters failed.	MainWindow		指定された作成パラメーターの検証に失敗しました。
 Eject	MainWindow		取り出す
-Are you sure you want to write the changes back to disk now?\n\nAll data on the disk %s will be irretrievably lost if you do so!	MainWindow		変更をすぐにディスクに保存しますか?\n\nその場合、ディスク %s のデータがすべて失われます。
 Surface test (not implemented)	MainWindow		表面チェック (実装されていません)
 Read only	PartitionList		読み取り専用
 The panel could not return successfully.	MainWindow		パネルは正しく返しません。
@@ -64,7 +65,6 @@ Are you sure you want to write the changes back to disk now?\n\nAll data on the 
 Change	ChangeParametersPanel		変更
 Partition name:	ChangeParametersPanel		パーティション名 :
 LUKS encrypted	Encryption utils		LUKS で暗号化された
-Are you sure you want to write the changes back to disk now?\n\nAll data on the partition %s will be irretrievably lost if you do so!	MainWindow		変更をすぐにディスクに保存しますか?\n\nその場合、ディスク %s のデータがすべて失われます。
 Empty space	PartitionList		空のスペース
 Cancel	AbstractParametersPanel		中止
 Format	MainWindow		フォーマット
@@ -85,7 +85,6 @@ Change parameters	MainWindow		パラメーターの変更
 Rescan	MainWindow		ディスクの再検出
 There was an error acquiring the partition row.	MainWindow		パーティション情報を取得の際、エラーが発生しました。
 Failed to initialize the disk %s!\n	MainWindow		ディスク %s の初期化に失敗しました。\n
-Disk system \"%s\" not found!	MainWindow		ディスクシステム \"%s\" が見つかりません!
 The partition cannot be unmounted.	MainWindow		パーティションをアンマウントできません。
 Delete	MainWindow		削除
 Partition type:	ChangeParametersPanel		パーティション種別 :
@@ -100,6 +99,7 @@ The partition %s is already unmounted.	MainWindow		パーティション %s は�
 Are you sure you want to change parameters of the selected partition?\n\nThe partition may no longer be recognized by other operating systems anymore!	MainWindow		選択したパーティションのパラメーターを変更しますか?\n\nパーティションはほかのオペレーティングシステムからはもう認識されないかもしれません。
 Boot	PartitionList		ブート
 OK	AbstractParametersPanel		OK
+Are you sure you want to write the changes back to disk now?\n\nAll data on the disk \"%s\" will be irretrievably lost if you do so!	MainWindow		本当に変更をディスクに保存しますか?\n\nその場合、選択されたディスク\"%s\"のすべてのデータが回復不能までに破壊されます!
 Virtual	PartitionList		仮想
 Virtual	DiskView		仮想
 Are you sure you want to write the changes back to disk now?\n\nAll data on the selected disk will be irretrievably lost if you do so!	MainWindow		変更をすぐにディスクに保存しますか?\n\nその場合、選択されたディスクのデータがすべて失われますので、ご注意ください。

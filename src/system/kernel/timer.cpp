@@ -27,8 +27,8 @@
 
 struct per_cpu_timer_data {
 	spinlock		lock;
-	timer* volatile	events;
-	timer* volatile	current_event;
+	timer*			events;
+	timer*			current_event;
 	int32			current_event_in_progress;
 	bigtime_t		real_time_offset;
 };
@@ -67,26 +67,23 @@ set_hardware_timer(bigtime_t scheduleTime)
 }
 
 
-/*! NOTE: expects interrupts to be off */
+/*! NOTE: expects the list to be locked. */
 static void
-add_event_to_list(timer* event, timer* volatile* list)
+add_event_to_list(timer* event, timer** list)
 {
 	timer* next;
-	timer* last = NULL;
+	timer* previous = NULL;
 
-	// stick it in the event list
-	for (next = *list; next; last = next, next = (timer*)next->next) {
+	for (next = *list; next != NULL; previous = next, next = previous->next) {
 		if ((bigtime_t)next->schedule_time >= (bigtime_t)event->schedule_time)
 			break;
 	}
 
-	if (last != NULL) {
-		event->next = last->next;
-		last->next = event;
-	} else {
-		event->next = next;
+	event->next = next;
+	if (previous != NULL)
+		previous->next = event;
+	else
 		*list = event;
-	}
 }
 
 
@@ -106,7 +103,7 @@ per_cpu_real_time_clock_changed(void*, int cpu)
 	cpuData.real_time_offset = realTimeOffset;
 
 	timer* affectedTimers = NULL;
-	timer* volatile* it = &cpuData.events;
+	timer** it = &cpuData.events;
 	timer* firstEvent = *it;
 	while (timer* event = *it) {
 		// check whether it's an absolute real-time timer
@@ -245,24 +242,21 @@ timer_real_time_clock_changed()
 int32
 timer_interrupt()
 {
-	timer* event;
-	spinlock* spinlock;
 	per_cpu_timer_data& cpuData = sPerCPU[smp_get_current_cpu()];
 	int32 rc = B_HANDLED_INTERRUPT;
 
 	TRACE(("timer_interrupt: time %" B_PRIdBIGTIME ", cpu %" B_PRId32 "\n",
 		system_time(), smp_get_current_cpu()));
 
-	spinlock = &cpuData.lock;
-
+	spinlock* spinlock = &cpuData.lock;
 	acquire_spinlock(spinlock);
 
-	event = cpuData.events;
+	timer* event = cpuData.events;
 	while (event != NULL && ((bigtime_t)event->schedule_time < system_time())) {
 		// this event needs to happen
 		int mode = event->flags;
 
-		cpuData.events = (timer*)event->next;
+		cpuData.events = event->next;
 		cpuData.current_event = event;
 		atomic_set(&cpuData.current_event_in_progress, 1);
 
@@ -282,13 +276,13 @@ timer_interrupt()
 		acquire_spinlock(spinlock);
 
 		if ((mode & ~B_TIMER_FLAGS) == B_PERIODIC_TIMER
-			&& cpuData.current_event != NULL) {
+				&& cpuData.current_event != NULL) {
 			// we need to adjust it and add it back to the list
 			event->schedule_time += event->period;
 
 			// If the new schedule time is a full interval or more in the past,
 			// skip ticks.
-			bigtime_t now =  system_time();
+			bigtime_t now = system_time();
 			if (now >= event->schedule_time + event->period) {
 				// pick the closest tick in the past
 				event->schedule_time = now
@@ -299,7 +293,6 @@ timer_interrupt()
 		}
 
 		cpuData.current_event = NULL;
-
 		event = cpuData.events;
 	}
 
@@ -319,8 +312,7 @@ timer_interrupt()
 status_t
 add_timer(timer* event, timer_hook hook, bigtime_t period, int32 flags)
 {
-	bigtime_t currentTime = system_time();
-	cpu_status state;
+	const bigtime_t currentTime = system_time();
 
 	if (event == NULL || hook == NULL || period < 0)
 		return B_BAD_VALUE;
@@ -328,12 +320,8 @@ add_timer(timer* event, timer_hook hook, bigtime_t period, int32 flags)
 	TRACE(("add_timer: event %p\n", event));
 
 	// compute the schedule time
-	bigtime_t scheduleTime;
-	if ((flags & B_TIMER_USE_TIMER_STRUCT_TIMES) != 0) {
-		scheduleTime = event->schedule_time;
-		period = event->period;
-	} else {
-		scheduleTime = period;
+	if ((flags & B_TIMER_USE_TIMER_STRUCT_TIMES) == 0) {
+		bigtime_t scheduleTime = period;
 		if ((flags & ~B_TIMER_FLAGS) != B_ONE_SHOT_ABSOLUTE_TIMER)
 			scheduleTime += currentTime;
 		event->schedule_time = (int64)scheduleTime;
@@ -343,15 +331,15 @@ add_timer(timer* event, timer_hook hook, bigtime_t period, int32 flags)
 	event->hook = hook;
 	event->flags = flags;
 
-	state = disable_interrupts();
-	int currentCPU = smp_get_current_cpu();
+	InterruptsLocker interruptsLocker;
+	const int currentCPU = smp_get_current_cpu();
 	per_cpu_timer_data& cpuData = sPerCPU[currentCPU];
-	acquire_spinlock(&cpuData.lock);
+	SpinLocker locker(&cpuData.lock);
 
 	// If the timer is an absolute real-time base timer, convert the schedule
 	// time to system time.
 	if ((flags & ~B_TIMER_FLAGS) == B_ONE_SHOT_ABSOLUTE_TIMER
-		&& (flags & B_TIMER_REAL_TIME_BASE) != 0) {
+			&& (flags & B_TIMER_REAL_TIME_BASE) != 0) {
 		if (event->schedule_time > cpuData.real_time_offset)
 			event->schedule_time -= cpuData.real_time_offset;
 		else
@@ -363,10 +351,7 @@ add_timer(timer* event, timer_hook hook, bigtime_t period, int32 flags)
 
 	// if we were stuck at the head of the list, set the hardware timer
 	if (event == cpuData.events)
-		set_hardware_timer(scheduleTime, currentTime);
-
-	release_spinlock(&cpuData.lock);
-	restore_interrupts(state);
+		set_hardware_timer(event->schedule_time, currentTime);
 
 	return B_OK;
 }
@@ -400,20 +385,20 @@ cancel_timer(timer* event)
 	if (event != cpuData.current_event) {
 		// The timer hook is not yet being executed.
 		timer* current = cpuData.events;
-		timer* last = NULL;
+		timer* previous = NULL;
 
 		while (current != NULL) {
 			if (current == event) {
 				// we found it
-				if (last == NULL)
+				if (previous == NULL)
 					cpuData.events = current->next;
 				else
-					last->next = current->next;
+					previous->next = current->next;
 				current->next = NULL;
 				// break out of the whole thing
 				break;
 			}
-			last = current;
+			previous = current;
 			current = current->next;
 		}
 
@@ -426,6 +411,9 @@ cancel_timer(timer* event)
 		event->cpu = 0xffff;
 
 		// If on the current CPU, also reset the hardware timer.
+		// FIXME: Theoretically we should be able to skip this if (previous == NULL).
+		// But it seems adding that causes problems on some systems, possibly due to
+		// some other bug. For now, just reset the hardware timer on every cancellation.
 		if (cpu == smp_get_current_cpu()) {
 			if (cpuData.events == NULL)
 				arch_timer_clear_hardware_timer();

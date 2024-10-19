@@ -13,6 +13,9 @@
 
 class UnpackingDirectory : public Directory, public UnpackingNode {
 public:
+	static	void*				operator new(size_t size);
+	static	void				operator delete(void* block);
+
 								UnpackingDirectory(ino_t id);
 	virtual						~UnpackingDirectory();
 
@@ -53,8 +56,11 @@ private:
 };
 
 
-class RootDirectory : public UnpackingDirectory {
+class RootDirectory final : public UnpackingDirectory {
 public:
+	static	void*				operator new(size_t size);
+	static	void				operator delete(void* block);
+
 								RootDirectory(ino_t id,
 									const timespec& modifiedTime);
 

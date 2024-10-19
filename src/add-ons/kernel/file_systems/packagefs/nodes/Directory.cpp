@@ -16,6 +16,7 @@ Directory::Directory(ino_t id)
 	:
 	Node(id)
 {
+	rw_lock_init(&fLock, "packagefs directory");
 }
 
 
@@ -24,16 +25,19 @@ Directory::~Directory()
 	Node* child = fChildTable.Clear(true);
 	while (child != NULL) {
 		Node* next = child->NameHashTableNext();
+		child->_SetParent(NULL);
 		child->ReleaseReference();
 		child = next;
 	}
+
+	rw_lock_destroy(&fLock);
 }
 
 
 status_t
-Directory::Init(Directory* parent, const String& name)
+Directory::Init(const String& name)
 {
-	status_t error = Node::Init(parent, name);
+	status_t error = Node::Init(name);
 	if (error != B_OK)
 		return error;
 
@@ -79,8 +83,12 @@ Directory::ReadSymlink(void* buffer, size_t* bufferSize)
 void
 Directory::AddChild(Node* node)
 {
+	ASSERT_WRITE_LOCKED_RW_LOCK(&fLock);
+	ASSERT(node->fParent == NULL);
+
 	fChildTable.Insert(node);
 	fChildList.Add(node);
+	node->_SetParent(this);
 	node->AcquireReference();
 }
 
@@ -88,10 +96,14 @@ Directory::AddChild(Node* node)
 void
 Directory::RemoveChild(Node* node)
 {
+	ASSERT_WRITE_LOCKED_RW_LOCK(&fLock);
+	ASSERT(node->fParent == this);
+
 	Node* nextNode = fChildList.GetNext(node);
 
 	fChildTable.Remove(node);
 	fChildList.Remove(node);
+	node->_SetParent(NULL);
 	node->ReleaseReference();
 
 	// adjust directory iterators pointing to the removed child
@@ -113,6 +125,7 @@ Directory::FindChild(const StringKey& name)
 void
 Directory::AddDirectoryIterator(DirectoryIterator* iterator)
 {
+	ASSERT_WRITE_LOCKED_RW_LOCK(&fLock);
 	fIterators.Add(iterator);
 }
 
@@ -120,5 +133,6 @@ Directory::AddDirectoryIterator(DirectoryIterator* iterator)
 void
 Directory::RemoveDirectoryIterator(DirectoryIterator* iterator)
 {
+	ASSERT_WRITE_LOCKED_RW_LOCK(&fLock);
 	fIterators.Remove(iterator);
 }

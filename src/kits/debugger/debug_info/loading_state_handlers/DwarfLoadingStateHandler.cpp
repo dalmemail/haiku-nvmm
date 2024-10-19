@@ -68,9 +68,19 @@ DwarfLoadingStateHandler::HandleState(
 
 	DwarfFileLoadingState& fileState = dwarfState->GetFileState();
 
+	if (!interface->IsInteractive()) {
+		fileState.state = DWARF_FILE_LOADING_STATE_USER_INPUT_PROVIDED;
+		return;
+	}
+
 	BString requiredPackage;
-	_GetMatchingDebugInfoPackage(fileState.externalInfoFileName,
-		requiredPackage);
+	try {
+		// Package Kit may throw exceptions.
+		_GetMatchingDebugInfoPackage(fileState.externalInfoFileName,
+			requiredPackage);
+	} catch (...) {
+		requiredPackage = BString();
+	}
 
 	// loop so that the user has a chance to retry or locate the file manually
 	// in case package installation fails, e.g. due to transient download
@@ -78,29 +88,26 @@ DwarfLoadingStateHandler::HandleState(
 	for (;;) {
 		int32 choice;
 		BString message;
-		if (interface->IsInteractive()) {
-			if (requiredPackage.IsEmpty()) {
-				message.SetToFormat("The debug information file '%s' for "
-					"image '%s' is missing. Would you like to locate the file "
-					"manually?", fileState.externalInfoFileName.String(),
-					fileState.dwarfFile->Name());
-				choice = interface->SynchronouslyAskUser("Debug info missing",
-					message.String(), "Locate", "Skip", NULL);
-				if (choice == 0)
-					choice = USER_CHOICE_LOCATE_FILE;
-				else if (choice == 1)
-					choice = USER_CHOICE_SKIP;
-			} else {
-				message.SetToFormat("The debug information file '%s' for "
-					"image '%s' is missing, but can be found in the package "
-					"'%s'. Would you like to install it, or locate the file "
-					"manually?", fileState.externalInfoFileName.String(),
-					fileState.dwarfFile->Name(), requiredPackage.String());
-				choice = interface->SynchronouslyAskUser("Debug info missing",
-					message.String(), "Install", "Locate", "Skip");
-			}
-		} else
-			choice = USER_CHOICE_SKIP;
+		if (requiredPackage.IsEmpty()) {
+			message.SetToFormat("The debug information file '%s' for "
+				"image '%s' is missing. Would you like to locate the file "
+				"manually?", fileState.externalInfoFileName.String(),
+				fileState.dwarfFile->Name());
+			choice = interface->SynchronouslyAskUser("Debug info missing",
+				message.String(), "Locate", "Skip", NULL);
+			if (choice == 0)
+				choice = USER_CHOICE_LOCATE_FILE;
+			else if (choice == 1)
+				choice = USER_CHOICE_SKIP;
+		} else {
+			message.SetToFormat("The debug information file '%s' for "
+				"image '%s' is missing, but can be found in the package "
+				"'%s'. Would you like to install it, or locate the file "
+				"manually?", fileState.externalInfoFileName.String(),
+				fileState.dwarfFile->Name(), requiredPackage.String());
+			choice = interface->SynchronouslyAskUser("Debug info missing",
+				message.String(), "Install", "Locate", "Skip");
+		}
 
 		if (choice == USER_CHOICE_INSTALL_PACKAGE) {
 			// TODO: integrate the package installation functionality directly.

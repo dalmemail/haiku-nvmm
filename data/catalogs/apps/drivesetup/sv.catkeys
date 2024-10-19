@@ -1,4 +1,4 @@
-1	swedish	x-vnd.Haiku-DriveSetup	63900332
+1	swedish	x-vnd.Haiku-DriveSetup	2521240656
 Could not unmount partition %s.	MainWindow		Kunde inte avmontera partition %s.
 Mount all	MainWindow		Montera alla
 Disk	MainWindow		Disk
@@ -6,6 +6,7 @@ Are you sure you want to write the changes back to disk now?\n\nAll data on the 
 Device	PartitionList		Enhet
 Initialize	MainWindow		Initiera
 Could not change the parameters of the selected partition.	MainWindow		Kunde inte ändra parametrarna på den valda partionen.
+Are you sure you want to write the changes back to disk now?\n\nAll data on the partition \"%s\" will be irretrievably lost if you do so!	MainWindow		Är du säker på att du vill skriva tillbaka ändringarna till disken nu?\n\nAll data på partitionen \"%s\" kommer att förloras oåterkalleligt om du gör det!
 PGP encrypted	Encryption utils		PGP-krypterad
 Delete partition	MainWindow		Radera partition
 Error: 	MainWindow	in any error alert	Fel: 
@@ -22,12 +23,12 @@ Validation of the given parameters failed.	MainWindow		Valideringen av den givna
 Are you sure you want to format the partition \"%s\"? You will be asked again before changes are written to the disk.	MainWindow		Är du säker att du vill formatera partitionen \"%s\"? Du kommet att få frågan igen innan ändringarna skrivs till disk.
 DriveSetup	System name		DiskHanterare
 Mounted at	PartitionList		Monterad vid
+Disk system %s not found!	MainWindow		Disksystemet %s hittades inte!
 Create…	MainWindow		Skapa…
 Write changes	MainWindow		Skriv ändringar
 Initialization of the partition %s failed. (Nothing has been written to disk.)	MainWindow		Initiering av partitionen %s misslyckades (Inget skrevs till disken.)
 Validation of the given creation parameters failed.	MainWindow		Utvärdering av den givna parametern misslyckades.
 Eject	MainWindow		Mata ut
-Are you sure you want to write the changes back to disk now?\n\nAll data on the disk %s will be irretrievably lost if you do so!	MainWindow		Är du säker på att du vill skriva ändringar tillbaka till disken ny?\n\nAlla data på partitionen %s kommer att raderas om du gör så!
 Surface test (not implemented)	MainWindow		Yttest (inte implementerat)
 Read only	PartitionList		Endast läsbar
 The panel could not return successfully.	MainWindow		Panelen kunde inte återskapas.
@@ -64,7 +65,6 @@ Are you sure you want to write the changes back to disk now?\n\nAll data on the 
 Change	ChangeParametersPanel		Ändra
 Partition name:	ChangeParametersPanel		Partitionsnamn:
 LUKS encrypted	Encryption utils		LUKS-krypterad
-Are you sure you want to write the changes back to disk now?\n\nAll data on the partition %s will be irretrievably lost if you do so!	MainWindow		Är du säker på att du vill skriva ändringarna till disken?\n\nAll data på partitionen %s kommer att gå förlorad!
 Empty space	PartitionList		Tomt utrymme
 Cancel	AbstractParametersPanel		Avbryt
 Format	MainWindow		Format
@@ -85,7 +85,6 @@ Change parameters	MainWindow		Ändra parametrar
 Rescan	MainWindow		Uppdatera
 There was an error acquiring the partition row.	MainWindow		Ett fel uppstod när partitionsinformationen skulle hämtas.
 Failed to initialize the disk %s!\n	MainWindow		Misslyckades att initiera partionen %s!\n
-Disk system \"%s\" not found!	MainWindow		Disksystemet \"%s\" hittades ej!
 The partition cannot be unmounted.	MainWindow		Partitionen kan inte avmonteras.
 Delete	MainWindow		Ta bort
 Partition type:	ChangeParametersPanel		Partitionstyp:
@@ -100,6 +99,7 @@ The partition %s is already unmounted.	MainWindow		Partitionen %s är redan avmo
 Are you sure you want to change parameters of the selected partition?\n\nThe partition may no longer be recognized by other operating systems anymore!	MainWindow		Är du säker på att du vill ändra parametrarna till partionen?\n\nPartionen kommer kanske inte kunna läsas av andra operativsystem!
 Boot	PartitionList		Boot
 OK	AbstractParametersPanel		OK
+Are you sure you want to write the changes back to disk now?\n\nAll data on the disk \"%s\" will be irretrievably lost if you do so!	MainWindow		Är du säker på att du vill skriva tillbaka ändringarna till disken nu?\n\nAlla data på disken \"%s\" kommer att gå oåterkalleligt förlorade om du gör det!
 Virtual	PartitionList		Virtuell
 Virtual	DiskView		Virtuell
 Are you sure you want to write the changes back to disk now?\n\nAll data on the selected disk will be irretrievably lost if you do so!	MainWindow		Är du säker på att du vill skriva ändringarna till disken?\n\nAll data på partitionen kommer att gå förlorad!

@@ -210,19 +210,25 @@ count_images(Team *team)
 status_t
 remove_images(Team *team)
 {
-	struct image *image;
+	struct image *image = NULL;
 
 	ASSERT(team != NULL);
 
 	mutex_lock(&sImageMutex);
 
-	while ((image = (struct image*)list_remove_head_item(&team->image_list))
-			!= NULL) {
+	struct list images = {};
+	list_move_to_list(&team->image_list, &images);
+	while ((image = (struct image*)list_get_next_item(&images,
+			image)) != NULL) {
 		sImageTable->Remove(image);
-		free(image);
 	}
 
 	mutex_unlock(&sImageMutex);
+
+	while ((image = (struct image*)list_remove_head_item(&images))
+			!= NULL) {
+		free(image);
+	}
 
 	return B_OK;
 }

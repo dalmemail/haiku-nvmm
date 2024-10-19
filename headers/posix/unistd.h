@@ -359,15 +359,16 @@ extern int		symlinkat(const char *toPath, int fd, const char *symlinkPath);
 
 extern int      ftruncate(int fd, off_t newSize);
 extern int      truncate(const char *path, off_t newSize);
+
 struct ioctl_args {
-    void* argument;
-    size_t size;
+	void* argument;
+	size_t size;
 };
 int __ioctl(int fd, ulong cmd, struct ioctl_args args);
 #ifndef __cplusplus
 extern int		ioctl(int fd, unsigned long op, ...);
 #ifndef _KERNEL_MODE
-#define ioctl(a, b, c...) __ioctl(a, b, (struct ioctl_args){ c })
+#define ioctl(a, b, c...) __ioctl(a, b, (struct ioctl_args){ (void*)c })
 #endif
 #else
 inline int
@@ -480,6 +481,8 @@ extern char 	*crypt(const char *key, const char *salt);
 extern void 	encrypt(char block[64], int edflag);
 extern int		getopt(int argc, char *const *argv, const char *shortOpts);
 extern void 	swab(const void *src, void *dest, ssize_t nbytes);
+
+int				getentropy(void *buf, size_t buflen);
 
 /* getopt() related external variables */
 extern char *optarg;

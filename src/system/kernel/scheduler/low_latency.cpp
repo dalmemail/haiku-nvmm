@@ -44,7 +44,7 @@ has_cache_expired(const ThreadData* threadData)
 
 
 static CoreEntry*
-choose_core(const ThreadData* /* threadData */)
+choose_core(const ThreadData* threadData)
 {
 	SCHEDULER_ENTER_FUNCTION();
 
@@ -55,16 +55,29 @@ choose_core(const ThreadData* /* threadData */)
 		package = PackageEntry::GetMostIdlePackage();
 	}
 
-	CoreEntry* core = NULL;
-	if (package != NULL)
-		core = package->GetIdleCore();
+	int32 index = 0;
+	CPUSet mask = threadData->GetCPUMask();
+	const bool useMask = !mask.IsEmpty();
 
+	CoreEntry* core = NULL;
+	if (package != NULL) {
+		do {
+			core = package->GetIdleCore(index++);
+		} while (useMask && core != NULL && !core->CPUMask().Matches(mask));
+	}
 	if (core == NULL) {
 		ReadSpinLocker coreLocker(gCoreHeapsLock);
+		index = 0;
 		// no idle cores, use least occupied core
-		core = gCoreLoadHeap.PeekMinimum();
-		if (core == NULL)
-			core = gCoreHighLoadHeap.PeekMinimum();
+		do {
+			core = gCoreLoadHeap.PeekMinimum(index++);
+		} while (useMask && core != NULL && !core->CPUMask().Matches(mask));
+		if (core == NULL) {
+			index = 0;
+			do {
+				core = gCoreHighLoadHeap.PeekMinimum(index++);
+			} while (useMask && core != NULL && !core->CPUMask().Matches(mask));
+		}
 	}
 
 	ASSERT(core != NULL);
@@ -82,9 +95,23 @@ rebalance(const ThreadData* threadData)
 
 	// Get the least loaded core.
 	ReadSpinLocker coreLocker(gCoreHeapsLock);
-	CoreEntry* other = gCoreLoadHeap.PeekMinimum();
-	if (other == NULL)
-		other = gCoreHighLoadHeap.PeekMinimum();
+	CPUSet mask = threadData->GetCPUMask();
+	const bool useMask = !mask.IsEmpty();
+
+	int32 index = 0;
+	CoreEntry* other;
+	do {
+		other = gCoreLoadHeap.PeekMinimum(index++);
+		if (other != NULL && (useMask && other->CPUMask().IsEmpty()))
+			panic("other->CPUMask().IsEmpty()\n");
+	} while (useMask && other != NULL && !other->CPUMask().Matches(mask));
+
+	if (other == NULL) {
+		index = 0;
+		do {
+			other = gCoreHighLoadHeap.PeekMinimum(index++);
+		} while (useMask && other != NULL && !other->CPUMask().Matches(mask));
+	}
 	coreLocker.Unlock();
 	ASSERT(other != NULL);
 

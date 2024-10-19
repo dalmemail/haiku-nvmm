@@ -301,22 +301,6 @@ delete_elf_image(struct elf_image_info *image)
 }
 
 
-static uint32
-elf_hash(const char *name)
-{
-	uint32 hash = 0;
-	uint32 temp;
-
-	while (*name) {
-		hash = (hash << 4) + (uint8)*name++;
-		if ((temp = hash & 0xf0000000) != 0)
-			hash ^= temp >> 24;
-		hash &= ~temp;
-	}
-	return hash;
-}
-
-
 static const char *
 get_symbol_type_string(elf_sym *symbol)
 {
@@ -378,7 +362,8 @@ dump_symbol(int argc, char **argv)
 				if (symbol->st_value > 0 && strstr(name, pattern) != 0) {
 					symbolAddress
 						= (void*)(symbol->st_value + image->text_region.delta);
-					kprintf("%p %5lu %s:%s\n", symbolAddress, symbol->st_size,
+					kprintf("%p %5lu %s:%s\n", symbolAddress,
+						(long unsigned int)(symbol->st_size),
 						image->name, name);
 				}
 			}
@@ -394,7 +379,8 @@ dump_symbol(int argc, char **argv)
 						symbolAddress = (void*)(symbol->st_value
 							+ image->text_region.delta);
 						kprintf("%p %5lu %s:%s\n", symbolAddress,
-							symbol->st_size, image->name, name);
+							(long unsigned int)(symbol->st_size),
+							image->name, name);
 					}
 				}
 			}
@@ -483,7 +469,8 @@ dump_symbols(int argc, char **argv)
 			kprintf("%0*lx %s/%s %5ld %s\n", B_PRINTF_POINTER_WIDTH,
 				symbol->st_value + image->text_region.delta,
 				get_symbol_type_string(symbol), get_symbol_bind_string(symbol),
-				symbol->st_size, image->debug_string_table + symbol->st_name);
+				(long unsigned int)(symbol->st_size),
+				image->debug_string_table + symbol->st_name);
 		}
 	} else {
 		int32 j;
@@ -502,7 +489,8 @@ dump_symbols(int argc, char **argv)
 					symbol->st_value + image->text_region.delta,
 					get_symbol_type_string(symbol),
 					get_symbol_bind_string(symbol),
-					symbol->st_size, SYMNAME(image, symbol));
+					(long unsigned int)(symbol->st_size),
+					SYMNAME(image, symbol));
 			}
 		}
 	}
@@ -600,6 +588,20 @@ void dump_symbol(struct elf_image_info *image, elf_sym *sym)
 
 
 #endif // ELF32_COMPAT
+
+
+static uint32
+elf_hash(const char* _name)
+{
+	const uint8* name = (const uint8*)_name;
+
+	uint32 h = 0;
+	while (*name != '\0') {
+		h = (h << 4) + *name++;
+		h ^= (h >> 24) & 0xf0;
+	}
+	return (h & 0x0fffffff);
+}
 
 
 static elf_sym *
@@ -1990,9 +1992,9 @@ elf_load_user_image(const char *path, Team *team, uint32 flags, addr_t *entry)
 			size_t amount = fileUpperBound
 				- (programHeaders[i].p_vaddr % B_PAGE_SIZE)
 				- (programHeaders[i].p_filesz);
-			set_ac();
+			arch_cpu_enable_user_access();
 			memset((void *)start, 0, amount);
-			clear_ac();
+			arch_cpu_disable_user_access();
 
 			// Check if we need extra storage for the bss - we have to do this if
 			// the above region doesn't already comprise the memory size, too.
@@ -2052,20 +2054,20 @@ elf_load_user_image(const char *path, Team *team, uint32 flags, addr_t *entry)
 	// modify the dynamic ptr by the delta of the regions
 	image->dynamic_section += image->text_region.delta;
 
-	set_ac();
+	arch_cpu_enable_user_access();
 	status = elf_parse_dynamic_section(image);
 	if (status != B_OK) {
-		clear_ac();
+		arch_cpu_disable_user_access();
 		return status;
 	}
 
 	status = elf_relocate(image, image);
 	if (status != B_OK) {
-		clear_ac();
+		arch_cpu_disable_user_access();
 		return status;
 	}
 
-	clear_ac();
+	arch_cpu_disable_user_access();
 
 	// set correct area protection
 	for (int i = 0; i < elfHeader.e_phnum; i++) {

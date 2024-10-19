@@ -21,9 +21,10 @@ Pipe::Pipe(Object *parent)
 
 Pipe::~Pipe()
 {
-	PutUSBID();
-
+	PutUSBID(false);
 	Pipe::CancelQueuedTransfers(true);
+	WaitForIdle();
+
 	GetBusManager()->NotifyPipeChange(this, USB_CHANGE_DESTROYED);
 }
 
@@ -192,6 +193,7 @@ BulkPipe::InitCommon(int8 deviceAddress, uint8 endpointAddress,
 			maxPacketSize = 512;
 			break;
 		case USB_SPEED_SUPERSPEED:
+		case USB_SPEED_SUPERSPEEDPLUS:
 			maxPacketSize = 1024;
 			break;
 
@@ -374,7 +376,7 @@ ControlPipe::~ControlPipe()
 	// We do this here in case a submitted request is still running.
 	PutUSBID(false);
 	ControlPipe::CancelQueuedTransfers(true);
-	WaitForUnbusy();
+	WaitForIdle();
 
 	if (fNotifySem >= 0)
 		delete_sem(fNotifySem);
@@ -400,6 +402,7 @@ ControlPipe::InitCommon(int8 deviceAddress, uint8 endpointAddress,
 			maxPacketSize = 64;
 			break;
 		case USB_SPEED_SUPERSPEED:
+		case USB_SPEED_SUPERSPEEDPLUS:
 			maxPacketSize = 512;
 			break;
 

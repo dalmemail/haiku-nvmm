@@ -15,60 +15,6 @@
 #include <new>
 
 
-static uint32
-ReadReg8(addr_t adr)
-{
-	uint32 ofs = adr % 4;
-	adr = adr / 4 * 4;
-	union {
-		uint32 in;
-		uint8 out[4];
-	} val{.in = *(vuint32*)adr};
-	return val.out[ofs];
-}
-
-
-static uint32
-ReadReg16(addr_t adr)
-{
-	uint32 ofs = adr / 2 % 2;
-	adr = adr / 4 * 4;
-	union {
-		uint32 in;
-		uint16 out[2];
-	} val{.in = *(vuint32*)adr};
-	return val.out[ofs];
-}
-
-
-static void
-WriteReg8(addr_t adr, uint32 value)
-{
-	uint32 ofs = adr % 4;
-	adr = adr / 4 * 4;
-	union {
-		uint32 in;
-		uint8 out[4];
-	} val{.in = *(vuint32*)adr};
-	val.out[ofs] = (uint8)value;
-	*(vuint32*)adr = val.in;
-}
-
-
-static void
-WriteReg16(addr_t adr, uint32 value)
-{
-	uint32 ofs = adr / 2 % 2;
-	adr = adr / 4 * 4;
-	union {
-		uint32 in;
-		uint16 out[2];
-	} val{.in = *(vuint32*)adr};
-	val.out[ofs] = (uint16)value;
-	*(vuint32*)adr = val.in;
-}
-
-
 //#pragma mark - driver
 
 
@@ -159,6 +105,10 @@ ECAMPCIController::UninitDriver()
 #endif
 
 
+/** Compute the virtual address for accessing a PCI ECAM register.
+ *
+ * \returns NULL if the address is out of bounds.
+ */
 addr_t
 ECAMPCIController::ConfigAddress(uint8 bus, uint8 device, uint8 function, uint16 offset)
 {
@@ -168,7 +118,7 @@ ECAMPCIController::ConfigAddress(uint8 bus, uint8 device, uint8 function, uint16
 		.device = device,
 		.bus = bus
 	};
-	if ((address.val + 4) > fRegsLen)
+	if ((ROUNDDOWN(address.val, 4) + 4) > fRegsLen)
 		return 0;
 
 	return (addr_t)fRegs + address.val;
@@ -184,14 +134,14 @@ ECAMPCIController::ReadConfig(uint8 bus, uint8 device, uint8 function,
 {
 	addr_t address = ConfigAddress(bus, device, function, offset);
 	if (address == 0)
-		return B_ERROR;
+		return ERANGE;
 
 	switch (size) {
-		case 1: value = ReadReg8(address); break;
-		case 2: value = ReadReg16(address); break;
+		case 1: value = *(vuint8*)address; break;
+		case 2: value = *(vuint16*)address; break;
 		case 4: value = *(vuint32*)address; break;
 		default:
-			return B_ERROR;
+			return B_BAD_VALUE;
 	}
 
 	return B_OK;
@@ -204,14 +154,14 @@ ECAMPCIController::WriteConfig(uint8 bus, uint8 device, uint8 function,
 {
 	addr_t address = ConfigAddress(bus, device, function, offset);
 	if (address == 0)
-		return B_ERROR;
+		return ERANGE;
 
 	switch (size) {
-		case 1: WriteReg8(address, value); break;
-		case 2: WriteReg16(address, value); break;
+		case 1: *(vuint8*)address = value; break;
+		case 2: *(vuint16*)address = value; break;
 		case 4: *(vuint32*)address = value; break;
 		default:
-			return B_ERROR;
+			return B_BAD_VALUE;
 	}
 
 	return B_OK;

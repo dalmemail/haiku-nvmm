@@ -13,6 +13,7 @@
 #include <util/SinglyLinkedList.h>
 
 #include "IndexedAttributeOwner.h"
+#include "InlineReferenceable.h"
 #include "PackageNodeAttribute.h"
 #include "StringKey.h"
 
@@ -22,11 +23,15 @@ class Package;
 class PackageDirectory;
 
 
-class PackageNode : public BReferenceable, public IndexedAttributeOwner,
+class PackageNode : public IndexedAttributeOwner,
 	public SinglyLinkedListLinkImpl<PackageNode> {
 public:
 								PackageNode(Package* package, mode_t mode);
 	virtual						~PackageNode();
+
+			void				AcquireReference();
+			void				ReleaseReference();
+			int32				CountReferences();
 
 			BReference<Package>		GetPackage() const;
 									// Since PackageNode does only hold a
@@ -45,23 +50,15 @@ public:
 									// base class versions must be called
 
 			mode_t				Mode() const			{ return fMode; }
+			uid_t				UserID() const			{ return 0; }
+			gid_t				GroupID() const			{ return 0; }
 
-			uid_t				UserID() const			{ return fUserID; }
-			void				SetUserID(uid_t id)		{ fUserID = id; }
-
-			gid_t				GroupID() const			{ return fGroupID; }
-			void				SetGroupID(gid_t id)	{ fGroupID = id; }
-
-			void				SetModifiedTime(const timespec& time)
-									{ fModifiedTime = time; }
-			const timespec&		ModifiedTime() const
-									{ return fModifiedTime; }
+			void				SetModifiedTime(const timespec& time);
+			timespec			ModifiedTime() const;
 
 	virtual	off_t				FileSize() const;
 
 			void				AddAttribute(PackageNodeAttribute* attribute);
-			void				RemoveAttribute(
-									PackageNodeAttribute* attribute);
 
 			const PackageNodeAttributeList& Attributes() const
 									{ return fAttributes; }
@@ -86,11 +83,10 @@ protected:
 	mutable BWeakReference<Package> fPackage;
 			PackageDirectory*	fParent;
 			String				fName;
-			mode_t				fMode;
-			uid_t				fUserID;
-			gid_t				fGroupID;
-			timespec			fModifiedTime;
 			PackageNodeAttributeList fAttributes;
+			bigtime_t			fModifiedTime;
+			mode_t				fMode;
+			InlineReferenceable fReferenceable;
 };
 
 

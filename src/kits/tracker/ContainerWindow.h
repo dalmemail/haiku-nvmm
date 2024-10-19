@@ -94,8 +94,7 @@ public:
 		window_look look = B_DOCUMENT_WINDOW_LOOK,
 		window_feel feel = B_NORMAL_WINDOW_FEEL,
 		uint32 windowFlags = B_WILL_ACCEPT_FIRST_CLICK | B_NO_WORKSPACE_ACTIVATION,
-		uint32 workspace = B_CURRENT_WORKSPACE,
-		bool useLayout = true, bool isDeskWindow = false);
+		uint32 workspace = B_CURRENT_WORKSPACE, bool useLayout = true);
 
 	virtual ~BContainerWindow();
 
@@ -107,8 +106,6 @@ public:
 	virtual void Minimize(bool minimize);
 	virtual void Quit();
 	virtual bool QuitRequested();
-
-	virtual void UpdateIfTrash(Model*);
 
 	virtual void CreatePoseView(Model*);
 
@@ -127,10 +124,6 @@ public:
 	virtual bool ShouldAddScrollBars() const;
 
 	virtual void CheckScreenIntersect();
-
-	bool IsTrash() const;
-	bool InTrash() const;
-	bool IsPrintersDir() const;
 
 	virtual bool IsShowing(const node_ref*) const;
 	virtual bool IsShowing(const entry_ref*) const;
@@ -186,14 +179,7 @@ public:
 	static bool DefaultStateSourceNode(const char* name, BNode* result,
 		bool createNew = false, bool createFolder = true);
 
-	// add-on iteration
-	void EachAddOn(bool (*)(const Model*, const char*, uint32 shortcut,
-			uint32 modifiers, bool primary, void*, BContainerWindow*, BMenu*),
-		void*, BStringList&, BMenu*);
-
 	BMessage* AddOnMessage(int32);
-	entry_ref GetCurrentDirRef();
-
 	BPopUpMenu* ContextMenu();
 
 	// drag&drop support
@@ -274,11 +260,12 @@ protected:
 	BHandler* ResolveSpecifier(BMessage*, int32, BMessage*, int32,
 		const char*);
 
-	bool EachAddOn(BPath &path,
-		bool (*)(const Model*, const char*, uint32, bool, void*),
-		BObjectList<Model>*, void*, BStringList&);
 	void LoadAddOn(BMessage*);
+	void EachAddOn(void (*)(const Model*, const char*, uint32 shortcut,
+			uint32 modifiers, bool primary, void*, BContainerWindow*, BMenu*),
+		void*, BStringList&, BMenu*);
 
+protected:
 	LockingList<BWindow>* fWindowList;
 	uint32 fOpenFlags;
 	bool fUsesLayout;
@@ -317,11 +304,6 @@ protected:
 
 	bool fStateNeedsSaving;
 
-	bool fIsTrash;
-	bool fInTrash;
-	bool fIsPrinters;
-	bool fIsDesktop;
-
 	BackgroundImage* fBackgroundImage;
 
 	static LockingList<struct AddOnShortcut>* fAddOnsList;
@@ -335,9 +317,7 @@ private:
 	BMessage* fDragMessage;
 	BObjectList<BString>* fCachedTypesList;
 	bool fWaitingForRefs;
-
 	bool fSaveStateIsEnabled;
-
 	bool fIsWatchingPath;
 
 	typedef BWindow _inherited;
@@ -348,6 +328,7 @@ private:
 	void _UpdateSelectionMIMEInfo();
 	void _AddFolderIcon();
 	void _PassMessageToAddOn(BMessage*);
+	void _NewTemplateSubmenu(entry_ref);
 };
 
 
@@ -407,27 +388,6 @@ inline BPoseView*
 BContainerWindow::PoseView() const
 {
 	return fPoseView;
-}
-
-
-inline bool
-BContainerWindow::IsTrash() const
-{
-	return fIsTrash;
-}
-
-
-inline bool
-BContainerWindow::InTrash() const
-{
-	return fInTrash;
-}
-
-
-inline bool
-BContainerWindow::IsPrintersDir() const
-{
-	return fIsPrinters;
 }
 
 

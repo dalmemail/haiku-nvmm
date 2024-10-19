@@ -1,10 +1,11 @@
-1	german	x-vnd.Haiku-MediaPlayer	725133719
+1	german	x-vnd.Haiku-MediaPlayer	390961765
 Remove Entry into Trash	MediaPlayer-RemovePLItemsCmd		Eintrag in den Papierkorb verschieben
 Close	MediaPlayer-PlaylistWindow		Schließen
 Volume of background clips	MediaPlayer-SettingsWindow		Wiedergabe im Hintergrund
 Use hardware video overlays if available	MediaPlayer-SettingsWindow		Hardware-Overlay verwenden, falls verfügbar
 Audio	MediaPlayer-InfoWin		Audio
 Subtitle placement:	MediaPlayer-SettingsWindow		Untertitelposition:
+MediaPlayer	System name		Medienspieler
 Audio track	MediaPlayer-Main		Audiospur
 Muted	MediaPlayer-SettingsWindow		Stumm geschaltet
 OK	MediaPlayer-RemovePLItemsCmd		OK
@@ -12,10 +13,9 @@ Open Playlist	MediaPlayer-PlaylistWindow		Playliste öffnen
 Subtitles	MediaPlayer-Main		Untertitel
 %app% encountered an internal error. The file could not be opened.	MediaPlayer-Main		Es ist ein interner Fehler in %app% aufgetreten. Die Datei konnte nicht geöffnet werden.
 DrawBitmap	MediaPlayer-InfoWin		DrawBitmap
-File info	MediaPlayer-InfoWin		Datei-Info
+File info	MediaPlayer-InfoWin		Informationen
 raw audio	MediaPlayer-InfoWin		Raw-Audio
 Select all	MediaPlayer-PlaylistWindow		Alles auswählen
-New player…	MediaPlayer-Main		Neuer Player …
 Move Entries	MediaPlayer-MovePLItemsCmd		Einträge verschieben
 OK	MediaPlayer-Main		OK
 Remove	MediaPlayer-PlaylistWindow		Entfernen
@@ -29,7 +29,6 @@ Open file…	MediaPlayer-Main		Öffne Datei …
 Scale controls in full screen mode	MediaPlayer-SettingsWindow		Bedienelemente im Vollbildmodus vergrößern
 View options	MediaPlayer-SettingsWindow		Darstellung
 %d kHz	MediaPlayer-InfoWin		%d kHz
-Eject Device	MediaPlayer-Main		Disk auswerfen
 Full volume	MediaPlayer-SettingsWindow		Volle Lautstärke
 <untitled>	PlaylistItem-title		<unbenannt>
 Start media server	MediaPlayer-Main		Mediaserver starten
@@ -50,6 +49,7 @@ MediaPlayer settings	MediaPlayer-SettingsWindow		MediaPlayer-Einstellungen
 Copyright	MediaPlayer-InfoWin		Copyright
 Invalid URL inserted!	MediaPlayer-NetworkStream		Eingegebene URL ungültig!
 Aspect ratio	MediaPlayer-Main		Seitenverhältnis
+Eject device	MediaPlayer-Main		Disk auswerfen
 Saving the playlist failed.\n\nError: 	MediaPlayer-PlaylistWindow		Speichern der Playliste fehlgeschlagen.\n\nFehler:
 <no media>	MediaPlayer-InfoWin		<leere Playliste>
 Hide interface	MediaPlayer-Main		Oberfläche ausblenden
@@ -118,7 +118,7 @@ Settings…	MediaPlayer-Main		Einstellungen …
 min	MediaPlayer-InfoWin	Minutes	min
 Saving the playlist failed:\n\nError: 	MediaPlayer-PlaylistWindow		Speichern der Playliste fehlgeschlagen:\n\nFehler:
 Video	MediaPlayer-InfoWin		Video
-File info…	MediaPlayer-Main		Datei-Info …
+File info…	MediaPlayer-Main		Informationen …
 1.85 : 1 (American)	MediaPlayer-Main		1,85 : 1 (Amerikanisch)
 <unnamed>	PlaylistItem-name		<unbenannt>
 Track	Video Track Menu		Track
@@ -126,6 +126,7 @@ Full screen	MediaPlayer-Main		Vollbild
 OK	MediaPlayer-NetworkStream		OK
 Internal error (locking failed). Saving the playlist failed.	MediaPlayer-PlaylistWindow		Interner Fehler (Sperren fehlgeschlagen). Speichern der Playliste fehlgeschlagen.
 100% scale	MediaPlayer-Main		100% Zoom
+New player	MediaPlayer-Main		Neuer Player
 <nothing to redo>	MediaPlayer-PlaylistWindow		<nichts zu wiederholen>
 Bad URL	MediaPlayer-NetworkStream		Ungültige URL
 Save	MediaPlayer-Main		Speichern

@@ -95,6 +95,27 @@ ReadOnlyTint(rgb_color base)
 }
 
 
+rgb_color
+InvertColor(rgb_color color)
+{
+	return make_color(255 - color.red, 255 - color.green, 255 - color.blue);
+}
+
+
+rgb_color
+InvertedBackColor(rgb_color background)
+{
+	rgb_color inverted = InvertColor(background);
+
+	// The colors are different enough, we can use inverted
+	if (rgb_color::Contrast(background, inverted) > 127)
+		return inverted;
+
+	// use black or white
+	return background.IsLight() ? kBlack : kWhite;
+}
+
+
 bool
 SecondaryMouseButtonDown(int32 modifiers, int32 buttons)
 {
@@ -105,7 +126,7 @@ SecondaryMouseButtonDown(int32 modifiers, int32 buttons)
 
 
 uint32
-HashString(const char* string, uint32 seed)
+SeededHashString(const char* string, uint32 seed)
 {
 	char ch;
 	uint32 hash = seed;
@@ -826,6 +847,10 @@ void
 TitledSeparatorItem::GetContentSize(float* width, float* height)
 {
 	_inherited::GetContentSize(width, height);
+
+	// Adjust for the extra space needed by the separator bars at the left and right
+	if (width)
+		*width += (kMinSeparatorStubX + kStubToStringSlotX) * 2;
 }
 
 
@@ -1408,17 +1433,12 @@ DeleteSubmenu(BMenuItem* submenuItem)
 	if (submenuItem == NULL)
 		return;
 
-	BMenu* menu = submenuItem->Submenu();
-	if (menu == NULL)
+	BMenu* submenu = submenuItem->Submenu();
+	if (submenu == NULL)
 		return;
 
-	for (;;) {
-		BMenuItem* item = menu->RemoveItem((int32)0);
-		if (item == NULL)
-			return;
-
-		delete item;
-	}
+	// delete all submenu items
+	submenu->RemoveItems(0, submenu->CountItems(), true);
 }
 
 

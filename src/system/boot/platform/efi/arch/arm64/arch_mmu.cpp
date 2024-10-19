@@ -122,7 +122,30 @@ void arch_mmu_setup_EL1(uint64 tcr) {
 	// TODO: Compiler dependency?
 	tcr |= TCR_T1SZ(__builtin_popcountl(KERNEL_BASE));
 
+	// Set granule sizes to 4KB
+	tcr &= ~TCR_TG0_MASK;
+	tcr |= TCR_TG0_4K;
+	tcr &= ~TCR_TG1_MASK;
+	tcr |= TCR_TG1_4K;
+
+	// Set the maximum PA size to the maximum supported by the hardware.
+	uint64_t pa_size = READ_SPECIALREG(ID_AA64MMFR0_EL1) & ID_AA64MMFR0_PA_RANGE_MASK;
+
+	// PA size of 4 petabytes required 64KB paging granules, which
+	// we don't support, so clamp the maximum to 256 terabytes.
+	if (pa_size == ID_AA64MMFR0_PA_RANGE_4P)
+		pa_size = ID_AA64MMFR0_PA_RANGE_256T;
+	tcr &= ~IPS_MASK;
+	tcr |= pa_size << TCR_IPS_SHIFT;
+
+	// Flush the cache so that we don't receive unexpected writebacks later.
+	_arch_cache_clean_poc();
+
 	WRITE_SPECIALREG(TCR_EL1, tcr);
+
+	// Invalidate all TLB entries. Also ensures that all memory traffic has
+	// resolved, and flushes the instruction pipeline.
+	_arch_mmu_invalidate_tlb_all(arch_exception_level());
 }
 
 
@@ -258,7 +281,10 @@ map_range(addr_t virt_addr, phys_addr_t phys_addr, size_t size, uint64_t flags)
 		address = READ_SPECIALREG(TTBR1_EL1);
 	} else {
 		// ok, but USE instead TTBR0
-		address = READ_SPECIALREG(TTBR0_EL1);
+		if (arch_exception_level() == 1)
+			address = READ_SPECIALREG(TTBR0_EL1);
+		else
+			address = READ_SPECIALREG(TTBR0_EL2);
 	}
 
 	map_region(virt_addr, phys_addr, size, 0, flags, reinterpret_cast<uint64*>(address));
@@ -367,7 +393,6 @@ arch_mmu_generate_post_efi_page_tables(size_t memory_map_size,
 
 	MemoryAttributeIndirection currentMair;
 
-// 	arch_mmu_allocate_page_tables();
 	arch_mmu_allocate_kernel_page_tables();
 
 	build_physical_memory_list(memory_map_size, memory_map,

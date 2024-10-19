@@ -207,6 +207,9 @@ _IMPEXP_TRACKER status_t FSRecursiveCalcSize(BInfoWindow*,
 	CopyLoopControl* loopControl, BDirectory*, off_t* runningSize,
 	int32* fileCount, int32* dirCount);
 
+bool FSInDeskDir(const entry_ref*);
+bool FSIsQueriesDir(const entry_ref*);
+bool FSInRootDir(const entry_ref*);
 bool FSInTrashDir(const entry_ref*);
 
 // doesn't need to be exported
@@ -235,7 +238,7 @@ ReadAttrResult ReadAttr(const BNode*, const char* hostAttrName,
 ReadAttrResult GetAttrInfo(const BNode*, const char* hostAttrName,
 	const char* foreignAttrName, type_code* = NULL, size_t* = NULL);
 
-status_t FSCreateNewFolder(const entry_ref*);
+status_t FSCreateNewFolder(entry_ref*);
 status_t FSRecursiveCreateFolder(const char* path);
 void FSMakeOriginalName(BString &name, const BDirectory* destDir,
 	const char* suffix = 0);

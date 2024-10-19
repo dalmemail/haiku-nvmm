@@ -7,6 +7,7 @@
 #include <StackOrHeapArray.h>
 
 #include <libroot/errno_private.h>
+#include <libroot/time_private.h>
 #include <syscalls.h>
 #include <event_queue_defs.h>
 
@@ -162,8 +163,10 @@ kevent(int kq,
 			for (int i = 0; i < changedInfos; i++) {
 				if (waitInfos[i].events > 0)
 					continue;
-				if (nevents == 0)
+				if (nevents == 0) {
+					errors = -1;
 					break;
+				}
 
 				short filter = filter_from_info(waitInfos[i]);
 				int64_t data = waitInfos[i].events;
@@ -173,10 +176,11 @@ kevent(int kq,
 				nevents--;
 				errors++;
 			}
-			if (nevents == 0 || errors == 0) {
-				__set_errno(status);
-				return -1;
-			}
+
+			if (errors > 0)
+				return errors;
+			__set_errno(status);
+			return -1;
 		}
 	}
 
@@ -184,7 +188,10 @@ kevent(int kq,
 		bigtime_t timeout = 0;
 		uint32 waitFlags = 0;
 		if (tspec != NULL) {
-			timeout = (tspec->tv_sec * 1000000LL) + (tspec->tv_nsec / 1000LL);
+			if (!timespec_to_bigtime(*tspec, timeout)) {
+				__set_errno(EINVAL);
+				return -1;
+			}
 			waitFlags |= B_RELATIVE_TIMEOUT;
 		}
 

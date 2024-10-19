@@ -8,19 +8,11 @@
 #define _FILE_SYSTEMS_QUERY_PARSER_H
 
 
-/*!	Query parsing and evaluation
-
-	The pattern matching is roughly based on code originally written
-	by J. Kercheval, and on code written by Kenneth Almquist, though
-	it shares no code.
-*/
+/*!	Query parsing and evaluation. */
 
 
-// The parser has a very static design, but it will do what is required.
-//
-// ParseOr(), ParseAnd(), ParseEquation() are guarantying the operator
-// precedence, that is =,!=,>,<,>=,<= .. && .. ||.
-// Apparently, the "!" (not) can only be used with brackets.
+// The operator precedence is =,!=,>,<,>=,<= .. && .. ||.
+// Apparently, the "!" (not) can only be used with parentheses.
 //
 // If you think that there are too few NULL pointer checks in some places
 // of the code, just read the beginning of the query constructor.
@@ -48,8 +40,6 @@
 #	include <util/Stack.h>
 
 #	include <query_private.h>
-
-#	include <lock.h>
 #endif	// !FS_SHELL
 
 #include <file_systems/QueryParserUtils.h>
@@ -124,6 +114,7 @@ public:
 			typedef typename QueryPolicy::Index Index;
 			typedef typename QueryPolicy::IndexIterator IndexIterator;
 			typedef typename QueryPolicy::Node Node;
+			typedef typename QueryPolicy::NodeHolder NodeHolder;
 			typedef typename QueryPolicy::Context Context;
 
 public:
@@ -184,6 +175,7 @@ public:
 			typedef typename QueryPolicy::Index Index;
 			typedef typename QueryPolicy::IndexIterator IndexIterator;
 			typedef typename QueryPolicy::Node Node;
+			typedef typename QueryPolicy::NodeHolder NodeHolder;
 			typedef typename QueryPolicy::Context Context;
 
 public:
@@ -236,16 +228,19 @@ public:
 			typedef typename QueryPolicy::Index Index;
 			typedef typename QueryPolicy::IndexIterator IndexIterator;
 			typedef typename QueryPolicy::Node Node;
+			typedef typename QueryPolicy::NodeHolder NodeHolder;
 			typedef typename QueryPolicy::Context Context;
 
 public:
-						Equation(char** expression);
+						Equation(const char** expression);
 	virtual				~Equation();
 
 	virtual	status_t	InitCheck();
 
-			status_t	ParseQuotedString(char** _start, char** _end);
-			char*		CopyString(char* start, char* end);
+			status_t	ParseQuotedString(const char** _start, const char** _end);
+			char*		CopyString(const char* start, const char* end);
+	inline	bool		_IsEquationChar(char c) const;
+	inline	bool		_IsOperatorChar(char c) const;
 
 	virtual	status_t	Match(Entry* entry, Node* node,
 							const char* attribute = NULL, int32 type = 0,
@@ -275,7 +270,6 @@ private:
 			status_t	ConvertValue(type_code type);
 			bool		CompareTo(const uint8* value, size_t size);
 			uint8*		Value() const { return (uint8*)&fValue; }
-			status_t	MatchEmptyString();
 
 			char*		fAttribute;
 			char*		fString;
@@ -345,26 +339,21 @@ public:
 			typedef typename QueryPolicy::Context Context;
 
 public:
-							Expression(char* expr);
+							Expression();
 							~Expression();
 
-			status_t		InitCheck();
-			const char*		Position() const { return fPosition; }
+			status_t		Init(const char* expr, const char** position);
+
 			Term<QueryPolicy>* Root() const { return fTerm; }
 
 protected:
-			Term<QueryPolicy>* ParseOr(char** expr);
-			Term<QueryPolicy>* ParseAnd(char** expr);
-			Term<QueryPolicy>* ParseEquation(char** expr);
-
-			bool			IsOperator(char** expr, char op);
+			bool			IsOperator(const char** expr, char op);
 
 private:
 							Expression(const Expression& other);
 							Expression& operator=(const Expression& other);
 								// no implementation
 
-			char*			fPosition;
 			Term<QueryPolicy>* fTerm;
 };
 
@@ -373,7 +362,7 @@ private:
 
 
 template<typename QueryPolicy>
-Equation<QueryPolicy>::Equation(char** expr)
+Equation<QueryPolicy>::Equation(const char** expr)
 	:
 	Term<QueryPolicy>(OP_EQUATION),
 	fAttribute(NULL),
@@ -381,9 +370,9 @@ Equation<QueryPolicy>::Equation(char** expr)
 	fType(0),
 	fIsPattern(false)
 {
-	char* string = *expr;
-	char* start = string;
-	char* end = NULL;
+	const char* string = *expr;
+	const char* start = string;
+	const char* end = NULL;
 
 	// Since the equation is the integral part of any query, we're just parsing
 	// the whole thing here.
@@ -398,16 +387,17 @@ Equation<QueryPolicy>::Equation(char** expr)
 		// set string to a valid start of the equation symbol
 		string = end + 2;
 		skipWhitespace(&string);
-		if (*string != '=' && *string != '<' && *string != '>'
-			&& *string != '!') {
+		if (!_IsEquationChar(string[0])) {
 			*expr = string;
 			return;
 		}
 	} else {
 		// search the (in)equation for the actual equation symbol (and for other operators
 		// in case the equation is malformed)
-		while (*string && *string != '=' && *string != '<' && *string != '>'
-			&& *string != '!' && *string != '&' && *string != '|') {
+		while (string[0] != 0 && !_IsOperatorChar(string[0])
+			&& !_IsEquationChar(string[0])) {
+			if (string[0] == '\\' && string[1] != 0)
+				string++;
 			string++;
 		}
 
@@ -471,7 +461,7 @@ Equation<QueryPolicy>::Equation(char** expr)
 		string = end + 2;
 		skipWhitespace(&string);
 	} else {
-		while (*string && *string != '&' && *string != '|' && *string != ')')
+		while (string[0] && !_IsOperatorChar(string[0]) && string[0] != ')')
 			string++;
 
 		end = string - 1;
@@ -525,11 +515,11 @@ Equation<QueryPolicy>::InitCheck()
 
 template<typename QueryPolicy>
 status_t
-Equation<QueryPolicy>::ParseQuotedString(char** _start, char** _end)
+Equation<QueryPolicy>::ParseQuotedString(const char** _start, const char** _end)
 {
-	char* start = *_start;
-	char quote = *start++;
-	char* end = start;
+	const char* start = *_start;
+	const char quote = *start++;
+	const char* end = start;
 
 	for (; *end && *end != quote; end++) {
 		if (*end == '\\')
@@ -547,7 +537,7 @@ Equation<QueryPolicy>::ParseQuotedString(char** _start, char** _end)
 
 template<typename QueryPolicy>
 char*
-Equation<QueryPolicy>::CopyString(char* start, char* end)
+Equation<QueryPolicy>::CopyString(const char* start, const char* end)
 {
 	// end points to the last character of the string - and the length
 	// also has to include the null-termination
@@ -561,10 +551,35 @@ Equation<QueryPolicy>::CopyString(char* start, char* end)
 	if (copy == NULL)
 		return NULL;
 
-	memcpy(copy, start, length - 1);
+	// Filter out remaining escaping slashes
+	for (int32 i = 0; i < length; i++) {
+		char c = start++[0];
+		if (c == '\\' && i < length) {
+			length--;
+			i--;
+			continue;
+		}
+		copy[i] = c;
+	}
 	copy[length - 1] = '\0';
 
 	return copy;
+}
+
+
+template<typename QueryPolicy>
+bool
+Equation<QueryPolicy>::_IsEquationChar(char c) const
+{
+	return c == '=' || c == '<' || c == '>' || c == '!';
+}
+
+
+template<typename QueryPolicy>
+bool
+Equation<QueryPolicy>::_IsOperatorChar(char c) const
+{
+	return c == '&' || c == '|';
 }
 
 
@@ -595,6 +610,9 @@ Equation<QueryPolicy>::ConvertValue(type_code type)
 			fValue.Int32 = strtoul(string, &string, 0);
 			fSize = sizeof(uint32);
 			break;
+		case B_TIME_TYPE:
+			type = B_INT64_TYPE;
+			// supposed to fall through
 		case B_INT64_TYPE:
 			fValue.Int64 = strtoll(string, &string, 0);
 			fSize = sizeof(int64);
@@ -612,10 +630,9 @@ Equation<QueryPolicy>::ConvertValue(type_code type)
 			fSize = sizeof(double);
 			break;
 		default:
-			QUERY_FATAL("query value conversion to 0x%x requested!\n",
-				(int)type);
-			// should we fail here or just do a safety int32 conversion?
-			return B_ERROR;
+			QUERY_INFORM("query attribute '%s': unsupported value conversion to 0x%x requested!\n",
+				fAttribute, (int)type);
+			return B_BAD_TYPE;
 	}
 
 	fType = type;
@@ -643,7 +660,7 @@ Equation<QueryPolicy>::CompareTo(const uint8* value, size_t size)
 		// we have already validated the pattern, so we don't check for failing
 		// here - if something is broken, and matchString() returns an error,
 		// we just don't match
-		compare = matchString(fValue.String, (char*)value) == MATCH_OK ? 0 : 1;
+		compare = matchString(fValue.String, (const char*)value) == MATCH_OK ? 0 : 1;
 	} else
 		compare = compareKeys(fType, value, size, Value(), fSize);
 
@@ -670,7 +687,7 @@ template<typename QueryPolicy>
 void
 Equation<QueryPolicy>::Complement()
 {
-	QUERY_D(if (fOp <= OP_EQUATION || fOp > OP_LESS_THAN_OR_EQUAL) {
+	QUERY_D(if (Term<QueryPolicy>::fOp <= OP_EQUATION || Term<QueryPolicy>::fOp > OP_LESS_THAN_OR_EQUAL) {
 		QUERY_FATAL("op out of range!\n");
 		return;
 	});
@@ -678,27 +695,6 @@ Equation<QueryPolicy>::Complement()
 	int8 complementOp[] = {OP_UNEQUAL, OP_EQUAL, OP_LESS_THAN_OR_EQUAL,
 			OP_GREATER_THAN_OR_EQUAL, OP_LESS_THAN, OP_GREATER_THAN};
 	Term<QueryPolicy>::fOp = complementOp[Term<QueryPolicy>::fOp - OP_EQUAL];
-}
-
-
-template<typename QueryPolicy>
-status_t
-Equation<QueryPolicy>::MatchEmptyString()
-{
-	// There is no matching attribute, we will just bail out if we
-	// already know that our value is not of a string type.
-	// If not, it will be converted to a string - and then be compared with "".
-	// That's why we have to call ConvertValue() here - but it will be
-	// a cheap call for the next time
-	// TODO: Should we do this only for OP_UNEQUAL?
-	if (fType != 0 && fType != B_STRING_TYPE)
-		return NO_MATCH;
-
-	status_t status = ConvertValue(B_STRING_TYPE);
-	if (status == B_OK)
-		status = CompareTo((const uint8*)"", fSize) ? MATCH_OK : NO_MATCH;
-
-	return status;
 }
 
 
@@ -712,25 +708,21 @@ Equation<QueryPolicy>::Match(Entry* entry, Node* node,
 	const char* attributeName, int32 type, const uint8* key, size_t size)
 {
 	// get a pointer to the attribute in question
+	NodeHolder nodeHolder;
 	union value<QueryPolicy> value;
 	uint8* buffer = (uint8*)&value;
 	const size_t bufferSize = sizeof(value);
 
 	// first, check if we are matching for a live query and use that value
 	if (attributeName != NULL && !strcmp(fAttribute, attributeName)) {
-		if (key == NULL) {
-			if (type == B_STRING_TYPE)
-				return MatchEmptyString();
-
+		if (key == NULL)
 			return NO_MATCH;
-		}
 		buffer = const_cast<uint8*>(key);
 	} else if (!strcmp(fAttribute, "name")) {
 		// if not, check for "fake" attributes ("name", "size", "last_modified")
 		if (entry == NULL)
 			return B_ERROR;
-		buffer = (uint8*)QueryPolicy::EntryGetNameNoCopy(entry, buffer,
-			sizeof(value));
+		buffer = (uint8*)QueryPolicy::EntryGetNameNoCopy(nodeHolder, entry);
 		if (buffer == NULL)
 			return B_ERROR;
 
@@ -740,14 +732,14 @@ Equation<QueryPolicy>::Match(Entry* entry, Node* node,
 		value.Int64 = QueryPolicy::NodeGetSize(node);
 		type = B_INT64_TYPE;
 	} else if (!strcmp(fAttribute, "last_modified")) {
-		value.Int32 = QueryPolicy::NodeGetLastModifiedTime(node);
-		type = B_INT32_TYPE;
+		value.Int64 = QueryPolicy::NodeGetLastModifiedTime(node);
+		type = B_INT64_TYPE;
 	} else {
 		// then for attributes
 		size = bufferSize;
-		if (QueryPolicy::NodeGetAttribute(node, fAttribute, buffer, &size,
-				&type) != B_OK) {
-			return MatchEmptyString();
+		if (QueryPolicy::NodeGetAttribute(nodeHolder, node,
+				fAttribute, buffer, &size, &type) != B_OK) {
+			return NO_MATCH;
 		}
 	}
 
@@ -775,9 +767,14 @@ Equation<QueryPolicy>::CalculateScore(Index &index)
 	}
 
 	// if we have a pattern, how much does it help our search?
-	if (fIsPattern)
+	if (fIsPattern) {
 		fScore = getFirstPatternSymbol(fString) << 3;
-	else {
+
+		// Even if the first pattern symbol is at position 0,
+		// there's still an index, so don't let our score revert to zero.
+		if (fScore == 0)
+			fScore = 1;
+	} else {
 		// Score by operator
 		if (Term<QueryPolicy>::fOp == OP_EQUAL) {
 			// higher than pattern="255 chars+*"
@@ -887,18 +884,19 @@ Equation<QueryPolicy>::GetNextMatching(Context* context,
 	IndexIterator* iterator, struct dirent* dirent, size_t bufferSize)
 {
 	while (true) {
+		NodeHolder nodeHolder;
 		union value<QueryPolicy> indexValue;
 		size_t keyLength;
-		Entry* entry = NULL;
+		size_t duplicate = 0;
 
-		status_t status = QueryPolicy::IndexIteratorGetNextEntry(iterator,
-			&indexValue, &keyLength, (size_t)sizeof(indexValue), &entry);
+		status_t status = QueryPolicy::IndexIteratorFetchNextEntry(iterator,
+			&indexValue, &keyLength, (size_t)sizeof(indexValue), &duplicate);
 		if (status != B_OK)
 			return status;
 
 		// only compare against the index entry when this is the correct
 		// index for the equation
-		if (fHasIndex && !CompareTo((uint8*)&indexValue, keyLength)) {
+		if (fHasIndex && duplicate < 2 && !CompareTo((uint8*)&indexValue, keyLength)) {
 			// They aren't equal? Let the operation decide what to do. Since
 			// we always start at the beginning of the index (or the correct
 			// position), only some needs to be stopped if the entry doesn't
@@ -908,6 +906,16 @@ Equation<QueryPolicy>::GetNextMatching(Context* context,
 				|| (Term<QueryPolicy>::fOp == OP_EQUAL && !fIsPattern))
 				return B_ENTRY_NOT_FOUND;
 
+			if (duplicate > 0)
+				QueryPolicy::IndexIteratorSkipDuplicates(iterator);
+			continue;
+		}
+
+		Entry* entry = NULL;
+		status = QueryPolicy::IndexIteratorGetEntry(context, iterator,
+			nodeHolder, &entry);
+		if (status != B_OK) {
+			// try with next
 			continue;
 		}
 
@@ -959,14 +967,16 @@ Equation<QueryPolicy>::GetNextMatching(Context* context,
 			ssize_t nameLength = QueryPolicy::EntryGetName(entry,
 				dirent->d_name,
 				(const char*)dirent + bufferSize - dirent->d_name);
-			if (nameLength < 0)
-				QUERY_RETURN_ERROR(nameLength);
+			if (nameLength < 0) {
+				// Invalid or unknown name.
+				nameLength = 0;
+			}
 
 			dirent->d_dev = QueryPolicy::ContextGetVolumeID(context);
 			dirent->d_ino = QueryPolicy::EntryGetNodeID(entry);
 			dirent->d_pdev = dirent->d_dev;
 			dirent->d_pino = QueryPolicy::EntryGetParentID(entry);
-			dirent->d_reclen = sizeof(struct dirent) + strlen(dirent->d_name) + 1;
+			dirent->d_reclen = offsetof(struct dirent, d_name) + nameLength;
 		}
 
 		if (status == MATCH_OK)
@@ -1157,27 +1167,212 @@ Equation<QueryPolicy>::PrintToStream()
 
 
 template<typename QueryPolicy>
-Expression<QueryPolicy>::Expression(char* expr)
+Expression<QueryPolicy>::Expression()
 	:
-	fPosition(NULL),
 	fTerm(NULL)
 {
-	if (expr == NULL)
-		return;
+}
 
-	fTerm = ParseOr(&expr);
-	if (fTerm != NULL && fTerm->InitCheck() < B_OK) {
-		QUERY_FATAL("Corrupt tree in expression!\n");
-		delete fTerm;
-		fTerm = NULL;
+
+template<typename QueryPolicy>
+status_t
+Expression<QueryPolicy>::Init(const char* expr, const char** position)
+{
+	if (expr == NULL)
+		return B_BAD_VALUE;
+	if (fTerm != NULL)
+		return EALREADY;
+
+	status_t status = B_OK;
+	int32 equations = 0;
+	const int32 kMaxEquations = 32;
+
+	struct ExpressionNode {
+		Term<QueryPolicy>* term = NULL;
+		bool negated = false;
+		ops op = OP_NONE;
+	};
+	Stack<Stack<ExpressionNode>*> exprsTree;
+	Stack<ExpressionNode>* currentExpr = NULL;
+	ExpressionNode* current = NULL;
+	while (expr != NULL) {
+		skipWhitespace(&expr);
+
+		if (currentExpr == NULL) {
+			 currentExpr = new(std::nothrow) Stack<ExpressionNode>;
+			 if (currentExpr == NULL) {
+				 status = B_NO_MEMORY;
+				 break;
+			 }
+		}
+
+		const char c = *expr;
+		bool complete = false;
+
+		if (c == ')' || c == '\0') {
+			if (currentExpr->IsEmpty())
+				break; // Illegal empty expression.
+
+			complete = true;
+		}
+
+		if (current == NULL && !complete) {
+			currentExpr->Push(ExpressionNode());
+			current = currentExpr->Array() + (currentExpr->CountItems() - 1);
+		}
+
+		if (c == '(') {
+			exprsTree.Push(currentExpr);
+			currentExpr = NULL;
+			current = NULL;
+			expr++;
+		} else if (c == '!') {
+			skipWhitespace(&expr, 1);
+			if (*expr != '(')
+				break; // Not allowed.
+			current->negated = true;
+		} else if (c == '|' || c == '&') {
+			if (current->term == NULL)
+				break; // Nothing to operate on.
+
+			ops op = OP_NONE;
+			if (IsOperator(&expr, '|'))
+				op = OP_OR;
+			else if (IsOperator(&expr, '&'))
+				op = OP_AND;
+			else
+				break; // Illegal operator.
+
+			current->op = op;
+			current = NULL;
+		} else if (!complete) {
+			if (current->term != NULL)
+				break; // There already is a term.
+			if ((equations + 1) > kMaxEquations) {
+				status = E2BIG;
+				break;
+			}
+
+			Equation<QueryPolicy>* equation
+				= new(std::nothrow) Equation<QueryPolicy>(&expr);
+			if (equation == NULL) {
+				status = B_NO_MEMORY;
+				break;
+			}
+			if (equation == NULL || equation->InitCheck() != B_OK) {
+				status = equation->InitCheck();
+				delete equation;
+				break;
+			}
+
+			current->term = equation;
+			equations++;
+		}
+		if (!complete)
+			continue;
+
+		if (currentExpr->CountItems() == 1) {
+			if (current == NULL)
+				break; // Probably an anomalous operator.
+		}
+
+		// First pass: negation.
+		for (int32 i = 0; i < currentExpr->CountItems(); i++) {
+			current = currentExpr->Array() + i;
+			// If the term is negated, we just complement the tree, to get
+			// rid of the not, a.k.a. DeMorgan's Law.
+			if (current->negated) {
+				current->term->Complement();
+				current->negated = false;
+			}
+		}
+		// Second & third passes: && and ||.
+		int32 nodes = currentExpr->CountItems();
+		for (ops op = OP_AND; op <= OP_OR; op = (ops)(op + 1)) {
+			for (int32 i = 0; i < (currentExpr->CountItems() - 1); ) {
+				ExpressionNode* left = currentExpr->Array() + i;
+				if (left->op != op) {
+					i++;
+					continue;
+				}
+
+				// Find the right-hand expression (may have to jump over now-unused nodes.)
+				ExpressionNode* right = NULL;
+				for (int32 j = i + 1; j < currentExpr->CountItems(); j++) {
+					current = currentExpr->Array() + j;
+					if (current->term == NULL)
+						continue;
+
+					right = current;
+					break;
+				}
+				if (right == NULL)
+					break; // Invalid expression, somehow.
+
+				Term<QueryPolicy>* newTerm = new(std::nothrow) Operator<QueryPolicy>(
+					left->term, left->op, right->term);
+				if (newTerm == NULL) {
+					status = B_NO_MEMORY;
+					break;
+				}
+
+				left->term = newTerm;
+				left->op = right->op;
+				right->op = OP_NONE;
+				right->term = NULL;
+				nodes--;
+			}
+		}
+
+		// At this point we should have only one node left.
+		if (nodes != 1)
+			break;
+
+		current = currentExpr->Array();
+		Term<QueryPolicy>* term = current->term;
+
+		delete currentExpr;
+		currentExpr = NULL;
+		if (exprsTree.Pop(&currentExpr)) {
+			current = currentExpr->Array() + (currentExpr->CountItems() - 1);
+			if (current->term != NULL)
+				break; // There already is a term.
+			current->term = term;
+		} else {
+			if (c != '\0')
+				break; // Unexpected end of expression.
+
+			fTerm = term;
+			break;
+		}
+
+		expr++;
 	}
+
+	if (position != NULL)
+		*position = expr;
+
+	do {
+		if (currentExpr == NULL)
+			continue;
+
+		ExpressionNode item;
+		while (currentExpr->Pop(&item))
+			delete item.term;
+		delete currentExpr;
+	} while (exprsTree.Pop(&currentExpr));
+
+	if (fTerm == NULL && status == B_OK)
+		return B_BAD_VALUE;
+
 	QUERY_D(if (fTerm != NULL) {
 		fTerm->PrintToStream();
 		QUERY_D(__out("\n"));
 		if (*expr != '\0')
 			PRINT(("Unexpected end of string: \"%s\"!\n", expr));
 	});
-	fPosition = expr;
+
+	return status;
 }
 
 
@@ -1189,131 +1384,16 @@ Expression<QueryPolicy>::~Expression()
 
 
 template<typename QueryPolicy>
-Term<QueryPolicy>*
-Expression<QueryPolicy>::ParseEquation(char** expr)
-{
-	skipWhitespace(expr);
-
-	bool _not = false;
-	if (**expr == '!') {
-		skipWhitespace(expr, 1);
-		if (**expr != '(')
-			return NULL;
-
-		_not = true;
-	}
-
-	if (**expr == ')') {
-		// shouldn't be handled here
-		return NULL;
-	} else if (**expr == '(') {
-		skipWhitespace(expr, 1);
-
-		Term<QueryPolicy>* term = ParseOr(expr);
-
-		skipWhitespace(expr);
-
-		if (**expr != ')') {
-			delete term;
-			return NULL;
-		}
-
-		// If the term is negated, we just complement the tree, to get
-		// rid of the not, a.k.a. DeMorgan's Law.
-		if (_not)
-			term->Complement();
-
-		skipWhitespace(expr, 1);
-
-		return term;
-	}
-
-	Equation<QueryPolicy>* equation
-		= new(std::nothrow) Equation<QueryPolicy>(expr);
-	if (equation == NULL || equation->InitCheck() < B_OK) {
-		delete equation;
-		return NULL;
-	}
-	return equation;
-}
-
-
-template<typename QueryPolicy>
-Term<QueryPolicy>*
-Expression<QueryPolicy>::ParseAnd(char** expr)
-{
-	Term<QueryPolicy>* left = ParseEquation(expr);
-	if (left == NULL)
-		return NULL;
-
-	while (IsOperator(expr, '&')) {
-		Term<QueryPolicy>* right = ParseAnd(expr);
-		Term<QueryPolicy>* newParent = NULL;
-
-		if (right == NULL
-			|| (newParent = new(std::nothrow) Operator<QueryPolicy>(left,
-				OP_AND, right)) == NULL) {
-			delete left;
-			delete right;
-
-			return NULL;
-		}
-		left = newParent;
-	}
-
-	return left;
-}
-
-
-template<typename QueryPolicy>
-Term<QueryPolicy>*
-Expression<QueryPolicy>::ParseOr(char** expr)
-{
-	Term<QueryPolicy>* left = ParseAnd(expr);
-	if (left == NULL)
-		return NULL;
-
-	while (IsOperator(expr, '|')) {
-		Term<QueryPolicy>* right = ParseAnd(expr);
-		Term<QueryPolicy>* newParent = NULL;
-
-		if (right == NULL
-			|| (newParent = new(std::nothrow) Operator<QueryPolicy>(left, OP_OR,
-				right)) == NULL) {
-			delete left;
-			delete right;
-
-			return NULL;
-		}
-		left = newParent;
-	}
-
-	return left;
-}
-
-
-template<typename QueryPolicy>
 bool
-Expression<QueryPolicy>::IsOperator(char** expr, char op)
+Expression<QueryPolicy>::IsOperator(const char** expr, char op)
 {
-	char* string = *expr;
+	const char* string = *expr;
 
 	if (*string == op && *(string + 1) == op) {
 		*expr += 2;
 		return true;
 	}
 	return false;
-}
-
-
-template<typename QueryPolicy>
-status_t
-Expression<QueryPolicy>::InitCheck()
-{
-	if (fTerm == NULL)
-		return B_BAD_VALUE;
-
-	return B_OK;
 }
 
 
@@ -1363,16 +1443,18 @@ Query<QueryPolicy>::Create(Context* context, const char* queryString,
 	uint32 flags, port_id port, uint32 token, Query<QueryPolicy>*& _query)
 {
 	Expression<QueryPolicy>* expression
-		= new(std::nothrow) Expression<QueryPolicy>((char*)queryString);
+		= new(std::nothrow) Expression<QueryPolicy>;
 	if (expression == NULL)
 		QUERY_RETURN_ERROR(B_NO_MEMORY);
 
-	if (expression->InitCheck() != B_OK) {
+	const char* position = NULL;
+	status_t status = expression->Init(queryString, &position);
+	if (status != B_OK) {
 		QUERY_INFORM("Could not parse query \"%s\", stopped at: \"%s\"\n",
-			queryString, expression->Position());
+			queryString, position);
 
 		delete expression;
-		QUERY_RETURN_ERROR(B_BAD_VALUE);
+		QUERY_RETURN_ERROR(status);
 	}
 
 	Query<QueryPolicy>* query = new(std::nothrow) Query<QueryPolicy>(context,
@@ -1596,9 +1678,8 @@ void
 Query<QueryPolicy>::_SendEntryNotification(Entry* entry,
 	status_t (*notify)(port_id, int32, dev_t, ino_t, const char*, ino_t))
 {
-	char nameBuffer[QueryPolicy::kMaxFileNameLength];
-	const char* name = QueryPolicy::EntryGetNameNoCopy(entry, nameBuffer,
-		sizeof(nameBuffer));
+	NodeHolder nodeHolder;
+	const char* name = QueryPolicy::EntryGetNameNoCopy(nodeHolder, entry);
 	if (name != NULL) {
 		notify(fPort, fToken, QueryPolicy::ContextGetVolumeID(fContext),
 			QueryPolicy::EntryGetParentID(entry), name,

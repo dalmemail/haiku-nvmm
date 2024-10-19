@@ -9,8 +9,9 @@
 #define CPU_MAX_CACHE_LEVEL 	8
 #define CACHE_LINE_SIZE 		64
 
-#define set_ac()
-#define clear_ac()
+// TODO: These will require a real implementation when PAN is enabled
+#define arch_cpu_enable_user_access()
+#define arch_cpu_disable_user_access()
 
 #include <kernel/arch/arm64/arm_registers.h>
 
@@ -131,10 +132,10 @@ struct iframe {
 	// return info
 	uint64 elr;
 	uint64 spsr;
-	uint64 x[20];
+	uint64 x[29];
+	uint64 fp;
 	uint64 lr;
 	uint64 sp;
-	uint64 fp;
 
 	// exception info
 	uint64 esr;

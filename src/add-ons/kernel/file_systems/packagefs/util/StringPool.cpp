@@ -12,8 +12,9 @@
 static const size_t kInitialStringTableSize = 128;
 
 static char sStringsBuffer[sizeof(StringDataHash)];
+static char sEmptyStringBuffer[sizeof(StringData) + 1];
 
-StringData StringData::fEmptyString(StringDataKey("", 0));
+StringData* StringData::fEmptyString;
 
 mutex StringPool::sLock;
 StringDataHash* StringPool::sStrings;
@@ -25,7 +26,7 @@ StringDataHash* StringPool::sStrings;
 /*static*/ void
 StringData::Init()
 {
-	new(&fEmptyString) StringData(StringDataKey("", 0));
+	fEmptyString = new(sEmptyStringBuffer) StringData(StringDataKey("", 0));
 }
 
 
@@ -141,14 +142,15 @@ StringPool::DumpUsageStatistics()
 	}
 
 	size_t stringCount = sStrings->CountElements();
-	size_t overhead = stringCount * (sizeof(StringData) - 1);
+	size_t overhead = stringCount * sizeof(StringData);
+	size_t tableSize = sStrings->TableSize() * sizeof(void*);
 
 	INFORM("StringPool usage:\n");
-	INFORM("  total unique strings:    %8zu, %8zu bytes, overhead: %zu bytes\n",
-		stringCount, totalStringSize, overhead);
+	INFORM("  total unique strings:    %8zu, %8zu bytes, overhead: %zu bytes + %zu bytes\n",
+		stringCount, totalStringSize, overhead, tableSize);
 	INFORM("  total strings with dups: %8zu, %8zu bytes\n", totalReferenceCount,
 		totalStringSizeWithDuplicates);
 	INFORM("  unshared strings:        %8zu\n", unsharedStringCount);
 	INFORM("  bytes saved:             %8zd\n",
-		(ssize_t)(totalStringSizeWithDuplicates - totalStringSize - overhead));
+		(ssize_t)(totalStringSizeWithDuplicates - (totalStringSize + overhead + tableSize)));
 }

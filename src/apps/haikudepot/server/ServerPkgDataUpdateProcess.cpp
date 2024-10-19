@@ -129,13 +129,15 @@ PackageFillingPkgListener::ConsumePackage(const PackageInfoRef& package,
 			package->AddCategory(category);
 	}
 
-	RatingSummary summary;
-	summary.averageRating = RATING_MISSING;
-
-	if (!pkg->DerivedRatingIsNull())
-		summary.averageRating = pkg->DerivedRating();
-
-	package->SetRatingSummary(summary);
+	if (!pkg->DerivedRatingIsNull()) {
+		UserRatingInfoRef userRatingInfo(new UserRatingInfo(), true);
+		UserRatingSummaryRef userRatingSummary(new UserRatingSummary(), true);
+		// TODO; unify the naming here!
+		userRatingSummary->SetAverageRating(pkg->DerivedRating());
+		userRatingSummary->SetRatingCount(pkg->DerivedRatingSampleSize());
+		userRatingInfo->SetSummary(userRatingSummary);
+		package->SetUserRatingInfo(userRatingInfo);
+	}
 
 	package->SetHasChangelog(pkg->HasChangelog());
 
@@ -242,9 +244,8 @@ BString
 ServerPkgDataUpdateProcess::UrlPathComponent()
 {
 	BString urlPath;
-	urlPath.SetToFormat("/__pkg/all-%s-%s.json.gz",
-		_DeriveWebAppRepositorySourceCode().String(),
-		fModel->Language()->PreferredLanguage()->ID());
+	urlPath.SetToFormat("/__pkg/all-%s-%s.json.gz", _DeriveWebAppRepositorySourceCode().String(),
+		fModel->PreferredLanguage()->ID());
 	return urlPath;
 }
 
@@ -256,7 +257,8 @@ ServerPkgDataUpdateProcess::GetLocalPath(BPath& path) const
 
 	if (!webAppRepositorySourceCode.IsEmpty()) {
 		AutoLocker<BLocker> locker(fModel->Lock());
-		return fModel->DumpExportPkgDataPath(path, webAppRepositorySourceCode);
+		return StorageUtils::DumpExportPkgDataPath(path, webAppRepositorySourceCode,
+			fModel->PreferredLanguage());
 	}
 
 	return B_ERROR;

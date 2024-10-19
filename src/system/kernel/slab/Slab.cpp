@@ -334,6 +334,38 @@ dump_cache_info(int argc, char* argv[])
 }
 
 
+static int
+dump_object_info(int argc, char* argv[])
+{
+	if (argc < 2) {
+		kprintf("usage: slab_object [address]\n");
+		return 0;
+	}
+
+	void* object = (void*)parse_expression(argv[1]);
+	ObjectCache* cache = MemoryManager::DebugObjectCacheForAddress(object);
+	if (cache == NULL) {
+		kprintf("%p does not seem to be in an object_cache\n", object);
+		return 1;
+	}
+
+	kprintf("address %p\n", object);
+	kprintf("\tslab_cache: %p (%s)\n", cache, cache->name);
+
+	MutexTryLocker cacheLocker(cache->lock);
+	if (cacheLocker.IsLocked()) {
+		slab* slab = cache->ObjectSlab(object);
+		const char* slabType = cache->empty.Contains(slab) ? "empty"
+			: cache->partial.Contains(slab) ? "partial"
+			: cache->full.Contains(slab) ? "full" : NULL;
+
+		kprintf("\tobject is in %s slab: %p\n", slabType, slab);
+	}
+
+	return 0;
+}
+
+
 // #pragma mark - AllocationTrackingCallback
 
 
@@ -1354,6 +1386,8 @@ slab_init_post_area()
 		"dump contents of an object depot");
 	add_debugger_command("slab_magazine", dump_depot_magazine,
 		"dump contents of a depot magazine");
+	add_debugger_command("slab_object", dump_object_info,
+		"dump information about an object in an object_cache");
 #if SLAB_ALLOCATION_TRACKING_AVAILABLE
 	add_debugger_command_etc("allocations_per_caller",
 		&dump_allocations_per_caller,

@@ -69,12 +69,11 @@ typedef struct {
 #define DEFINE_CLASS_0(name, driver, methods, size) \
 	driver_t driver = { #name, methods, size }
 
-#define DRIVER_MODULE(name, busname, driver, devclass, evh, arg) \
-	driver_t *DRIVER_MODULE_NAME(name, busname) = &(driver); \
-	devclass_t *__class_ ## name ## _ ## busname ## _ ## devclass = &(devclass)
+#define DRIVER_MODULE(name, busname, driver, evh, arg) \
+	driver_t *DRIVER_MODULE_NAME(name, busname) = &(driver)
 
-#define DRIVER_MODULE_ORDERED(name, busname, driver, devclass, evh, arg, order) \
-	DRIVER_MODULE(name, busname, driver, devclass, evh, arg)
+#define DRIVER_MODULE_ORDERED(name, busname, driver, evh, arg, order) \
+	DRIVER_MODULE(name, busname, driver, evh, arg)
 
 #define DRIVER_MODULE_NAME(name, busname) \
 	__fbsd_ ## name ## _ ## busname

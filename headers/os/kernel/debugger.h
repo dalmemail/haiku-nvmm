@@ -193,6 +193,7 @@ typedef enum {
 											// one
 	B_DEBUGGER_MESSAGE_TEAM_DELETED,		// the debugged team is gone
 	B_DEBUGGER_MESSAGE_TEAM_EXEC,			// the debugged team executes exec()
+											// (implies all images have been deleted)
 	B_DEBUGGER_MESSAGE_THREAD_CREATED,		// a thread has been created
 	B_DEBUGGER_MESSAGE_THREAD_DELETED,		// a thread has been deleted
 	B_DEBUGGER_MESSAGE_IMAGE_CREATED,		// an image has been created
@@ -407,6 +408,7 @@ typedef struct {
 	bool				variable_stack_depth;
 										// variable number of samples per hit;
 										// cf. debug_profiler_update
+	bool				profile_kernel;	// sample kernel stack frames
 } debug_nub_start_profiler;
 
 typedef struct {
@@ -560,6 +562,9 @@ typedef struct {
 typedef struct {
 	debug_origin	origin;			// thread is < 0, team is the deleted team
 									// (asynchronous message)
+	status_t		status;			// the exit code of the team
+	int				signal;			// the signal causing the exit, < 0 if none
+	team_usage_info	usage;			// the usage info of the team
 } debug_team_deleted;
 
 // B_DEBUGGER_MESSAGE_TEAM_EXEC
@@ -580,6 +585,7 @@ typedef struct {
 
 typedef struct {
 	debug_origin	origin;			// the deleted thread (asynchronous message)
+	status_t		status;			// the exit code of the thread
 } debug_thread_deleted;
 
 // B_DEBUGGER_MESSAGE_IMAGE_CREATED
@@ -618,6 +624,7 @@ typedef struct {
 										//   <sample 1> ... <sample stack_depth>
 	bool				stopped;		// if true, the thread is no longer
 										// being profiled
+	bigtime_t			last_cpu_time;	// only set if "stopped" is
 } debug_profiler_update;
 
 // B_DEBUGGER_MESSAGE_HANDED_OVER

@@ -126,6 +126,9 @@ VMTranslationMap::UnmapArea(VMArea* area, bool deletingAddressSpace,
 void
 VMTranslationMap::DebugPrintMappingInfo(addr_t virtualAddress)
 {
+#if KDEBUG
+	kprintf("VMTranslationMap::DebugPrintMappingInfo not implemented\n");
+#endif
 }
 
 
@@ -145,6 +148,9 @@ bool
 VMTranslationMap::DebugGetReverseMappingInfo(phys_addr_t physicalAddress,
 	ReverseMappingInfoCallback& callback)
 {
+#if KDEBUG
+	kprintf("VMTranslationMap::DebugGetReverseMappingInfo not implemented\n");
+#endif
 	return false;
 }
 
@@ -206,7 +212,7 @@ VMTranslationMap::PageUnmapped(VMArea* area, page_num_t pageNumber,
 
 	if (mapping != NULL) {
 		bool isKernelSpace = area->address_space == VMAddressSpace::Kernel();
-		object_cache_free(gPageMappingsObjectCache, mapping,
+		vm_free_page_mapping(pageNumber, mapping,
 			CACHE_DONT_WAIT_FOR_MEMORY
 				| (isKernelSpace ? CACHE_DONT_LOCK_KERNEL_SPACE : 0));
 	}
@@ -252,7 +258,7 @@ VMTranslationMap::UnaccessedPageUnmapped(VMArea* area, page_num_t pageNumber)
 		atomic_add(&gMappedPagesCount, -1);
 
 	if (mapping != NULL) {
-		object_cache_free(gPageMappingsObjectCache, mapping,
+		vm_free_page_mapping(pageNumber, mapping,
 			CACHE_DONT_WAIT_FOR_MEMORY | CACHE_DONT_LOCK_KERNEL_SPACE);
 			// Since this is called by the page daemon, we never want to lock
 			// the kernel address space.

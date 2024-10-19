@@ -17,10 +17,6 @@
 #include <syscall_utils.h>
 
 
-// TODO: think about adding special syscalls for the read/write/stat functions
-// to speed them up
-
-
 static DIR *
 open_attr_dir(int file, const char *path, bool traverse)
 {
@@ -72,9 +68,7 @@ fs_write_attr(int fd, const char* attribute, uint32 type, off_t pos,
 	// 0, but it also tries to support programs which continue to write more
 	// chunks.
 	// The new Haiku way is to use fs_open_attr() to get a regular file handle
-	// and use that for writing, then use fs_close_attr() when done. As you
-	// see from this implementation, it saves 2 syscalls per writing a chunk
-	// of data.
+	// and use that for writing, then use fs_close_attr() when done.
 
 	ssize_t bytes = _kern_write_attr(fd, attribute, type, pos, buffer,
 		writeBytes);
@@ -102,7 +96,7 @@ fs_stat_attr(int fd, const char* attribute, struct attr_info* attrInfo)
 int
 fs_open_attr(const char *path, const char *attribute, uint32 type, int openMode)
 {
-	status_t status = _kern_open_attr(-1, path, attribute, type, openMode);
+	status_t status = _kern_open_attr(AT_FDCWD, path, attribute, type, openMode);
 	RETURN_AND_SET_ERRNO(status);
 }
 
@@ -127,14 +121,14 @@ fs_close_attr(int fd)
 extern "C" DIR*
 fs_open_attr_dir(const char* path)
 {
-	return open_attr_dir(-1, path, true);
+	return open_attr_dir(AT_FDCWD, path, true);
 }
 
 
 extern "C" DIR*
 fs_lopen_attr_dir(const char* path)
 {
-	return open_attr_dir(-1, path, false);
+	return open_attr_dir(AT_FDCWD, path, false);
 }
 
 extern "C" DIR*
@@ -163,4 +157,3 @@ fs_rewind_attr_dir(DIR* dir)
 {
 	rewinddir(dir);
 }
-

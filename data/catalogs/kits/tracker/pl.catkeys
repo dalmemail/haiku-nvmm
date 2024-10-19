@@ -1,4 +1,4 @@
-1	polish	x-vnd.Haiku-libtracker	3354499367
+1	polish	x-vnd.Haiku-libtracker	3099940411
 Created	ContainerWindow		Utworzono
 Icon	AttributesView		Ikona
 Open and make preferred	OpenWithWindow		Otwórz i zaznacz jako preferowane
@@ -7,14 +7,18 @@ Open with…	ContainerWindow		Otwórz za pomocą…
 Error moving \"%name\" to Trash. (%error)	FSUtils		Błąd przy przenoszeniu „%name” do Kosza. (%error)
 Or	FindPanel		Lub
 MIME Description	AttributesView		Opis MIME
+Query	FindPanel		Zapytanie
 before	FindPanel		przed
+New folder%d	FSUtils		Nowy katalog%d
 Volume icons	TrackerSettingsWindow		Ikony dysków
 Ignore case	SelectionWindow		Ignoruj wielkość liter
+Save query:	FindPanel		Zapisz zapytanie:
+Save as query template:	FindPanel		Zapisz jako szablon zapytania:
 Current folder	ContainerWindow		Bieżący katalog
 Finish: %time - Over %finishtime left	StatusWindow		Koniec o: %time - Pozostało %finishtime
 Mount all disks now	AutoMounterSettings		Zamontuj wszystkie dyski
-Location:	InfoWindow		Położenie:
 Name	PoseView		Nazwa
+Location:	InfoWindow		Położenie:
 Kind:	InfoWindow		Typ:
 contains	FindPanel		zawiera
 Open	FilePanelPriv		Otwórz
@@ -75,13 +79,13 @@ Moving: 	StatusWindow		Przenoszenie:
 Select	SelectionWindow		Wybierz
 Select	InfoWindow		Wybierz
 OK	OpenWithWindow		OK
-Include trash	FindPanel		Uwzględnij kosz
 Clean up	ContainerWindow		Wyczyść
 Modified	FindPanel		Zmodyfikowano
  (block size: 	InfoWindow		 (rozmiar bloku: 
 Select all	QueryContainerWindow		Zaznacz wszystko
 Generate image thumbnails	SettingsView		Generuj miniatury obrazów
 Select…	FilePanelPriv		Wybierz…
+An item named '%filename%' already exists.	FSUtils		Element o nazwie „%filename%” już istnieje.
 preferences	B_PREFERENCES_DIRECTORY		ustawienia
 Name	Person Query Columns		Nazwa
 Skip all	FSUtils		Pomiń wszystkie
@@ -103,7 +107,6 @@ Window	ContainerWindow		Okno
 Remove	FindPanel		Usuń
 Company	Person Query Columns		Firma
 Recent documents	FavoritesMenu		Ostatnio otwierane dokumenty
-Save as Query template:	FindPanel		Zapisz jako szablon Zapytania:
 Edit templates…	TemplatesMenu		Modyfikuj szablony…
 {0, plural, one{# byte} other{# bytes}}	FSUtils		{0, plural, one{# bajt} few{# bajty} many{# bajtów} other{# bajta}}
 8-bit integer	AttributesView		8-bitowa liczba całkowita
@@ -114,27 +117,26 @@ Hide dotfiles	SettingsView		Ukryj pliki zaczynające się od kropki
 Trash	Model		Kosz
 Enable type-ahead filtering	SettingsView		Włącz filtrowanie wyprzedzające
 copy	FSUtils	filename copy	kopia
-New folder%ld	FSUtils		Nowy katalog%ld
 Location	OpenWithWindow		Położenie
 Resize to fit	QueryContainerWindow		Dopasuj do zawartości
 List folders first	SettingsView		Listuj foldery w pierwszej kolejności
 Find	FSUtils		Znajdź
 An item named \"%name\" already exists in this folder. Would you like to replace it with the symbolic link you are creating?	FSUtils		Obiekt o nazwie „%name” już istnieje w tym katalogu. Zamienić na dowiązanie symboliczne?
 List view	ContainerWindow		Widok listy
-Temporary	FindPanel		Tymczasowy
 Modified	QueryPoseView		Zmodyfikowano
 Create relative link	ContainerWindow		Utwórz wględny skrót
 Owner	FilePermissionsView		Właściciel
 Cancel	FSClipBoard		Anuluj
 Modified	PoseView		Zmodyfikowano
+Save as template…	FindPanel		Zapisz jako szablon…
 Move to Trash	ContainerWindow		Przenieś do kosza
 All files and folders	FindPanel		Wszystkie pliki i foldery
 Add-ons	ContainerWindow		Dodatki
 Too many parenthesis.	libtracker		Zbyt wiele nawiasów.
+Save query template:	FindPanel		Zapisz szablon zapytania:
 Increase size	ContainerWindow		Zwiększ rozmiar
 \nShould this be fixed?	FSUtils		\nNaprawić to?
 URL	Bookmark Query Columns		URL
-Move	PoseView		Przenieś
 Floating point number	AttributesView		Liczba zmiennoprzecinkowa
 Cancel	ContainerWindow		Anuluj
 Attributes	ContainerWindow		Atrybuty
@@ -208,6 +210,7 @@ Cancel	FSUtils		Anuluj
 Original name	ContainerWindow		Nazwa orygialna
 Unknown	WidgetAttributeText		Nieznany
 32-bit integer	AttributesView		32-bitowa liczba całkowita
+Save as query…	FindPanel		Zapisz jako zapytanie…
 The specified name is already used as the name of a folder. Please choose another name.	FilePanelPriv		Nazwa jest już użyta jako nazwa katalogu. Proszę wybrać inną.
 Modified	ContainerWindow		Zmodyfikowane
 Mini icon view	ContainerWindow		Widok mini ikon
@@ -257,6 +260,7 @@ Cut	FilePanelPriv		Wytnij
 Finish: after several years	StatusWindow		Koniec: za kilka lat
 Favorites	FilePanelPriv		Ulubione
 Point	AttributesView		Punkt
+You can't move or copy items to read-only volumes.	PoseView		Nie możesz przenosić lub kopiować elementów na woluminy tylko do odczytu.
 home	B_USER_DIRECTORY		home
 Tracker New Templates	B_USER_SETTINGS_DIRECTORY/Tracker/Tracker New Templates		Tracker New Templates
 Disk mounting during boot	AutoMounterSettings		Montowanie dysku przy uruchamianiu
@@ -264,6 +268,7 @@ Don't automount	AutoMounterSettings		Nie montuj automatycznie
 Node ref	AttributesView		Node ref
 Could not find application \"%appname\"	OpenWithWindow		Nie można odnaleźć aplikacji „%appname”
 Unmatched parenthesis.	libtracker		Nawias bez pary.
+New folder %d	FSUtils		Nowy katalog %d
 Extended attribute	AttributesView		Atrybut rozszerzony
 Unmatched brackets.	libtracker		Niedomknięte nawiasy.
 Error %error loading Add-On %name.	ContainerWindow		Błąd %error przy ładowaniu dodatku %name.
@@ -273,9 +278,9 @@ no supporting apps	OpenWithWindow		brak obsługujących aplikacji
 32-bit unsigned integer	AttributesView		32-bitowa liczba całkowita bez znaku
 Preparing to empty Trash…	StatusWindow		Przygotowanie do opróżnienia Kosza…
 Deleting: 	StatusWindow		Usuwanie: 
+label too long	PoseView		opis jest zbyt długi
 the MIME settings	FSUtils		ustawienia MIME
 You can't move or copy the trash.	FSUtils		Nie możesz przenieść ani skopiować kosza.
-label too long	PoseView		opis jest zbyt długi
 Error creating link to \"%name\".	FSUtils		Błąd przy tworzeniu dowiązania do „%name”.
 Unknown	FilePermissionsView		Nieznany
 Paste links	ContainerWindow		Wklej odnośniki
@@ -297,6 +302,7 @@ Select all	ContainerWindow		Zaznacz wszystko
 apps	B_APPS_DIRECTORY		apps
 Error calculating folder size.	InfoWindow		Błąd przy obliczaniu rozmiaru folderu.
 Delete	FSUtils		Usuń
+Duplicate	FilePanelPriv		Zduplikuj
 Edit name	ContainerWindow		Zmień nazwę
 Could not open \"%document\" (Missing symbol: %symbol). \n	FSUtils		Nie można otworzyć „%document” (Brakujący symbol: %symbol). \n
 ASCII Text	AttributesView		Tekst ASCII
@@ -312,6 +318,7 @@ starts with	SelectionWindow		rozpoczyna się od
 Any	AttributesView		Każdy
 New	DeskWindow		Nowy
 Invert	SelectionWindow		Odwróć
+Open…	FindPanel		Otwórz…
 Would you like to find some other suitable application?	FSUtils		Czy chciałbyś poszukać innych odpowiednich aplikacji?
 *+? operand may be empty.	libtracker		operand *+? może być pusty.
 (unknown)	AttributesView		(nieznany)
@@ -323,16 +330,18 @@ MIME Path	AttributesView		Ścieżka MIME
 less than	FindPanel		mniej niż
 Error copying file \"%name\":\n\t%error\n\nWould you like to continue?	FSUtils		Błąd przy kopiowaniu pliku „%name”:\n\t%error\n\nCzy chcesz kontynuować?
 Creating links: 	StatusWindow		Tworzenie dowiązań: 
-Could not open \"%document\" with application \"%app\" (%error). 	FSUtils		Nie można otworzyć „%document” z aplikacją „%app” (%error). 
 Create %s clipping	PoseView		Utwórz wycinek %s
+Could not open \"%document\" with application \"%app\" (%error). 	FSUtils		Nie można otworzyć „%document” z aplikacją „%app” (%error). 
 Error moving \"%name\"	FSUtils		Błąd przy przenoszeniu „%name”
 To: %dir	StatusWindow		Do: %dir
 Paste layout	ContainerWindow		Wklej układ
 Cancel	Tracker		Anuluj
 yes	AttributesView		tak
+Error copying file \"%name\":\n\t%error\n\n	FSUtils		Błąd podczas kopiowania pliku „%name”:\n\t%error\n\n
 Make active printer	ContainerWindow		Ustaw jako aktywną drukarkę
 Copy to	ContainerWindow		Kopiuj do
 Name	SelectionWindow		Nazwa
+Location	Default Query Columns		Ścieżka
 by attribute	FindPanel		według atrybutu
 Write	FilePermissionsView		Zapis
 If you alter the system folder or its contents, you won't be able to boot %osName!\n\nAre you sure you want to do this?\n\nTo alter the system folder or its contents anyway, hold down the Shift key and click \"I know what I'm doing\".	FSUtils		Jeżeli podmienisz katalog „system”, %osName może nie działać poprawnie!\n\nJesteś pewien, że chcesz to zrobić?\n\nJeżeli nadal chcesz podmienić katalog „system”, naciśnij klawisz Shift i kliknij „Wiem co robię”.
@@ -344,8 +353,8 @@ after	FindPanel		po
 {0, plural, one{<# data byte>} other{<# bytes of data>}}	AttributesView		{0, plural, one{<# bajt danych>} few{<# bajty danych>} many{<# bajtów danych>} other{<# bajta danych>}}
 Version	OpenWithWindow		Wersja
 Some of the selected items cannot be moved to the Trash. Would you like to delete them instead? (This operation cannot be reverted.)	PoseView		Część zaznaczonych plików nie może zostać przeniesiona do kosza. Czy chcesz je usunąć zamiast tego? (Ta operacja nie może zostać cofnięta)
+The entered file name is too long.	FSUtils		Wprowadzona nazwa pliku jest za długa.
 Add printer…	ContainerWindow		Dodaj drukarkę…
-On	FindPanel		Na
 Permissions	ContainerWindow		Uprawnienia
 Size:	InfoWindow		Rozmiar:
 The selected item cannot be moved to the Trash. Would you like to delete it instead? (This operation cannot be reverted.)	PoseView		Zaznaczony plik nie może zostać przeniesiony do kosza. Czy chcesz go usunąć zamiast tego? (Ta operacja nie może zostać cofnięta)
@@ -354,7 +363,6 @@ Sorry, the 'Character' attribute cannot store a multi-byte glyph.	WidgetAttribut
 Open parent	VirtualDirectoryWindow		Otwórz katalog nadrzędny
 And	FindPanel		Oraz
 Palette-indexed picture	AttributesView		Obraz używający palety kolorów
-multiple disks	FindPanel		wiele dysków
 Drawing pattern	AttributesView		Wzór rysowania
 File offset	AttributesView		Przesunięcie pliku
 Name = %name	FindPanel	FindResultTitle	Nazwa = %name
@@ -370,7 +378,6 @@ Force identify	ContainerWindow		Wymuś indentyfikację
 no items	CountView		brak elementów
 Time	AttributesView		Czas
 Disks	DirMenu		Dyski
-Query name:	FindPanel		Nazwa zapytania:
 Open parent	ContainerWindow		W górę
 Find…	ContainerWindow		Znajdź…
 moving	FSUtils		przenosisz
@@ -399,6 +406,7 @@ Cannot unmount the boot volume \"%name\".	FSUtils		Nie można odmontować wolumi
 Could not open \"%document\" with application \"%app\" (Missing symbol: %symbol). \n	FSUtils		Nie można otworzyć „%document” przy użyciu aplikacji „%app” (Brakujący symbol: %symbol). \n
 New folder	ContainerWindow		Nowy katalog
 Name	OpenWithWindow		Nazwa
+Get info	Tracker	Tracker's 'Get info' panel [ALT+I]	Informacje
 There was a problem trying to replace \"%name\". The item might be open or busy.	FSUtils		Pojawił się problem przy modyfikowaniu „%name”. Plik może być zajęty lub otwarty przez inny proces.
 Windows	TrackerSettingsWindow		Okna
 Show space bars on volumes	SettingsView		Pokaż wskaźnik zajętości na woluminie
@@ -408,7 +416,9 @@ Emptying Trash… 	StatusWindow		Opróżnianie kosza…
 {0, plural, one{for # file} other{for # files}}	InfoWindow		{0, plural, one{dla # pliku} few{dla # plików} many{dla # plików} other{dla # pliku}}
 Revert	TrackerSettingsWindow		Cofnij
 trash	B_TRASH_DIRECTORY		trash
+%ld × %ld	DeskWindow	The '×' is the Unicode multiplication sign U+00D7	%ld × %ld
 If you move the system folder or its contents, you won't be able to boot %osName!\n\nAre you sure you want to do this?\n\nTo move the system folder or its contents anyway, hold down the Shift key and click \"Move\".	FSUtils		Jeżeli przeniesiesz katalog „system”, %osName może nie działać poprawnie!\n\nJesteś pewien, że chcesz to zrobić?\n\nJeżeli nadal chcesz przeniesiesz katalog „system”, naciśnij klawisz Shift i kliknij „Przenieś”.
+Open query:	FindPanel		Otwórz zapytanie:
 Close all in workspace	ContainerWindow		Zamknij wszystko w przestrzeni roboczej
 Corrupted expression.	libtracker		Niepoprawna formuła.
 Network address	AttributesView		Adres sieciowy
@@ -423,6 +433,7 @@ Name	QueryPoseView		Nazwa
 Error %error loading add-On %name.	ContainerWindow		Błąd %error przy ładowaniu dodatku %name.
 Does not handle file	OpenWithWindow		Nie obsługuje pliku
 E-mail	Person Query Columns		Adres e-mail
+Templates	FindPanel		Szablony
 Arrange by	ContainerWindow		Ułóż według
 Attributes	AttributesView		Atrybuty
 Sorry, saving more than one item is not allowed.	FilePanelPriv		Można zapisać tylko jeden plik naraz.
@@ -432,6 +443,7 @@ the config folder	FSUtils		katalog konfiguracji
 Sorry, could not create a new folder.	FSUtils		Nie można utworzyć nowego katalogu.
 MIME Signature	AttributesView		Sygnatura MIME
 Select all	VirtualDirectoryWindow		Zaznacz wszystkie
+%ld × %ld	ContainerWindow	The '×' is the Unicode multiplication sign U+00D7	%ld × %ld
 Rename	FSUtils	button label	Zmień nazwę
 Clean up all	ContainerWindow		Wyczyść wszystko
 Add current folder	FilePanelPriv		Dodaj bieżący katalog
@@ -448,7 +460,6 @@ Move to Trash	FilePanelPriv		Przenieś do kosza
 is	FindPanel		jest
 If you rename the system folder or its contents, you won't be able to boot %osName!\n\nAre you sure you want to do this?\n\nTo rename the system folder or its contents anyway, hold down the Shift key and click \"Rename\".	FSUtils		Jeżeli zmienisz nazwę katalogu „system” lub jego zawartości, uruchomienie %osName nie będzie możliwe!\n\nJesteś pewien, że chcesz to zrobić?\n\nJeżeli mimo to chcesz zmienić nazwę katalogu lub jego zawartości, naciśnij klawisz Shift i kliknij „Zmień nazwę”.
 Permissions	FilePermissionsView		Uprawnienia
-New folder %ld	FSUtils		Nowy katalog %ld
 \"%name\" is a legacy executable. Please obtain an updated version or recompile the application.	FSUtils		„%name” jest plikiem wykonywalnym w starym formacie. Zdobądź zaktualizowaną wersję lub skompiluj aplikację jeszcze raz.
 Only the boot disk	AutoMounterSettings		Tylko dysk bootujący
 Message	AttributesView		Wiadomość
@@ -472,13 +483,13 @@ Copy layout	ContainerWindow		Kopiuj motyw
 Duplicate	ContainerWindow		Duplikuj
 16-bit integer	AttributesView		16-bitowa liczba całkowita
 Untitled clipping	PoseView		Wycinek bez nazwy
+Note: file names in the destination file system are not case-sensitive.\n	FSUtils		Uwaga: wielkość liter w nazwach na docelowym systemie plików ma znaczenie.\n
 The file \"%name\" already exists in the specified folder. Do you want to replace it?	FilePanelPriv		Plik o nazwie „%name” już istnieje w tej lokalizacji. Czy chcesz go zamienić?
 , indexed	InfoWindow		, indeksowany
 You must drop items on one of the disk icons in the \"Disks\" window.	PoseView		Musisz upuścić obiekty na jednej z ikon dysków w oknie „Dyski”.
 Version:	InfoWindow		Wersja:
 OK	PoseView		OK
 Add-ons	DeskWindow		Dodatki
-Are you sure you want to move or copy the selected item(s) to this folder?	PoseView		Jesteś pewien, że chcesz przenieść lub skopiować plik(i) do tego katalogu?
 Find	FindPanel		Znajdź
 Empty folder	NavMenu		Pusty katalog
 Defaults	TrackerSettingsWindow		Przywróć domyślne
@@ -487,9 +498,10 @@ True-color picture	AttributesView		Obraz True-color
 Add-ons	FilePanelPriv		Dodatki
 Alignment	AttributesView		Wyrównanie
 Move to Trash	FSUtils		Przenieś do kosza
-Handles %type	OpenWithWindow		Obsługuje %type
 Cancel	PoseView		Anuluj
+Handles %type	OpenWithWindow		Obsługuje %type
 Delete	PoseView		Usuń
+Options	FindPanel		Opcje
 Media parameter	AttributesView		Parametr mediów
 If you alter the home folder, %osName may not behave properly!\n\nAre you sure you want to do this?\n\nTo alter the home folder anyway, hold down the Shift key and click \"I know what I'm doing\".	FSUtils		Jeżeli podmienisz katalog „home”, %osName może nie działać poprawnie!\n\nJesteś pewien, że chcesz to zrobić?\n\nJeżeli nadal chcesz podmienić katalog „home”, naciśnij klawisz Shift i kliknij „Wiem co robię”.
 Sorry, you can't copy items to the Trash.	PoseView		Przepraszamy, nie możesz skopiować elementu do kosza.
@@ -504,8 +516,10 @@ Create a Query	FindPanel		Stwórz zapytanie
 Close	QueryContainerWindow		Zamknij
 I know what I'm doing	FSUtils	button label	Wiem co robię
 Preparing to copy items…	StatusWindow		Przygotowanie do kopiowania elementów…
+%lld B	WidgetAttributeText	The filesize symbol for byte	%lld B
 Entry ref	AttributesView		Entry ref
 Icon view	ContainerWindow		Widok ikon
+The entered folder name is too long.	FSUtils		Wprowadzona nazwa katalogu jest za długa.
 Name	ContainerWindow		Nazwa
 Preferred for %type	OpenWithWindow		Preferowane dla %type
 Free space color	SettingsView		Kolor wolnego miejsca

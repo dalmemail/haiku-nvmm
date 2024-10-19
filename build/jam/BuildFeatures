@@ -15,16 +15,16 @@ local unavailableBuildFeatures ;
 # SSL
 
 # Automatically enable the SSL feature, when the OpenSSL package is enabled.
-if [ IsHaikuImagePackageAdded openssl ] {
+if [ IsHaikuImagePackageAdded openssl3 ] {
 	HAIKU_BUILD_FEATURE_SSL = 1 ;
 }
 
 if $(HAIKU_BUILD_FEATURE_SSL) {
-	if [ IsPackageAvailable openssl_devel ] {
+	if [ IsPackageAvailable openssl3_devel ] {
 		ExtractBuildFeatureArchives openssl :
-			file: base openssl
+			file: base openssl3
 				runtime: lib
-			file: devel openssl_devel
+			file: devel openssl3_devel
 				depends: base
 				libraries:
 					$(developLibDir)/libcrypto.so
@@ -510,30 +510,6 @@ if [ IsPackageAvailable libedit_devel ] {
 }
 
 
-# libsolv
-if [ IsPackageAvailable libsolv_devel ] {
-	ExtractBuildFeatureArchives libsolv :
-		file: base libsolv
-			runtime: lib
-		file: devel libsolv_devel
-			depends: base
-			libraries:
-				$(developLibDir)/libsolv.so
-				$(developLibDir)/libsolvext.so
-			headers: $(developHeadersDir)
-		# sources are required for the primary architecture only
-		primary @{
-			file: source libsolv_source
-				sources: develop/sources/%portRevisionedName%/sources
-		}@
-		;
-
-	EnableBuildFeatures libsolv ;
-} else {
-	unavailableBuildFeatures += libsolv ;
-}
-
-
 # qrencode
 if [ IsPackageAvailable qrencode_kdl_devel ] {
 	ExtractBuildFeatureArchives libqrencode_kdl :
@@ -549,43 +525,19 @@ if [ IsPackageAvailable qrencode_kdl_devel ] {
 
 
 # tiff
-if [ IsPackageAvailable tiff4_devel ] {
+if [ IsPackageAvailable tiff_devel ] {
 	ExtractBuildFeatureArchives tiff :
-		file: base tiff4
+		file: base tiff
 			runtime: lib
-		file: devel tiff4_devel
+		file: devel tiff_devel
 			depends: base
-			library: $(developLibDir)/libtiff.so.5
+			library: $(developLibDir)/libtiff.so
 			headers: $(developHeadersDir) $(developHeadersDir)/tiff
 		;
 
 	EnableBuildFeatures tiff ;
 } else {
 	unavailableBuildFeatures += tiff ;
-}
-
-
-# openexr
-if [ IsPackageAvailable openexr_devel ] {
-	ExtractBuildFeatureArchives openexr :
-		file: base openexr
-			runtime: lib
-		file: devel openexr_devel
-			depends: base
-			libraries:
-				$(developLibDir)/libIlmImf.so
-				$(developLibDir)/libIlmImfUtil.so
-				$(developLibDir)/libHalf.so
-				$(developLibDir)/libIex.so
-				$(developLibDir)/libIexMath.so
-				$(developLibDir)/libIlmThread.so
-				$(developLibDir)/libImath.so
-			headers: $(developHeadersDir) $(developHeadersDir)/OpenEXR
-		;
-
-	EnableBuildFeatures openexr ;
-} else {
-	unavailableBuildFeatures += openexr ;
 }
 
 

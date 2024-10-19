@@ -11,9 +11,13 @@
 #include <algorithm>
 #include <new>
 
+#include "ClassCache.h"
 #include "UnpackingAttributeCookie.h"
 #include "UnpackingAttributeDirectoryCookie.h"
 #include "Utils.h"
+
+
+CLASS_CACHE(UnpackingLeafNode);
 
 
 UnpackingLeafNode::UnpackingLeafNode(ino_t id)
@@ -113,7 +117,7 @@ UnpackingLeafNode::AddPackageNode(PackageNode* packageNode, dev_t deviceID)
 	ASSERT(fFinalPackageNode == NULL);
 
 	if (S_ISDIR(packageNode->Mode()))
-		return B_BAD_VALUE;
+		return B_IS_A_DIRECTORY;
 
 	PackageLeafNode* packageLeafNode
 		= dynamic_cast<PackageLeafNode*>(packageNode);
@@ -148,7 +152,7 @@ UnpackingLeafNode::RemovePackageNode(PackageNode* packageNode, dev_t deviceID)
 	// is not sorted)
 	PackageLeafNode* newestNode = fPackageNodes.Head();
 	if (isNewest && newestNode != NULL) {
-		PackageLeafNodeList::Iterator it = fPackageNodes.GetIterator();
+		PackageLeafNodeList::ConstIterator it = fPackageNodes.GetIterator();
 		it.Next();
 			// skip the first one
 		while (PackageLeafNode* otherNode = it.Next()) {
@@ -212,11 +216,11 @@ UnpackingLeafNode::CloneTransferPackageNodes(ino_t id, UnpackingNode*& _newNode)
 {
 	ASSERT(fFinalPackageNode == NULL);
 
-	UnpackingLeafNode* clone = new(std::nothrow) UnpackingLeafNode(id);
+	UnpackingLeafNode* clone = new UnpackingLeafNode(id);
 	if (clone == NULL)
 		return B_NO_MEMORY;
 
-	status_t error = clone->Init(Parent(), Name());
+	status_t error = clone->Init(Name());
 	if (error != B_OK) {
 		delete clone;
 		return error;

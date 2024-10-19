@@ -6,6 +6,7 @@
 
 #include "UnpackingDirectory.h"
 
+#include "ClassCache.h"
 #include "DebugSupport.h"
 #include "EmptyAttributeDirectoryCookie.h"
 #include "UnpackingAttributeCookie.h"
@@ -14,6 +15,9 @@
 
 
 // #pragma mark - UnpackingDirectory
+
+
+CLASS_CACHE(UnpackingDirectory);
 
 
 UnpackingDirectory::UnpackingDirectory(ino_t id)
@@ -103,7 +107,7 @@ status_t
 UnpackingDirectory::AddPackageNode(PackageNode* packageNode, dev_t deviceID)
 {
 	if (!S_ISDIR(packageNode->Mode()))
-		return B_BAD_VALUE;
+		return B_NOT_A_DIRECTORY;
 
 	PackageDirectory* packageDirectory
 		= dynamic_cast<PackageDirectory*>(packageNode);
@@ -223,6 +227,20 @@ UnpackingDirectory::IndexCookieForAttribute(const StringKey& name) const
 
 
 // #pragma mark - RootDirectory
+
+
+void*
+RootDirectory::operator new(size_t size)
+{
+	return malloc(size);
+}
+
+
+void
+RootDirectory::operator delete(void* object)
+{
+	free(object);
+}
 
 
 RootDirectory::RootDirectory(ino_t id, const timespec& modifiedTime)

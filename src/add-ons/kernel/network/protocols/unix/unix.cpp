@@ -10,6 +10,7 @@
 #include <new>
 
 #include <AutoDeleter.h>
+#include <StackOrHeapArray.h>
 
 #include <fs/fd.h>
 #include <lock.h>
@@ -301,14 +302,13 @@ unix_add_ancillary_data(net_protocol *self, ancillary_data_container *container,
 		return B_BAD_VALUE;
 
 	int* fds = (int*)CMSG_DATA(header);
-	int count = (header->cmsg_len - CMSG_ALIGN(sizeof(cmsghdr))) / sizeof(int);
+	int count = (header->cmsg_len - CMSG_LEN(0)) / sizeof(int);
 	if (count == 0)
 		return B_BAD_VALUE;
 
-	file_descriptor** descriptors = new(std::nothrow) file_descriptor*[count];
-	if (descriptors == NULL)
+	BStackOrHeapArray<file_descriptor*, 8> descriptors(count);
+	if (!descriptors.IsValid())
 		return ENOBUFS;
-	ArrayDeleter<file_descriptor*> _(descriptors);
 	memset(descriptors, 0, sizeof(file_descriptor*) * count);
 
 	// get the file descriptors

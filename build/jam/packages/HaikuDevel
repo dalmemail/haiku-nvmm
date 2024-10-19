@@ -67,6 +67,7 @@ AddHeaderDirectoryToPackage glibc ;
 AddHeaderDirectoryToPackage libs alm ;
 AddHeaderDirectoryToPackage libs glut GL ;
 AddHeaderDirectoryToPackage libs libnvmm ;
+AddHeaderDirectoryToPackage libs linprog ;
 AddHeaderDirectoryToPackage os ;
 AddHeaderDirectoryToPackage posix ;
 

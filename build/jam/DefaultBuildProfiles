@@ -89,12 +89,13 @@ rule DefineDefaultBuildProfiles
 				pe
 				timgmsoundfont
 				vision
+				wonderbrush
 				wpa_supplicant
 				# Some packages can't be built with gcc2, so we install the gcc13
 				# secondary architecture package instead in this case
-				!gcc2 @{ nano p7zip python3.9 xz_utils }@
+				!gcc2 @{ nano p7zip python3.10 xz_utils }@
 				gcc2 @{ nano_x86@secondary_x86 p7zip_x86@secondary_x86
-					python3.9_x86@secondary_x86 xz_utils_x86@secondary_x86 }@
+					python3.10_x86@secondary_x86 xz_utils_x86@secondary_x86 }@
 				;
 			AddHaikuImageSourcePackages
 				bepdf
@@ -105,7 +106,7 @@ rule DefineDefaultBuildProfiles
 			local architectureObject ;
 			for architectureObject in [ MultiArchSubDirSetup ] {
 				on $(architectureObject) {
-					AddHaikuImageSystemPackages openssl wonderbrush@gcc2 ;
+					AddHaikuImageSystemPackages openssl3 ;
 				}
 			}
 
@@ -128,14 +129,14 @@ rule DefineDefaultBuildProfiles
 			if $(DEBUG) != 0 {
 				HAIKU_IMAGE_SIZE ?= 850 ;
 			}
-			HAIKU_IMAGE_SIZE ?= 600 ;
+			HAIKU_IMAGE_SIZE ?= 650 ;
 			HAIKU_NIGHTLY_BUILD = 1 ;
 
 			AddHaikuImageSystemPackages
 				mandoc
 				noto
 				openssh
-				openssl
+				openssl3
 				pe
 				vision
 				wpa_supplicant
@@ -171,7 +172,7 @@ rule DefineDefaultBuildProfiles
 			}
 
 			AddHaikuImageSystemPackages
-				openssl
+				openssl3
 				;
 		}
 
@@ -218,7 +219,6 @@ rule DefineDefaultBuildProfiles
 						freetype
 						gcc
 						icu@gcc2 icu74@!gcc2
-						libsolv
 						libedit
 						ncurses6
 						zlib

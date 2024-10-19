@@ -9,8 +9,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <AutoLocker.h>
+#include <lock.h>
+
 #include "DebugSupport.h"
+#include "Directory.h"
 #include "EmptyAttributeDirectoryCookie.h"
+
+
+static rw_lock sParentChangeLock = RW_LOCK_INITIALIZER("packagefs node parent change");
+
+
+DEFINE_INLINE_REFERENCEABLE_METHODS(Node, fReferenceable);
 
 
 Node::Node(ino_t id)
@@ -20,23 +30,45 @@ Node::Node(ino_t id)
 	fName(),
 	fFlags(0)
 {
-	rw_lock_init(&fLock, "packagefs node");
 }
 
 
 Node::~Node()
 {
-	rw_lock_destroy(&fLock);
+}
+
+
+BReference<Directory>
+Node::GetParent() const
+{
+	ReadLocker parentChangeLocker(sParentChangeLock);
+	if (fParent == NULL)
+		return NULL;
+	return BReference<Directory>(fParent, false);
+}
+
+
+void
+Node::_SetParent(Directory* parent)
+{
+	WriteLocker parentChangeLocker(sParentChangeLock);
+	fParent = parent;
 }
 
 
 status_t
-Node::Init(Directory* parent, const String& name)
+Node::Init(const String& name)
 {
-	fParent = parent;
 	fName = name;
 	fFlags = 0;
 	return B_OK;
+}
+
+
+void
+Node::SetID(ino_t id)
+{
+	fID = id;
 }
 
 
@@ -52,20 +84,6 @@ void
 Node::VFSUninit()
 {
 	fFlags &= ~(uint32)NODE_FLAG_KNOWN_TO_VFS;
-}
-
-
-void
-Node::SetID(ino_t id)
-{
-	fID = id;
-}
-
-
-void
-Node::SetParent(Directory* parent)
-{
-	fParent = parent;
 }
 
 

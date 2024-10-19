@@ -1,4 +1,4 @@
-1	english	x-vnd.Haiku-libtracker	3354499367
+1	english	x-vnd.Haiku-libtracker	1730240650
 Created	ContainerWindow		创建
 Icon	AttributesView		图标
 Open and make preferred	OpenWithWindow		打开并创建首选
@@ -13,8 +13,8 @@ Ignore case	SelectionWindow		忽略事件
 Current folder	ContainerWindow		当前目录
 Finish: %time - Over %finishtime left	StatusWindow		完成：%time - 剩余 %finishtime
 Mount all disks now	AutoMounterSettings		挂载所有磁盘
-Location:	InfoWindow		位置：
 Name	PoseView		名称
+Location:	InfoWindow		位置：
 Kind:	InfoWindow		种类:
 contains	FindPanel		包含
 Open	FilePanelPriv		打开
@@ -75,7 +75,6 @@ Moving: 	StatusWindow		移动：
 Select	SelectionWindow		选择
 Select	InfoWindow		选择
 OK	OpenWithWindow		确定
-Include trash	FindPanel		包括垃圾箱
 Clean up	ContainerWindow		刷新
 Modified	FindPanel		修改
  (block size: 	InfoWindow		 (块大小: 
@@ -103,7 +102,6 @@ Window	ContainerWindow		窗口
 Remove	FindPanel		删除
 Company	Person Query Columns		公司
 Recent documents	FavoritesMenu		最近文本
-Save as Query template:	FindPanel		保存查询模板：
 Edit templates…	TemplatesMenu		编辑模版...
 {0, plural, one{# byte} other{# bytes}}	FSUtils		{0, plural, one{# byte} other{# bytes}}
 8-bit integer	AttributesView		8位整数
@@ -114,14 +112,12 @@ Hide dotfiles	SettingsView		隐藏 dotfiles
 Trash	Model		垃圾箱
 Enable type-ahead filtering	SettingsView		启用输入提示过滤
 copy	FSUtils	filename copy	复制
-New folder%ld	FSUtils		新建目录 %ld
 Location	OpenWithWindow		位置
 Resize to fit	QueryContainerWindow		适应大小
 List folders first	SettingsView		首先列出目录
 Find	FSUtils		搜索
 An item named \"%name\" already exists in this folder. Would you like to replace it with the symbolic link you are creating?	FSUtils		该文件夹中已经存在命名为 \"%name\" 的项目，您希望将其替换为正在创建的符号链接吗？
 List view	ContainerWindow		列表视图
-Temporary	FindPanel		临时文件
 Modified	QueryPoseView		修改
 Create relative link	ContainerWindow		创建相对链接
 Owner	FilePermissionsView		拥有者
@@ -134,7 +130,6 @@ Too many parenthesis.	libtracker		太多括号。
 Increase size	ContainerWindow		增加尺寸
 \nShould this be fixed?	FSUtils		\n 是否应该进行修复？
 URL	Bookmark Query Columns		URL
-Move	PoseView		移动
 Floating point number	AttributesView		浮点数
 Cancel	ContainerWindow		取消
 Attributes	ContainerWindow		属性
@@ -273,9 +268,9 @@ no supporting apps	OpenWithWindow		无支持应用程序
 32-bit unsigned integer	AttributesView		32位无号整数
 Preparing to empty Trash…	StatusWindow		准备清空垃圾箱...
 Deleting: 	StatusWindow		删除：
+label too long	PoseView		标签太长
 the MIME settings	FSUtils		MIME设置
 You can't move or copy the trash.	FSUtils		您无法移动或复制垃圾箱。
-label too long	PoseView		标签太长
 Error creating link to \"%name\".	FSUtils		创建至 \"%name\" 的链接出错。
 Unknown	FilePermissionsView		未知
 Paste links	ContainerWindow		粘贴链接
@@ -323,8 +318,8 @@ MIME Path	AttributesView		MIME 路径
 less than	FindPanel		少于
 Error copying file \"%name\":\n\t%error\n\nWould you like to continue?	FSUtils		复制文件 \"%name\" 出错：\n\t%error\n\n是否继续？
 Creating links: 	StatusWindow		创建链接：
-Could not open \"%document\" with application \"%app\" (%error). 	FSUtils		无法打开 \"%document\"，使用 \"%app\" 应用程序出错 (%error)。
 Create %s clipping	PoseView		创建 %s 片段
+Could not open \"%document\" with application \"%app\" (%error). 	FSUtils		无法打开 \"%document\"，使用 \"%app\" 应用程序出错 (%error)。
 Error moving \"%name\"	FSUtils		移动 \"%name\" 出错。
 To: %dir	StatusWindow		到：%dir
 Paste layout	ContainerWindow		粘贴布局
@@ -345,7 +340,6 @@ after	FindPanel		之后
 Version	OpenWithWindow		版本
 Some of the selected items cannot be moved to the Trash. Would you like to delete them instead? (This operation cannot be reverted.)	PoseView		某些选中项目无法移动到垃圾箱。您希望删除它们吗？（该操作将无法恢复。）
 Add printer…	ContainerWindow		添加打印机...
-On	FindPanel		在
 Permissions	ContainerWindow		权限
 Size:	InfoWindow		大小：
 The selected item cannot be moved to the Trash. Would you like to delete it instead? (This operation cannot be reverted.)	PoseView		选中项目无法移动至垃圾箱。您希望删除它们吗？（该操作将无法恢复。）
@@ -354,7 +348,6 @@ Sorry, the 'Character' attribute cannot store a multi-byte glyph.	WidgetAttribut
 Open parent	VirtualDirectoryWindow		打开父目录
 And	FindPanel		添加
 Palette-indexed picture	AttributesView		模板索引图像
-multiple disks	FindPanel		多轴磁盘
 Drawing pattern	AttributesView		绘制模板
 File offset	AttributesView		文件偏移量
 Name = %name	FindPanel	FindResultTitle	名称 = %name
@@ -370,7 +363,6 @@ Force identify	ContainerWindow		强制标识
 no items	CountView		无项目
 Time	AttributesView		时间
 Disks	DirMenu		磁盘
-Query name:	FindPanel		查询名称：
 Open parent	ContainerWindow		上级目录
 Find…	ContainerWindow		搜索...
 moving	FSUtils		移动中
@@ -448,7 +440,6 @@ Move to Trash	FilePanelPriv		移动到垃圾箱
 is	FindPanel		是
 If you rename the system folder or its contents, you won't be able to boot %osName!\n\nAre you sure you want to do this?\n\nTo rename the system folder or its contents anyway, hold down the Shift key and click \"Rename\".	FSUtils		如果重命名系统目录或其内容，您将不能够启动 %osName！\n\n您确定这么做吗？\n\n如果您仍希望重命名系统目录或其内容，按下 Shift 按键并点击 \"重命名\"。
 Permissions	FilePermissionsView		权限
-New folder %ld	FSUtils		新建目录 %ld
 \"%name\" is a legacy executable. Please obtain an updated version or recompile the application.	FSUtils		\"%name\" 为遗留可执行文件。请获取更新版本或者重新编译应用。
 Only the boot disk	AutoMounterSettings		仅引导磁盘
 Message	AttributesView		消息
@@ -478,7 +469,6 @@ You must drop items on one of the disk icons in the \"Disks\" window.	PoseView		
 Version:	InfoWindow		版本:
 OK	PoseView		确定
 Add-ons	DeskWindow		附加组件
-Are you sure you want to move or copy the selected item(s) to this folder?	PoseView		您确定要移动或复制选择项到该文件夹？
 Find	FindPanel		搜索
 Empty folder	NavMenu		清空目录
 Defaults	TrackerSettingsWindow		默认
@@ -487,8 +477,8 @@ True-color picture	AttributesView		真彩色图片
 Add-ons	FilePanelPriv		附加组件
 Alignment	AttributesView		对齐
 Move to Trash	FSUtils		移动到垃圾箱
-Handles %type	OpenWithWindow		处理 %type
 Cancel	PoseView		取消
+Handles %type	OpenWithWindow		处理 %type
 Delete	PoseView		删除
 Media parameter	AttributesView		媒体参数
 If you alter the home folder, %osName may not behave properly!\n\nAre you sure you want to do this?\n\nTo alter the home folder anyway, hold down the Shift key and click \"I know what I'm doing\".	FSUtils		如果修改主目录，%osName 可能无法正常工作！\n\n您确定这么做吗？\n\n如果您仍要修改主目录，按下 Shift 按键并点击 \"我知道我正在做什么\"。

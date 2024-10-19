@@ -8,13 +8,12 @@
 
 #include <fs_interface.h>
 
-#include <AutoLocker.h>
 #include <Referenceable.h>
 
-#include <lock.h>
 #include <util/DoublyLinkedList.h>
 #include <util/OpenHashTable.h>
 
+#include "InlineReferenceable.h"
 #include "String.h"
 #include "StringKey.h"
 
@@ -34,18 +33,19 @@ enum {
 };
 
 
-class Node : public BReferenceable, public DoublyLinkedListLinkImpl<Node> {
+class Node : public DoublyLinkedListLinkImpl<Node> {
 public:
 								Node(ino_t id);
 	virtual						~Node();
 
-	inline	bool				ReadLock();
-	inline	void				ReadUnlock();
-	inline	bool				WriteLock();
-	inline	void				WriteUnlock();
+			void				AcquireReference();
+			void				ReleaseReference();
+			int32				CountReferences();
+
+			BReference<Directory> GetParent() const;
+			Directory*			GetParentUnchecked() const	{ return fParent; }
 
 			ino_t				ID() const		{ return fID; }
-			Directory*			Parent() const	{ return fParent; }
 			const String&		Name() const	{ return fName; }
 
 			Node*&				NameHashTableNext()
@@ -53,7 +53,8 @@ public:
 			Node*&				IDHashTableNext()
 									{ return fIDHashTableNext; }
 
-	virtual	status_t			Init(Directory* parent, const String& name);
+	virtual	status_t			Init(const String& name);
+			void				SetID(ino_t id);
 
 	virtual	status_t			VFSInit(dev_t deviceID);
 									// base class version must be called on
@@ -62,9 +63,6 @@ public:
 									// base class version must be called
 	inline	bool				IsKnownToVFS() const;
 	inline	bool				HasVFSInitError() const;
-
-			void				SetID(ino_t id);
-			void				SetParent(Directory* parent);
 
 	virtual	mode_t				Mode() const = 0;
 	virtual	uid_t				UserID() const;
@@ -88,43 +86,20 @@ public:
 	virtual	void*				IndexCookieForAttribute(const StringKey& name)
 									const;
 
+private:
+			friend class Directory;
+
+			void				_SetParent(Directory* parent);
+
 protected:
-			rw_lock				fLock;
 			ino_t				fID;
 			Directory*			fParent;
 			String				fName;
 			Node*				fNameHashTableNext;
 			Node*				fIDHashTableNext;
 			uint32				fFlags;
+			InlineReferenceable	fReferenceable;
 };
-
-
-bool
-Node::ReadLock()
-{
-	return rw_lock_read_lock(&fLock) == B_OK;
-}
-
-
-void
-Node::ReadUnlock()
-{
-	rw_lock_read_unlock(&fLock);
-}
-
-
-bool
-Node::WriteLock()
-{
-	return rw_lock_write_lock(&fLock) == B_OK;
-}
-
-
-void
-Node::WriteUnlock()
-{
-	rw_lock_write_unlock(&fLock);
-}
 
 
 bool
@@ -199,9 +174,6 @@ typedef DoublyLinkedList<Node> NodeList;
 
 typedef BOpenHashTable<NodeNameHashDefinition> NodeNameHashTable;
 typedef BOpenHashTable<NodeIDHashDefinition> NodeIDHashTable;
-
-typedef AutoLocker<Node, AutoLockerReadLocking<Node> > NodeReadLocker;
-typedef AutoLocker<Node, AutoLockerWriteLocking<Node> > NodeWriteLocker;
 
 
 #endif	// NODE_H

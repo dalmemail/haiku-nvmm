@@ -1,4 +1,4 @@
-1	croatian	x-vnd.Haiku-libtracker	3890687748
+1	croatian	x-vnd.Haiku-libtracker	834417223
 Created	ContainerWindow		Napravljeno
 Icon	AttributesView		Ikona
 Kind	ContainerWindow		Vrsta
@@ -10,8 +10,8 @@ Volume icons	TrackerSettingsWindow		Ikone diskova
 Ignore case	SelectionWindow		Ignoriraj slučaj
 Current folder	ContainerWindow		Trenutna mapa
 Mount all disks now	AutoMounterSettings		Montiraj sve diskove
-Location:	InfoWindow		Lokacija:
 Name	PoseView		Ime
+Location:	InfoWindow		Lokacija:
 Kind:	InfoWindow		Vrsta:
 contains	FindPanel		sadrži
 Open	FilePanelPriv		Otvori
@@ -57,7 +57,6 @@ Moving: 	StatusWindow		Premještam...
 Select	SelectionWindow		Odaberi
 Select	InfoWindow		Odaberi
 OK	OpenWithWindow		U redu
-Include trash	FindPanel		Uključi smeće
 Clean up	ContainerWindow		Očisti
 Modified	FindPanel		Izmjenjeno
 Select all	QueryContainerWindow		Odaberi sve
@@ -80,13 +79,11 @@ Recent documents	FavoritesMenu		Nedavni dokumenti
 Edit templates…	TemplatesMenu		Uredi predloške...
 Trash	Model		Smeće
 copy	FSUtils	filename copy	kopiraj
-New folder%ld	FSUtils		Nova mapa%ld
 Location	OpenWithWindow		Lokacija
 Resize to fit	QueryContainerWindow		Promjeni veličinu da se uklopi
 List folders first	SettingsView		Najprije izlistaj mape
 Find	FSUtils		Nađi
 An item named \"%name\" already exists in this folder. Would you like to replace it with the symbolic link you are creating?	FSUtils		Stavka imenonana kao \"%name\" već postoji u ovoj mapi. Želite li je zamijeniti simboličkom poveznicom koju stvarate?
-Temporary	FindPanel		Privremeno
 Modified	QueryPoseView		Izmjenjeno
 Create relative link	ContainerWindow		Kreiraj relativne poveznice
 Owner	FilePermissionsView		Vlasnik
@@ -97,7 +94,6 @@ All files and folders	FindPanel		Sve datoteke i mape
 Add-ons	ContainerWindow		Dodaci
 Increase size	ContainerWindow		Povećaj veličinu
 URL	Bookmark Query Columns		URL
-Move	PoseView		Premjesti
 Cancel	ContainerWindow		Odustani
 Attributes	ContainerWindow		Atributi
 Error deleting items	FSUtils		Greška pri brisanju stavki
@@ -194,8 +190,8 @@ Empty Trash	ContainerWindow		Isprazni smeće
 no supporting apps	OpenWithWindow		nema podržanih programa
 Preparing to empty Trash…	StatusWindow		Priprema za pražnjenje smeća...
 Deleting: 	StatusWindow		Brisanje: 
-You can't move or copy the trash.	FSUtils		Ne možeš pomicati ili kopirati smeće.
 label too long	PoseView		naljepnica je preduga
+You can't move or copy the trash.	FSUtils		Ne možeš pomicati ili kopirati smeće.
 Error creating link to \"%name\".	FSUtils		Greška pri stvaranju poveznice ka \"%name\".
 Unknown	FilePermissionsView		Nepoznato
 Paste links	ContainerWindow		Zalijepi poveznice
@@ -248,13 +244,11 @@ Finish: %time	StatusWindow		Završi: %time
 after	FindPanel		poslije
 Version	OpenWithWindow		Verzija
 Add printer…	ContainerWindow		Dodaj pisač...
-On	FindPanel		Uključeno
 Permissions	ContainerWindow		Dozvole
 Size:	InfoWindow		Veličina:
 The selected item cannot be moved to the Trash. Would you like to delete it instead? (This operation cannot be reverted.)	PoseView		Označena stavka nemože biti pomaknuta u smeće. Želite li je umjesto toga izbrisati? (ovu operaciju ne možete vratiti)
 Copy	ContainerWindow		Kopiraj
 And	FindPanel		I
-multiple disks	FindPanel		više diskova
 Name = %name	FindPanel	FindResultTitle	Ime = %name
 Error copying folder \"%name\":\n\t%error\n\nWould you like to continue?	FSUtils		Greška pri kopiranju mape \"%name\":\n\t%error\n\nŽelite li nastaviti?
 Select all	FilePanelPriv		Odaberi sve
@@ -319,7 +313,6 @@ by formula	FindPanel		po formuli
 Move to Trash	FilePanelPriv		Premjesti u smeće
 is	FindPanel		je
 Permissions	FilePermissionsView		Dozvole
-New folder %ld	FSUtils		Nova mapa %ld
 Message	AttributesView		Poruka
 Modified	Default Query Columns		Izmjenjeno
 Default application	InfoWindow		Zadani program
@@ -341,7 +334,6 @@ You must drop items on one of the disk icons in the \"Disks\" window.	PoseView		
 Version:	InfoWindow		Verzija:
 OK	PoseView		U redu
 Add-ons	DeskWindow		Dodaci
-Are you sure you want to move or copy the selected item(s) to this folder?	PoseView		Jeste li sigurni da želite premjestiti ili kopirati odabranu stavku(e) u ovu mapu?
 Find	FindPanel		Nađi
 Empty folder	NavMenu		Isprazni mapu
 Defaults	TrackerSettingsWindow		Zadano

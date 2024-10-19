@@ -58,7 +58,6 @@
 #include <vm/VMAddressSpace.h>
 
 #include "IORequest.h"
-#include "VMUtils.h"
 
 
 #if	ENABLE_SWAP_SUPPORT
@@ -429,7 +428,6 @@ public:
 		}
 
 		fNextCallback->IOFinished(status, partialTransfer, bytesTransferred);
-
 		delete this;
 	}
 
@@ -720,6 +718,8 @@ status_t
 VMAnonymousCache::Commit(off_t size, int priority)
 {
 	TRACE("%p->VMAnonymousCache::Commit(%" B_PRIdOFF ")\n", this, size);
+
+	AssertLocked();
 
 	// If we can overcommit, we don't commit here, but in Fault(). We always
 	// unreserve memory, if we're asked to shrink our commitment, though.
@@ -1532,6 +1532,7 @@ swap_file_delete(const char* path)
 		* B_PAGE_SIZE;
 	mutex_unlock(&sAvailSwapSpaceLock);
 
+	truncate(path, 0);
 	close(swapFile->fd);
 	radix_bitmap_destroy(swapFile->bmp);
 	delete swapFile;
@@ -1660,6 +1661,7 @@ swap_init_post_modules()
 
 	if (!swapEnabled || swapSize < B_PAGE_SIZE) {
 		dprintf("%s: virtual_memory is disabled\n", __func__);
+		truncate(kDefaultSwapPath, 0);
 		return;
 	}
 
@@ -1688,7 +1690,7 @@ swap_init_post_modules()
 			else {
 				KPath devPath, mountPoint;
 				visitor.fBestPartition->GetPath(&devPath);
-				get_mount_point(visitor.fBestPartition, &mountPoint);
+				visitor.fBestPartition->GetMountPoint(&mountPoint);
 				const char* mountPath = mountPoint.Path();
 				mkdir(mountPath, S_IRWXU | S_IRWXG | S_IRWXO);
 				swapDeviceID = _kern_mount(mountPath, devPath.Path(),

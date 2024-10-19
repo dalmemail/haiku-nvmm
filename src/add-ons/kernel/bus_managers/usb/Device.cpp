@@ -329,22 +329,16 @@ Device::Device(Object* parent, int8 hubAddress, uint8 hubPort,
 
 Device::~Device()
 {
-	// Cancel transfers on the default pipe and put its USBID to prevent
-	// further transfers from being queued.
-	if (fDefaultPipe != NULL) {
-		fDefaultPipe->PutUSBID(false);
-		fDefaultPipe->CancelQueuedTransfers(true);
-		fDefaultPipe->WaitForUnbusy();
+	if (fNode != NULL) {
+		status_t error = gDeviceManager->unregister_node(fNode);
+		if (error != B_OK && error != B_BUSY)
+			TRACE_ERROR("failed to unregister device node\n");
+		fNode = NULL;
 	}
 
 	// Destroy open endpoints. Do not send a device request to unconfigure
 	// though, since we may be deleted because the device was unplugged already.
 	Unconfigure(false);
-
-	status_t error = gDeviceManager->unregister_node(fNode);
-	if (error != B_OK && error != B_BUSY)
-		TRACE_ERROR("failed to unregister device node\n");
-	fNode = NULL;
 
 	// Destroy all Interfaces in the Configurations hierarchy.
 	for (int32 i = 0; fConfigurations != NULL
@@ -362,16 +356,28 @@ Device::~Device()
 				usb_interface_info* interface = &interfaceList->alt[k];
 				Interface* interfaceObject =
 					(Interface*)GetStack()->GetObject(interface->handle);
-				if (interfaceObject != NULL)
-					interfaceObject->SetBusy(false);
-				delete interfaceObject;
 				interface->handle = 0;
+				if (interfaceObject != NULL)
+					interfaceObject->ReleaseReference();
+				delete interfaceObject;
 			}
 		}
 	}
 
-	// Remove ourselves from the stack before deleting public structures.
-	PutUSBID();
+	if (fDefaultPipe != NULL) {
+		fDefaultPipe->PutUSBID(false);
+
+		// Also put our ID to prevent further transfers on the default pipe
+		// from being queued. (We have to do this after putting the pipe's ID,
+		// since we are its parent.)
+		PutUSBID(false);
+
+		fDefaultPipe->CancelQueuedTransfers(true);
+		fDefaultPipe->WaitForIdle();
+	}
+
+	// Ensure we are gone from the stack before deleting public structures.
+	PutUSBID(true);
 	delete fDefaultPipe;
 
 	if (fConfigurations == NULL) {
@@ -534,7 +540,7 @@ Device::InitEndpoints(int32 interfaceIndex)
 			Pipe* pipe = NULL;
 
 			usb_endpoint_ss_companion_descriptor* comp_descr = NULL;
-			if (fSpeed == USB_SPEED_SUPERSPEED) {
+			if (fSpeed >= USB_SPEED_SUPERSPEED) {
 				// We should have a companion descriptor for this device.
 				// Let's find it: it'll be the "i"th one.
 				size_t k = 0;
@@ -646,7 +652,7 @@ Device::ClearEndpoints(int32 interfaceIndex)
 			usb_endpoint_info* endpoint = &interfaceInfo->endpoint[i];
 			Pipe* pipe = (Pipe*)GetStack()->GetObject(endpoint->handle);
 			if (pipe != NULL)
-				pipe->SetBusy(false);
+				pipe->ReleaseReference();
 			delete pipe;
 			endpoint->handle = 0;
 		}

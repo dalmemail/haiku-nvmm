@@ -88,7 +88,8 @@ Team::Init(team_id teamID, port_id debuggerPort)
 
 	// set team debugging flags
 	int32 teamDebugFlags = B_TEAM_DEBUG_THREADS
-		| B_TEAM_DEBUG_TEAM_CREATION | B_TEAM_DEBUG_IMAGES;
+		| B_TEAM_DEBUG_TEAM_CREATION | B_TEAM_DEBUG_IMAGES
+		| B_TEAM_DEBUG_STOP_NEW_THREADS;
 	error = set_team_debugging_flags(fNubPort, teamDebugFlags);
 	if (error != B_OK)
 		return error;
@@ -137,18 +138,6 @@ Team::InitThread(Thread* thread)
 	}
 
 	if (!_SynchronousProfiling()) {
-		// set thread debugging flags and start profiling
-		int32 threadDebugFlags = 0;
-//		if (!traceTeam) {
-//			threadDebugFlags = B_THREAD_DEBUG_POST_SYSCALL
-//				| (traceChildThreads
-//					? B_THREAD_DEBUG_SYSCALL_TRACE_CHILD_THREADS : 0);
-//		}
-		status_t error = set_thread_debugging_flags(fNubPort, thread->ID(),
-			threadDebugFlags);
-		if (error != B_OK)
-			return error;
-
 		// start profiling
 		debug_nub_start_profiler message;
 		message.reply_port = fDebugContext.reply_port;
@@ -157,9 +146,10 @@ Team::InitThread(Thread* thread)
 		message.sample_area = sampleArea;
 		message.stack_depth = gOptions.stack_depth;
 		message.variable_stack_depth = gOptions.analyze_full_stack;
+		message.profile_kernel = gOptions.profile_kernel;
 
 		debug_nub_start_profiler_reply reply;
-		error = send_debug_message(&fDebugContext,
+		status_t error = send_debug_message(&fDebugContext,
 			B_DEBUG_START_PROFILER, &message, sizeof(message), &reply,
 			sizeof(reply));
 		if (error != B_OK || (error = reply.error) != B_OK) {
@@ -173,8 +163,8 @@ Team::InitThread(Thread* thread)
 
 		fThreads.Add(thread);
 
-		// resume the target thread to be sure, it's running
-		resume_thread(thread->ID());
+		// resume the target thread to be sure it's running
+		continue_thread(fDebugContext.nub_port, thread->ID());
 	} else {
 		// debugger-less profiling
 		thread->SetInterval(gOptions.interval);

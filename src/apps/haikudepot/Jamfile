@@ -115,6 +115,7 @@ local textDocumentSources =
 local applicationSources =
 	App.cpp
 	AccessToken.cpp
+	BitmapHolder.cpp
 	BitmapView.cpp
 	Captcha.cpp
 	CreateUserDetail.cpp
@@ -127,7 +128,7 @@ local applicationSources =
 	IncrementViewCounterProcess.cpp
 	JobStateListener.cpp
 	JwtTokenHelper.cpp
-	LanguageModel.cpp
+	LanguageRepository.cpp
 	LinkView.cpp
 	LinkedBitmapView.cpp
 	Logger.cpp
@@ -152,7 +153,7 @@ local applicationSources =
 	ScreenshotCoordinate.cpp
 	ScrollableGroupView.cpp
 	SettingsWindow.cpp
-	SharedBitmap.cpp
+	SharedIcons.cpp
 	ShuttingDownWindow.cpp
 	ToLatestUserUsageConditionsWindow.cpp
 	UserCredentials.cpp
@@ -176,12 +177,15 @@ local applicationSources =
 	DepotInfo.cpp
 	Language.cpp
 	PackageCategory.cpp
+	PackageFilter.cpp
+	PackageFilterModel.cpp
 	PackageInfo.cpp
 	PublisherInfo.cpp
-	RatingSummary.cpp
 	ScreenshotInfo.cpp
 	UserInfo.cpp
 	UserRating.cpp
+	UserRatingInfo.cpp
+	UserRatingSummary.cpp
 
 	# network + server / local processes
 	AbstractProcess.cpp
@@ -191,7 +195,9 @@ local applicationSources =
 	CacheScreenshotProcess.cpp
 	LocalPkgDataLoadProcess.cpp
 	LocalRepositoryUpdateProcess.cpp
+	PopulatePkgChangelogFromServerProcess.cpp
 	PopulatePkgSizesProcess.cpp
+	PopulatePkgUserRatingsFromServerProcess.cpp
 	ProcessCoordinator.cpp
 	ProcessCoordinatorFactory.cpp
 	ServerHelper.cpp

@@ -1,7 +1,7 @@
-1	ukrainian	x-vnd.Haiku-ShowImage	276586646
+1	ukrainian	x-vnd.Haiku-ShowImage	2453396430
 ShowImage	System name		ShowImage
 Page setup…	Menus		Налаштування сторінки…
-The document '%s' (page %d) has been changed. Do you want to close the document?	ClosePrompt		Документ '%s' (сторінка %d) був змінений. Закрити його?
+The document '%s' (page %d) has been changed. Do you want to close the document?	ClosePrompt		Документ «%s» (сторінка %d) був змінений. Закрити його?
 Previous file	Menus		Попередній файл
 View	Menus		Режим перегляду
 Leave full screen	Menus		Вийти з повноекранного режиму
@@ -16,7 +16,6 @@ Original size	Menus		Оригінальний розмір
 Width:	PrintOptionsWindow		Ширина:
 Resize to (in 1/72 inches):	PrintOptionsWindow		Змінити розмір (в 1/72 дюйма):
 Zoom factor in %:	PrintOptionsWindow		Масштаб зображення %:
-Get info…	Menus		Дивитись інфо…
 Zoom out	Menus		Зменшити
 OK	Alerts		ОК
 File	Menus		Файл
@@ -28,7 +27,7 @@ Last page	Menus		Остання сторінка
 Cancel	ClosePrompt		Скасувати
 Attributes	Menus		Атрибути
 High-quality zooming	Menus		Високоякісна зміна розміру
-The document '%s' has been changed. Do you want to close the document?	ClosePrompt		Документ '%s' було змінено. Ви хочете закрити його?
+The document '%s' has been changed. Do you want to close the document?	ClosePrompt		Документ «%s» було змінено. Бажаєте закрити без збереження?
 Close	Menus		Закрити
 Selection mode	Menus		Режим виділення
 Reset rating	Menus		Скинути рейтинг
@@ -38,8 +37,9 @@ Show tool bar	Menus		Показати панель інструментів
 First page	Menus		Перша сторінка
 OK	SaveToFile		ОК
 Print…	Menus		Друк…
-The file '%s' could not be written.	SaveToFile		Файл '%s' не може бути записаний.
+The file '%s' could not be written.	SaveToFile		Файл «%s» не може бути записаний.
 Quit	Menus		Вийти
+Get info	Menus		Дивитись інфо
 Rating	Menus		Оцінка
 Close document	ClosePrompt		Закрити документ
 Stretch to window	Menus		Розтягнути по вікну

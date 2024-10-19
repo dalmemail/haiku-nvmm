@@ -40,11 +40,11 @@ sub	sp, sp, \xt
 	stp	   x16, x17, [x19, #(IFRAME_x + 16 * 8)]
 	mov    x0,   sp  // original x19 that we swapped with sp
 	stp	   x18,  x0, [x19, #(IFRAME_x + 18 * 8)]
-
-	// x20-x28 won't be clobbered
-	// thus we don't really need to store these
-
-	str	   x29,      [x19, #(IFRAME_fp)]
+	stp	   x20, x21, [x19, #(IFRAME_x + 20 * 8)]
+	stp	   x22, x23, [x19, #(IFRAME_x + 22 * 8)]
+	stp	   x24, x25, [x19, #(IFRAME_x + 24 * 8)]
+	stp	   x26, x27, [x19, #(IFRAME_x + 26 * 8)]
+	stp	   x28, fp,  [x19, #(IFRAME_x + 28 * 8)]
 	str	   x30,      [x19, #(IFRAME_lr)]
 
 .if \el == 0
@@ -84,7 +84,11 @@ sub	sp, sp, \xt
 	ldp	   x14, x15, [x19, #(IFRAME_x + 14 * 8)]
 	ldp	   x16, x17, [x19, #(IFRAME_x + 16 * 8)]
 	// x18 and x19 will be restored later
-	ldr	   x29, [x19, #(IFRAME_fp)]
+	ldp	   x20, x21, [x19, #(IFRAME_x + 20 * 8)]
+	ldp	   x22, x23, [x19, #(IFRAME_x + 22 * 8)]
+	ldp	   x24, x25, [x19, #(IFRAME_x + 24 * 8)]
+	ldp	   x26, x27, [x19, #(IFRAME_x + 26 * 8)]
+	ldp	   x28, fp,  [x19, #(IFRAME_x + 28 * 8)]
 	ldr	   x30, [x19, #(IFRAME_lr)]
 
 	// disable interrupts before restoring ELR/SPSR/sp
@@ -308,7 +312,8 @@ FUNCTION_END(_arch_context_swap)
 	\param parameter The parameter to be passed to the function to be called.
 */
 FUNCTION(arch_debug_call_with_fault_handler):
-	ldr x4, =fault
+	adrp x4, fault
+	add x4, x4, :lo12:fault
 	str x4, [x0, #CPU_ENT_fault_handler]
 	str x1, [x0, #CPU_ENT_fault_handler_stack_pointer]
 

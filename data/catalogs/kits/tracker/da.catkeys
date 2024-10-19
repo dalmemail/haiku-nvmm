@@ -1,4 +1,4 @@
-1	danish	x-vnd.Haiku-libtracker	1802712727
+1	danish	x-vnd.Haiku-libtracker	178454010
 Created	ContainerWindow		Oprettet
 Icon	AttributesView		Ikon
 Open and make preferred	OpenWithWindow		Åbn og gør foretrukket
@@ -13,8 +13,8 @@ Ignore case	SelectionWindow		Skel ikke mellem store og små bogstaver
 Current folder	ContainerWindow		Nuværende mappe
 Finish: %time - Over %finishtime left	StatusWindow		Færdig: %time - Over %finishtime tilbage
 Mount all disks now	AutoMounterSettings		Montér alle diske nu
-Location:	InfoWindow		Placering:
 Name	PoseView		Navn
+Location:	InfoWindow		Placering:
 Kind:	InfoWindow		Slags:
 contains	FindPanel		indeholder
 Open	FilePanelPriv		Åbn
@@ -75,7 +75,6 @@ Moving: 	StatusWindow		Flytter:
 Select	SelectionWindow		Vælg
 Select	InfoWindow		Vælg
 OK	OpenWithWindow		O.k.
-Include trash	FindPanel		Medtag papirkurv
 Clean up	ContainerWindow		Ryd op
 Modified	FindPanel		Ændret
  (block size: 	InfoWindow		(blokstørrelse:)
@@ -104,7 +103,6 @@ Window	ContainerWindow		Vindue
 Remove	FindPanel		Fjern
 Company	Person Query Columns		Selskab
 Recent documents	FavoritesMenu		Seneste dokumenter
-Save as Query template:	FindPanel		Gem som forespørgselsskabelon:
 Edit templates…	TemplatesMenu		Redigér skabeloner…
 {0, plural, one{# byte} other{# bytes}}	FSUtils		{0, plural, one{# byte} other{# byte}}
 8-bit integer	AttributesView		8-bit heltal
@@ -115,14 +113,12 @@ Hide dotfiles	SettingsView		Skjul punktumfiler
 Trash	Model		Papirkurv
 Enable type-ahead filtering	SettingsView		Slå forudskrivningsfiltrering til
 copy	FSUtils	filename copy	kopi
-New folder%ld	FSUtils		Ny mappe%ld
 Location	OpenWithWindow		Placering
 Resize to fit	QueryContainerWindow		Tilpas størrelse
 List folders first	SettingsView		Vis mapper først
 Find	FSUtils		Søg
 An item named \"%name\" already exists in this folder. Would you like to replace it with the symbolic link you are creating?	FSUtils		Navnet \"%name\" eksisterer allerede i mappen. Vil du erstatte den med den symbolske lænke, du er ved at lave?
 List view	ContainerWindow		Listevisning
-Temporary	FindPanel		Midlertidig
 Modified	QueryPoseView		Ændret
 Create relative link	ContainerWindow		Opret relativ lænke
 Owner	FilePermissionsView		Ejer
@@ -135,7 +131,6 @@ Too many parenthesis.	libtracker		For mange parenteser.
 Increase size	ContainerWindow		Forøg størrelse
 \nShould this be fixed?	FSUtils		\nSkal dette ordnes?
 URL	Bookmark Query Columns		URL
-Move	PoseView		Flyt
 Floating point number	AttributesView		Flydende kommatal
 Cancel	ContainerWindow		Afbryd
 Attributes	ContainerWindow		Attributter
@@ -275,9 +270,9 @@ no supporting apps	OpenWithWindow		ingen understøttende programmer
 32-bit unsigned integer	AttributesView		32-bit heltal uden fortegn
 Preparing to empty Trash…	StatusWindow		Forbereder tømning af papirkurven…
 Deleting: 	StatusWindow		Sletter: 
+label too long	PoseView		etiketten er for lang
 the MIME settings	FSUtils		MIME-indstillingerne
 You can't move or copy the trash.	FSUtils		Du kan ikke flytte eller kopiere papirkurven.
-label too long	PoseView		etiketten er for lang
 Error creating link to \"%name\".	FSUtils		Fejl ved oprettelse af lænke til \"%name\".
 Unknown	FilePermissionsView		Ukendt
 Paste links	ContainerWindow		Indsæt lænker
@@ -325,8 +320,8 @@ MIME Path	AttributesView		MIME-sti
 less than	FindPanel		mindre end
 Error copying file \"%name\":\n\t%error\n\nWould you like to continue?	FSUtils		Fejl ved kopiering af filen \"%name\":\n\t%error\n\nVil du fortsætte?
 Creating links: 	StatusWindow		Opretter lænker: 
-Could not open \"%document\" with application \"%app\" (%error). 	FSUtils		Kunne ikke åbne \"%document\" med programmet \"%app\" (%error). 
 Create %s clipping	PoseView		Lav %s klipning
+Could not open \"%document\" with application \"%app\" (%error). 	FSUtils		Kunne ikke åbne \"%document\" med programmet \"%app\" (%error). 
 Error moving \"%name\"	FSUtils		Fejl ved flytning af \"%name\"
 To: %dir	StatusWindow		Til: %dir
 Paste layout	ContainerWindow		Indsæt layout
@@ -348,7 +343,6 @@ Version	OpenWithWindow		Version
 Some of the selected items cannot be moved to the Trash. Would you like to delete them instead? (This operation cannot be reverted.)	PoseView		Nogle af de valgte elementer kan ikke flyttes til papirkurven. Vil du slette dem i stedet? (Handlingen kan ikke fortrydes).
 The entered file name is too long.	FSUtils		Det indtastede filnavn er for langt.
 Add printer…	ContainerWindow		Tilføj printer…
-On	FindPanel		På
 Permissions	ContainerWindow		Rettigheder
 Size:	InfoWindow		Størrelse:
 The selected item cannot be moved to the Trash. Would you like to delete it instead? (This operation cannot be reverted.)	PoseView		Det valgte element kan ikke flyttes til papirkurven. Vil du slette den i stedet? (Handlingen kan ikke fortrydes).
@@ -357,7 +351,6 @@ Sorry, the 'Character' attribute cannot store a multi-byte glyph.	WidgetAttribut
 Open parent	VirtualDirectoryWindow		Åbn forælder
 And	FindPanel		Og
 Palette-indexed picture	AttributesView		Paletteindekseret billede
-multiple disks	FindPanel		flere diske
 Drawing pattern	AttributesView		Tegningsmønster
 File offset	AttributesView		Filforskydning
 Name = %name	FindPanel	FindResultTitle	Navn = %name
@@ -373,7 +366,6 @@ Force identify	ContainerWindow		Gennemtving identificering
 no items	CountView		ingen elementer
 Time	AttributesView		Tid
 Disks	DirMenu		Diske
-Query name:	FindPanel		Forespørgselsnavn:
 Open parent	ContainerWindow		Åbn forælder
 Find…	ContainerWindow		Søg…
 moving	FSUtils		flytter
@@ -451,7 +443,6 @@ Move to Trash	FilePanelPriv		Flyt til papirkurven
 is	FindPanel		er
 If you rename the system folder or its contents, you won't be able to boot %osName!\n\nAre you sure you want to do this?\n\nTo rename the system folder or its contents anyway, hold down the Shift key and click \"Rename\".	FSUtils		Hvis du omdøber systemmappen eller dens indhold, vil du ikke være i stand til at opstarte %osName!\n\nEr du sikker på, du vil gøre det?\n\nFor alligevel at omdøbe systemmappen eller dens indhold, hold Skift-tasten nede og klik på \"Omdøb\".
 Permissions	FilePermissionsView		Rettigheder
-New folder %ld	FSUtils		Ny mappe %ld
 \"%name\" is a legacy executable. Please obtain an updated version or recompile the application.	FSUtils		\"%name\" er en forældet kørbar fil. Hent en opdateret version eller genoversæt programmet.
 Only the boot disk	AutoMounterSettings		Kun opstartsdisken
 Message	AttributesView		Meddelelse
@@ -481,7 +472,6 @@ You must drop items on one of the disk icons in the \"Disks\" window.	PoseView		
 Version:	InfoWindow		Version:
 OK	PoseView		O.k.
 Add-ons	DeskWindow		Tilføjelser
-Are you sure you want to move or copy the selected item(s) to this folder?	PoseView		Er du sikker på, du vil flytte eller kopiere de valgte elementer til denne mappe?
 Find	FindPanel		Søg
 Empty folder	NavMenu		Tom mappe
 Defaults	TrackerSettingsWindow		Forvalgte indstillinger
@@ -490,8 +480,8 @@ True-color picture	AttributesView		Truecolor-billede
 Add-ons	FilePanelPriv		Tilføjelser
 Alignment	AttributesView		Justering
 Move to Trash	FSUtils		Flyt til papirkurven
-Handles %type	OpenWithWindow		Håndterer %type
 Cancel	PoseView		Afbryd
+Handles %type	OpenWithWindow		Håndterer %type
 Delete	PoseView		Slet
 Media parameter	AttributesView		Medieparameter
 If you alter the home folder, %osName may not behave properly!\n\nAre you sure you want to do this?\n\nTo alter the home folder anyway, hold down the Shift key and click \"I know what I'm doing\".	FSUtils		Hvis du ændre hjemmemappen, virker %osName måske ikke korrekt!\n\nEr du sikker på, du vil gøre det?\n\nFor alligevel at ændre hjemmemappen, hold Skift-tasten nede og klik på \"Jeg ved hvad jeg gør\".

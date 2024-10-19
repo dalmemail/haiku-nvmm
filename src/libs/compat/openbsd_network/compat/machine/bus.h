@@ -127,8 +127,10 @@ bus_dmamem_alloc_obsd(bus_dma_tag_t tag, bus_size_t size, bus_size_t alignment, 
 		return error;
 
 	error = bus_dmamem_alloc(local, (void**)&segs[0].ds_addr, flags, NULL);
-	if (error)
+	if (error) {
+		bus_dma_tag_destroy(local);
 		return error;
+	}
 	segs[0].ds_len = size;
 
 	error = bus_dma_tag_destroy(local);
@@ -145,7 +147,7 @@ static void
 bus_dmamem_free_obsd(bus_dma_tag_t tag, bus_dma_segment_t* segs, int nsegs)
 {
 	for (int i = 0; i < nsegs; i++)
-		bus_dmamem_free_tagless(segs[i].ds_addr, segs[i].ds_len);
+		bus_dmamem_free_tagless((void*)segs[i].ds_addr, segs[i].ds_len);
 }
 #define bus_dmamem_free bus_dmamem_free_obsd
 

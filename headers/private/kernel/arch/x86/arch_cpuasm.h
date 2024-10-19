@@ -118,10 +118,10 @@ x86_write_dr7(size_t value)
 #define wbinvd() \
 	__asm__ volatile ("wbinvd" : : : "memory")
 
-#define set_ac() \
+#define arch_cpu_enable_user_access() \
 	__asm__ volatile (ASM_STAC : : : "memory")
 
-#define clear_ac() \
+#define arch_cpu_disable_user_access() \
 	__asm__ volatile (ASM_CLAC : : : "memory")
 
 #define xgetbv(reg) ({ \

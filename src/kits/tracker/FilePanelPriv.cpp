@@ -64,16 +64,16 @@ All rights reserved.
 #include <Volume.h>
 #include <VolumeRoster.h>
 
-#include "Attributes.h"
 #include "AttributeStream.h"
+#include "Attributes.h"
 #include "AutoLock.h"
 #include "Commands.h"
 #include "CountView.h"
 #include "DesktopPoseView.h"
 #include "DirMenu.h"
-#include "FavoritesMenu.h"
-#include "FSUtils.h"
 #include "FSClipboard.h"
+#include "FSUtils.h"
+#include "FavoritesMenu.h"
 #include "IconMenuItem.h"
 #include "MimeTypes.h"
 #include "NavMenu.h"
@@ -166,10 +166,10 @@ key_down_filter(BMessage* message, BHandler** handler, BMessageFilter* filter)
 //	#pragma mark - TFilePanel
 
 
-TFilePanel::TFilePanel(file_panel_mode mode, BMessenger* target,
-	const BEntry* startDir, uint32 nodeFlavors, bool multipleSelection,
-	BMessage* message, BRefFilter* filter, uint32 openFlags, window_look look,
-	window_feel feel, uint32 windowFlags, uint32 workspace, bool hideWhenDone)
+TFilePanel::TFilePanel(file_panel_mode mode, BMessenger* target, const BEntry* startDir,
+	uint32 nodeFlavors, bool multipleSelection, BMessage* message, BRefFilter* filter,
+	uint32 openFlags, window_look look, window_feel feel, uint32 windowFlags, uint32 workspace,
+	bool hideWhenDone)
 	:
 	BContainerWindow(0, openFlags, look, feel, windowFlags, workspace, false),
 	fDirMenu(NULL),
@@ -547,17 +547,13 @@ TFilePanel::SetTo(const entry_ref* ref)
 	if (ref == NULL)
 		return;
 
-	entry_ref setToRef(*ref);
-
-	bool isDesktop = SwitchDirToDesktopIfNeeded(setToRef);
-
-	BEntry entry(&setToRef);
+	BEntry entry(ref);
 	if (entry.InitCheck() != B_OK || !entry.IsDirectory())
 		return;
 
-	PoseView()->SetIsDesktop(isDesktop);
-	PoseView()->SwitchDir(&setToRef);
-	SwitchDirMenuTo(&setToRef);
+	entry_ref _ref(*ref);
+	PoseView()->SetIsDesktop(SwitchDirToDesktopIfNeeded(_ref));
+	SwitchDirMenuTo(&_ref);
 
 	AddShortcut('H', B_COMMAND_KEY, new BMessage(kSwitchToHome));
 		// our shortcut got possibly removed because the home
@@ -970,7 +966,7 @@ TFilePanel::AddFileContextMenus(BMenu* menu)
 	menu->AddItem(new BMenuItem(B_TRANSLATE("Duplicate"),
 		new BMessage(kDuplicateSelection), 'D'));
 	menu->AddItem(new BMenuItem(B_TRANSLATE("Move to Trash"),
-		new BMessage(kMoveToTrash), 'T'));
+		new BMessage(kMoveSelectionToTrash), 'T'));
 	menu->AddSeparatorItem();
 
 	BMenuItem* cutItem = new BMenuItem(B_TRANSLATE("Cut"),
@@ -1077,7 +1073,7 @@ TFilePanel::MenusBeginning()
 		&& !PoseView()->TargetVolumeIsReadOnly());
 	EnableNamedMenuItem(fMenuBar, kDuplicateSelection,
 		PoseView()->CanMoveToTrashOrDuplicate());
-	EnableNamedMenuItem(fMenuBar, kMoveToTrash,
+	EnableNamedMenuItem(fMenuBar, kMoveSelectionToTrash,
 		PoseView()->CanMoveToTrashOrDuplicate());
 	EnableNamedMenuItem(fMenuBar, kEditItem, PoseView()->CanEditName());
 
@@ -1125,7 +1121,7 @@ TFilePanel::ShowContextMenu(BPoint where, const entry_ref* ref)
 				PoseView()->CanEditName());
 			EnableNamedMenuItem(fContextMenu, kDuplicateSelection,
 				PoseView()->CanMoveToTrashOrDuplicate());
-			EnableNamedMenuItem(fContextMenu, kMoveToTrash,
+			EnableNamedMenuItem(fContextMenu, kMoveSelectionToTrash,
 				PoseView()->CanMoveToTrashOrDuplicate());
 
 			SetCutItem(fContextMenu);

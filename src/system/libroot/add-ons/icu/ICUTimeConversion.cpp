@@ -183,7 +183,13 @@ ICUTimeConversion::Gmtime(const time_t* inTime, struct tm* tmOut)
 	const TimeZone* icuTimeZone = TimeZone::getGMT();
 		// no delete - doesn't belong to us
 
-	return _FillTmValues(icuTimeZone, inTime, tmOut);
+	status_t status = _FillTmValues(icuTimeZone, inTime, tmOut);
+	if (status == B_OK) {
+		// tm_zone must be "GMT" for gmtime, not the current timezone
+		// (even if that happens to be equivalent to GMT).
+		tmOut->tm_zone = (char*)"GMT";
+	}
+	return status;
 }
 
 
@@ -246,8 +252,8 @@ ICUTimeConversion::_FillTmValues(const TimeZone* icuTimeZone,
 		+ calendar.get(UCAL_DST_OFFSET, icuStatus)) / 1000;
 	if (!U_SUCCESS(icuStatus))
 		return B_ERROR;
-	tmOut->tm_zone = fDataBridge->addrOfTZName[tmOut->tm_isdst ? 1 : 0];
 
+	tmOut->tm_zone = fDataBridge->addrOfTZName[tmOut->tm_isdst ? 1 : 0];
 	return B_OK;
 }
 

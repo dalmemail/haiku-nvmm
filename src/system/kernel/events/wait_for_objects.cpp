@@ -97,7 +97,7 @@ class SelectTraceEntry : public AbstractTraceEntry {
 			int sets = (readSet != NULL ? 1 : 0) + (writeSet != NULL ? 1 : 0)
 				+ (errorSet != NULL ? 1 : 0);
 			if (sets > 0 && count > 0) {
-				uint32 bytes = _howmany(count, NFDBITS) * sizeof(fd_mask);
+				uint32 bytes = HOWMANY(count, NFDBITS) * sizeof(fd_mask);
 				uint8* allocated = (uint8*)alloc_tracing_buffer(bytes * sets);
 				if (allocated != NULL) {
 					if (readSet != NULL) {
@@ -356,7 +356,7 @@ static inline void
 fd_zero(fd_set *set, int numFDs)
 {
 	if (set != NULL)
-		memset(set, 0, _howmany(numFDs, NFDBITS) * sizeof(fd_mask));
+		memset(set, 0, HOWMANY(numFDs, NFDBITS) * sizeof(fd_mask));
 }
 
 
@@ -535,7 +535,7 @@ common_select(int numFDs, fd_set *readSet, fd_set *writeSet, fd_set *errorSet,
 	fd_zero(errorSet, numFDs);
 
 	if (status == B_OK) {
-		for (count = 0, fd = 0;fd < numFDs; fd++) {
+		for (count = 0, fd = 0; fd < numFDs; fd++) {
 			if (readSet && sync->set[fd].events & (SELECT_FLAG(B_SELECT_READ)
 					| SELECT_FLAG(B_SELECT_DISCONNECTED) | SELECT_FLAG(B_SELECT_ERROR))) {
 				FD_SET(fd, readSet);
@@ -584,12 +584,16 @@ common_poll(struct pollfd *fds, nfds_t numFDs, bigtime_t timeout,
 		int fd = fds[i].fd;
 
 		// initialize events masks
-		sync->set[i].selected_events = fds[i].events
-			| POLLNVAL | POLLERR | POLLHUP;
+		fds[i].events |= POLLNVAL | POLLERR | POLLHUP;
+		sync->set[i].selected_events = fds[i].events;
 		sync->set[i].events = 0;
 		fds[i].revents = 0;
 
 		if (fd >= 0 && select_fd(fd, sync->set + i, kernel) != B_OK) {
+			// If the FD returned events as well as an error, ignore the error.
+			if (sync->set[i].events != 0)
+				continue;
+
 			sync->set[i].events = POLLNVAL;
 			fds[i].revents = POLLNVAL;
 				// indicates that the FD doesn't need to be deselected
@@ -620,7 +624,7 @@ common_poll(struct pollfd *fds, nfds_t numFDs, bigtime_t timeout,
 	// deselect file descriptors
 
 	for (uint32 i = 0; i < numFDs; i++) {
-		if (fds[i].fd >= 0 && (fds[i].revents & POLLNVAL) == 0)
+		if (fds[i].fd >= 0 && (sync->set[i].events & POLLNVAL) == 0)
 			deselect_fd(fds[i].fd, sync->set + i, kernel);
 	}
 
@@ -634,8 +638,7 @@ common_poll(struct pollfd *fds, nfds_t numFDs, bigtime_t timeout,
 					continue;
 
 				// POLLxxx flags and B_SELECT_xxx flags are compatible
-				fds[i].revents = sync->set[i].events
-					& sync->set[i].selected_events;
+				fds[i].revents = sync->set[i].events & fds[i].events;
 				if (fds[i].revents != 0)
 					count++;
 			}
@@ -676,12 +679,15 @@ common_wait_for_objects(object_wait_info* infos, int numInfos, uint32 flags,
 		int32 object = infos[i].object;
 
 		// initialize events masks
-		sync->set[i].selected_events = infos[i].events
-			| B_EVENT_INVALID | B_EVENT_ERROR | B_EVENT_DISCONNECTED;
+		infos[i].events |= B_EVENT_INVALID | B_EVENT_ERROR | B_EVENT_DISCONNECTED;
+		sync->set[i].selected_events = infos[i].events;
 		sync->set[i].events = 0;
-		infos[i].events = 0;
 
 		if (select_object(type, object, sync->set + i, kernel) != B_OK) {
+			// If the object returned events as well as an error, ignore the error.
+			if (sync->set[i].events != 0)
+				continue;
+
 			sync->set[i].events = B_EVENT_INVALID;
 			infos[i].events = B_EVENT_INVALID;
 				// indicates that the object doesn't need to be deselected
@@ -698,8 +704,7 @@ common_wait_for_objects(object_wait_info* infos, int numInfos, uint32 flags,
 
 	for (int i = 0; i < numInfos; i++) {
 		uint16 type = infos[i].type;
-
-		if ((infos[i].events & B_EVENT_INVALID) == 0)
+		if ((sync->set[i].events & B_EVENT_INVALID) == 0)
 			deselect_object(type, infos[i].object, sync->set + i, kernel);
 	}
 
@@ -708,14 +713,15 @@ common_wait_for_objects(object_wait_info* infos, int numInfos, uint32 flags,
 	ssize_t count = 0;
 	if (status == B_OK) {
 		for (int i = 0; i < numInfos; i++) {
-			infos[i].events = sync->set[i].events
-				& sync->set[i].selected_events;
+			infos[i].events &= sync->set[i].events;
 			if (infos[i].events != 0)
 				count++;
 		}
 	} else {
 		// B_INTERRUPTED, B_TIMED_OUT, and B_WOULD_BLOCK
 		count = status;
+		for (int i = 0; i < numInfos; i++)
+			infos[i].events = 0;
 	}
 
 	put_select_sync(sync);
@@ -952,7 +958,7 @@ ssize_t
 _user_select(int numFDs, fd_set *userReadSet, fd_set *userWriteSet,
 	fd_set *userErrorSet, bigtime_t timeout, const sigset_t *userSigMask)
 {
-	uint32 bytes = _howmany(numFDs, NFDBITS) * sizeof(fd_mask);
+	uint32 bytes = HOWMANY(numFDs, NFDBITS) * sizeof(fd_mask);
 	int result;
 
 	if (timeout >= 0) {

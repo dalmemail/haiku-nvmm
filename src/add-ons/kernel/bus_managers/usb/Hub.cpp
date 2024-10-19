@@ -76,7 +76,7 @@ Hub::Hub(Object *parent, int8 hubAddress, uint8 hubPort,
 	} else {
 		TRACE_ALWAYS("no interrupt pipe found\n");
 	}
-	object->SetBusy(false);
+	object->ReleaseReference();
 
 	// Wait some time before powering up the ports
 	if (!isRootHub)
@@ -287,7 +287,7 @@ Hub::Explore(change_item **changeList)
 					// transaction translator for the device.
 					int8 hubAddress = HubAddress();
 					uint8 hubPort = HubPort();
-					if (Speed() == USB_SPEED_HIGHSPEED || Speed() == USB_SPEED_SUPERSPEED) {
+					if (Speed() == USB_SPEED_HIGHSPEED || Speed() >= USB_SPEED_SUPERSPEED) {
 						hubAddress = DeviceAddress();
 						hubPort = i + 1;
 					}

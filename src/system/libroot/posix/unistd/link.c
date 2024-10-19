@@ -46,9 +46,7 @@ readlinkat(int fd, const char *path, char *buffer, size_t bufferSize)
 int
 symlink(const char *toPath, const char *symlinkPath)
 {
-	int status = _kern_create_symlink(-1, symlinkPath, toPath, 0);
-
-	RETURN_AND_SET_ERRNO(status);
+	return symlinkat(toPath, AT_FDCWD, symlinkPath);
 }
 
 
@@ -62,9 +60,7 @@ symlinkat(const char *toPath, int fd, const char *symlinkPath)
 int
 unlink(const char *path)
 {
-	int status = _kern_unlink(-1, path);
-
-	RETURN_AND_SET_ERRNO(status);
+	return unlinkat(AT_FDCWD, path, 0);
 }
 
 
@@ -81,19 +77,19 @@ unlinkat(int fd, const char *path, int flag)
 int
 link(const char *toPath, const char *linkPath)
 {
-	int status = _kern_create_link(-1, linkPath, -1, toPath, true);
-	// Haiku -> POSIX error mapping
-	if (status == B_UNSUPPORTED)
-		status = EPERM;
-
-	RETURN_AND_SET_ERRNO(status);
+	return linkat(AT_FDCWD, toPath, AT_FDCWD, linkPath, 0);
 }
 
 
 int
 linkat(int toFD, const char *toPath, int linkFD, const char *linkPath, int flag)
 {
-	RETURN_AND_SET_ERRNO(_kern_create_link(linkFD, linkPath, toFD, toPath,
-		(flag & AT_SYMLINK_FOLLOW) != 0));
-}
+	int status = _kern_create_link(linkFD, linkPath, toFD, toPath,
+		(flag & AT_SYMLINK_FOLLOW) != 0);
 
+	// Haiku -> POSIX error mapping
+	if (status == B_UNSUPPORTED)
+		status = EPERM;
+
+	RETURN_AND_SET_ERRNO(status);
+}

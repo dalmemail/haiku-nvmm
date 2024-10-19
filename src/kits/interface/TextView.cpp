@@ -1163,7 +1163,7 @@ BTextView::SetText(const char* text, int32 length, const text_run_array* runs)
 
 	// bounds are invalid, set them based on text
 	if (!Bounds().IsValid()) {
-		ResizeTo(LineWidth(0), LineHeight(0));
+		ResizeTo(LineWidth(0) - 1, LineHeight(0));
 		fTextRect = Bounds();
 		_ValidateTextRect();
 		_UpdateInsets(fTextRect);
@@ -1804,7 +1804,7 @@ BTextView::PointAt(int32 offset, float* _height) const
 
 	if (fAlignment != B_ALIGN_LEFT) {
 		float lineWidth = onEmptyLastLine ? 0.0 : LineWidth(lineNum);
-		float alignmentOffset = fTextRect.Width() - lineWidth;
+		float alignmentOffset = fTextRect.Width() + 1 - lineWidth;
 		if (fAlignment == B_ALIGN_CENTER)
 			alignmentOffset = floorf(alignmentOffset / 2);
 		result.x += alignmentOffset;
@@ -1852,7 +1852,7 @@ BTextView::OffsetAt(BPoint point) const
 
 	// convert to text rect coordinates
 	if (fAlignment != B_ALIGN_LEFT) {
-		float alignmentOffset = fTextRect.Width() - LineWidth(lineNum);
+		float alignmentOffset = fTextRect.Width() + 1 - LineWidth(lineNum);
 		if (fAlignment == B_ALIGN_CENTER)
 			alignmentOffset = floorf(alignmentOffset / 2);
 		point.x -= alignmentOffset;
@@ -2814,12 +2814,12 @@ BTextView::_ValidateLayoutData()
 	if (fWrap)
 		fLayoutData->preferred.width = min.width + 5 * lineHeight;
 	else {
-		float maxWidth = fLines->MaxWidth();
+		float maxWidth = fLines->MaxWidth() + fLayoutData->leftInset + fLayoutData->rightInset;
 		if (maxWidth < min.width)
 			maxWidth = min.width;
 
-		fLayoutData->preferred.width
-			= maxWidth + fLayoutData->leftInset + fLayoutData->rightInset;
+		fLayoutData->preferred.width = maxWidth;
+		fLayoutData->min = fLayoutData->preferred;
 	}
 
 	fLayoutData->valid = true;
@@ -3855,8 +3855,8 @@ BTextView::_RecalculateLineBreaks(int32* startLine, int32* endLine)
 
 	float width = fTextRect.Width();
 
-	// don't try to compute anything if the text rect is not set
-	if (!fTextRect.IsValid() || width == 0)
+	// don't try to compute anything with word wrapping if the text rect is not set
+	if (fWrap && (!fTextRect.IsValid() || width == 0))
 		return;
 
 	// sanity check
@@ -3934,7 +3934,7 @@ BTextView::_RecalculateLineBreaks(int32* startLine, int32* endLine)
 	fTextRect.bottom = fTextRect.top + newHeight;
 
 	if (!fWrap) {
-		fMinTextRectWidth = fLines->MaxWidth();
+		fMinTextRectWidth = fLines->MaxWidth() - 1;
 
 		// expand width if needed
 		switch (fAlignment) {
@@ -4407,7 +4407,7 @@ BTextView::_DrawLine(BView* view, const int32 &lineNum,
 		} else
 			startLeft = PointAt(startOffset).x;
 	} else if (fAlignment != B_ALIGN_LEFT) {
-		float alignmentOffset = fTextRect.Width() - LineWidth(lineNum);
+		float alignmentOffset = fTextRect.Width() + 1 - LineWidth(lineNum);
 		if (fAlignment == B_ALIGN_CENTER)
 			alignmentOffset = floorf(alignmentOffset / 2);
 		startLeft += alignmentOffset;
@@ -4518,7 +4518,7 @@ BTextView::_DrawLine(BView* view, const int32 &lineNum,
 
 					case B_ALIGN_CENTER:
 						// subtract half distance from left to line
-						penPos -= floorf((fTextRect.Width()
+						penPos -= floorf((fTextRect.Width() + 1
 							- LineWidth(lineNum)) / 2);
 						break;
 				}

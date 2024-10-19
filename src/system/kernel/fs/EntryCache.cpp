@@ -8,6 +8,7 @@
 
 #include <new>
 #include <vm/vm.h>
+#include <slab/Slab.h>
 
 
 static const int32 kEntryNotInArray = -1;
@@ -87,7 +88,7 @@ EntryCache::Init()
 	// TODO: Choose generation size/count more scientifically?
 	// TODO: Add low_resource handler hook?
 	if (vm_available_memory() >= (1024*1024*1024)) {
-		entriesSize = 8096;
+		entriesSize = 8192;
 		fGenerationCount = 16;
 	}
 
@@ -125,16 +126,21 @@ EntryCache::Add(ino_t dirID, const char* name, ino_t nodeID, bool missing)
 		return B_OK;
 	}
 
-	entry = (EntryCacheEntry*)malloc(sizeof(EntryCacheEntry) + strlen(name));
+	// Avoid deadlock if system had to wait for free memory
+	const size_t nameLen = strlen(name);
+	entry = (EntryCacheEntry*)malloc_etc(sizeof(EntryCacheEntry) + nameLen,
+		CACHE_DONT_WAIT_FOR_MEMORY);
+
 	if (entry == NULL)
 		return B_NO_MEMORY;
 
 	entry->node_id = nodeID;
 	entry->dir_id = dirID;
+	entry->hash = EntryCacheKey::Hash(dirID, name);
 	entry->missing = missing;
 	entry->generation = fCurrentGeneration;
 	entry->index = kEntryNotInArray;
-	strcpy(entry->name, name);
+	memcpy(entry->name, name, nameLen + 1);
 
 	fEntries.Insert(entry);
 

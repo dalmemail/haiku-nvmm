@@ -186,7 +186,7 @@ ModelMenuItem::GetContentSize(float* width, float* height)
 	fHeightDelta = iconSize - *height;
 	if (*height < iconSize)
 		*height = iconSize;
-	*width = *width + iconSize / 4 + iconSize + (fExtraPad ? 18 : 0);
+	*width += iconSize / 4 + iconSize + (fExtraPad ? 18 : 0);
 }
 
 
@@ -425,7 +425,8 @@ IconMenuItem::GetContentSize(float* width, float* height)
 	if (*height < iconHeight)
 		*height = iconHeight;
 
-	*width += 20;
+	if (fDeviceIcon != NULL)
+		*width += fDeviceIcon->Bounds().Width() + be_control_look->DefaultLabelSpacing();
 }
 
 
@@ -434,7 +435,7 @@ IconMenuItem::DrawContent()
 {
 	BPoint drawPoint(ContentLocation());
 	if (fDeviceIcon != NULL)
-		drawPoint.x += (fDeviceIcon->Bounds().Width() + 1) + 4.0f;
+		drawPoint.x += fDeviceIcon->Bounds().Width() + be_control_look->DefaultLabelSpacing();
 
 	if (fHeightDelta > 0)
 		drawPoint.y += ceilf(fHeightDelta / 2);
@@ -502,15 +503,14 @@ IconMenuItem::SetMarked(bool mark)
 
 	// our topmost menu has a menu item
 
-	IconMenuItem* topLevelIconMenuItem
-		= dynamic_cast<IconMenuItem*>(topLevelItem);
-	if (topLevelIconMenuItem == NULL)
+	IconMenuItem* topLevelMenuItem = dynamic_cast<IconMenuItem*>(topLevelItem);
+	if (topLevelMenuItem == NULL)
 		return;
 
 	// our topmost menu's item is an IconMenuItem
 
 	// update the icon
-	topLevelIconMenuItem->SetIcon(fDeviceIcon);
+	topLevelMenuItem->SetIcon(fDeviceIcon);
 	menu->Invalidate();
 }
 

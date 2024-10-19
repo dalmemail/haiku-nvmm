@@ -1,0 +1,15 @@
+SubDir HAIKU_TOP src tests add-ons kernel file_systems shared consistency_check ;
+
+UsePrivateHeaders shared libroot ;
+
+SimpleTest generate_hashs :
+	generate_hashs.cpp
+	AdaptiveBuffering.cpp
+	: be [ TargetLibstdc++ ] shared
+;
+
+SimpleTest consistency_check :
+	consistency_check.cpp
+	AdaptiveBuffering.cpp
+	: be [ TargetLibstdc++ ] shared
+;

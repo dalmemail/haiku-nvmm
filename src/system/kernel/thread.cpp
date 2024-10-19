@@ -174,6 +174,7 @@ Thread::Thread(const char* name, thread_id threadID, struct cpu_ent* cpu)
 	io_priority(-1),
 	cpu(cpu),
 	previous_cpu(NULL),
+	cpumask(),
 	pinned_to_cpu(0),
 	sig_block_mask(0),
 	sigsuspend_original_unblocked_mask(0),
@@ -650,14 +651,14 @@ enter_userspace(Thread* thread, UserThreadEntryArguments* args)
 
 	// init the thread's user_thread
 	user_thread* userThread = thread->user_thread;
-	set_ac();
+	arch_cpu_enable_user_access();
 	userThread->pthread = args->pthread;
 	userThread->flags = 0;
 	userThread->wait_status = B_OK;
 	userThread->defer_signals
 		= (args->flags & THREAD_CREATION_FLAG_DEFER_SIGNALS) != 0 ? 1 : 0;
 	userThread->pending_signals = 0;
-	clear_ac();
+	arch_cpu_disable_user_access();
 
 	// initialize default TLS fields
 	addr_t tls[TLS_FIRST_FREE_SLOT];
@@ -673,12 +674,12 @@ enter_userspace(Thread* thread, UserThreadEntryArguments* args)
 		// This is a fork()ed thread.
 
 		// Update select TLS values, do not clear the whole array.
-		set_ac();
+		arch_cpu_enable_user_access();
 		addr_t* userTls = (addr_t*)thread->user_local_storage;
 		ASSERT(userTls[TLS_BASE_ADDRESS_SLOT] == thread->user_local_storage);
 		userTls[TLS_THREAD_ID_SLOT] = tls[TLS_THREAD_ID_SLOT];
 		userTls[TLS_USER_THREAD_SLOT] = tls[TLS_USER_THREAD_SLOT];
-		clear_ac();
+		arch_cpu_disable_user_access();
 
 		// Copy the fork args onto the stack and free them.
 		arch_fork_arg archArgs = *args->forkArgs;
@@ -1221,6 +1222,13 @@ fill_thread_info(Thread *thread, thread_info *info, size_t size)
 	InterruptsSpinLocker threadTimeLocker(thread->time_lock);
 	info->user_time = thread->user_time;
 	info->kernel_time = thread->kernel_time;
+	if (thread->last_time != 0) {
+		const bigtime_t current = system_time() - thread->last_time;
+		if (thread->in_kernel)
+			info->kernel_time += current;
+		else
+			info->user_time += current;
+	}
 }
 
 
@@ -1778,6 +1786,7 @@ _dump_thread_info(Thread *thread, bool shortInfo)
 		kprintf("(%d)\n", thread->cpu->cpu_num);
 	else
 		kprintf("\n");
+	kprintf("cpumask:            %#" B_PRIx32 "\n", thread->cpumask.Bits(0));
 	kprintf("sig_pending:        %#" B_PRIx64 " (blocked: %#" B_PRIx64
 		", before sigsuspend(): %#" B_PRIx64 ")\n",
 		(int64)thread->ThreadPendingSignals(),
@@ -2306,7 +2315,7 @@ thread_exit(void)
 
 	// notify the debugger
 	if (teamID != kernelTeam->id)
-		user_debug_thread_deleted(teamID, thread->id);
+		user_debug_thread_deleted(teamID, thread->id, thread->exit.status);
 
 	// enqueue in the undertaker list and reschedule for the last time
 	UndertakerEntry undertakerEntry(thread, teamID);
@@ -2752,6 +2761,7 @@ thread_init(kernel_args *args)
 		thread->team = team_get_kernel_team();
 		thread->priority = B_IDLE_PRIORITY;
 		thread->state = B_THREAD_RUNNING;
+
 		sprintf(name, "idle thread %" B_PRIu32 " kstack", i + 1);
 		thread->kernel_stack_area = find_area(name);
 
@@ -2868,12 +2878,13 @@ thread_preboot_init_percpu(struct kernel_args *args, int32 cpuNum)
 //	#pragma mark - thread blocking API
 
 
-static status_t
+static int32
 thread_block_timeout(timer* timer)
 {
 	Thread* thread = (Thread*)timer->user_data;
 	thread_unblock(thread, B_TIMED_OUT);
 
+	timer->user_data = NULL;
 	return B_HANDLED_INTERRUPT;
 }
 
@@ -2958,7 +2969,7 @@ thread_block_with_timeout(uint32 timeoutFlags, bigtime_t timeout)
 	if (thread->wait.status != 1)
 		return thread->wait.status;
 
-	bool useTimer = (timeoutFlags & (B_RELATIVE_TIMEOUT | B_ABSOLUTE_TIMEOUT))
+	bool useTimer = (timeoutFlags & (B_RELATIVE_TIMEOUT | B_ABSOLUTE_TIMEOUT)) != 0
 		&& timeout != B_INFINITE_TIMEOUT;
 
 	if (useTimer) {
@@ -2978,13 +2989,12 @@ thread_block_with_timeout(uint32 timeoutFlags, bigtime_t timeout)
 			timerFlags);
 	}
 
-	// block
 	status_t error = thread_block_locked(thread);
 
 	locker.Unlock();
 
 	// cancel timer, if it didn't fire
-	if (error != B_TIMED_OUT && useTimer)
+	if (useTimer && thread->wait.unblock_timer.user_data != NULL)
 		cancel_timer(&thread->wait.unblock_timer);
 
 	return error;
@@ -3922,4 +3932,70 @@ _user_get_cpu()
 {
 	Thread* thread = thread_get_current_thread();
 	return thread->cpu->cpu_num;
+}
+
+
+status_t
+_user_get_thread_affinity(thread_id id, void* userMask, size_t size)
+{
+	if (userMask == NULL || id < B_OK)
+		return B_BAD_VALUE;
+
+	if (!IS_USER_ADDRESS(userMask))
+		return B_BAD_ADDRESS;
+
+	CPUSet mask;
+
+	if (id == 0)
+		id = thread_get_current_thread_id();
+	// get the thread
+	Thread* thread = Thread::GetAndLock(id);
+	if (thread == NULL)
+		return B_BAD_THREAD_ID;
+	BReference<Thread> threadReference(thread, true);
+	ThreadLocker threadLocker(thread, true);
+	memcpy(&mask, &thread->cpumask, sizeof(mask));
+
+	if (user_memcpy(userMask, &mask, min_c(sizeof(mask), size)) < B_OK)
+		return B_BAD_ADDRESS;
+
+	return B_OK;
+}
+
+status_t
+_user_set_thread_affinity(thread_id id, const void* userMask, size_t size)
+{
+	if (userMask == NULL || id < B_OK || size < sizeof(CPUSet))
+		return B_BAD_VALUE;
+
+	if (!IS_USER_ADDRESS(userMask))
+		return B_BAD_ADDRESS;
+
+	CPUSet mask;
+	if (user_memcpy(&mask, userMask, min_c(sizeof(CPUSet), size)) < B_OK)
+		return B_BAD_ADDRESS;
+
+	CPUSet cpus;
+	cpus.SetAll();
+	for (int i = 0; i < smp_get_num_cpus(); i++)
+		cpus.ClearBit(i);
+	if (mask.Matches(cpus))
+		return B_BAD_VALUE;
+
+	if (id == 0)
+		id = thread_get_current_thread_id();
+
+	// get the thread
+	Thread* thread = Thread::GetAndLock(id);
+	if (thread == NULL)
+		return B_BAD_THREAD_ID;
+	BReference<Thread> threadReference(thread, true);
+	ThreadLocker threadLocker(thread, true);
+	memcpy(&thread->cpumask, &mask, sizeof(mask));
+
+	// check if running on masked cpu
+	if (!thread->cpumask.GetBit(thread->cpu->cpu_num))
+		thread_yield();
+
+	return B_OK;
 }

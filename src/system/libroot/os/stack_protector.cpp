@@ -23,15 +23,8 @@ __init_stack_protector()
 	if (__stack_chk_guard != 0)
 		return;
 
-	bool done = false;
-	int fd = open("/dev/random", O_RDONLY, 0);
-	if (fd >= 0) {
-		done = read(fd, &__stack_chk_guard, sizeof(__stack_chk_guard))
-			== sizeof(__stack_chk_guard);
-		close(fd);
-	}
-
-	if (!done) {
+	int status = getentropy(&__stack_chk_guard, sizeof(__stack_chk_guard));
+	if (status != 0) {
 		unsigned char* p = (unsigned char *)&__stack_chk_guard;
 		p[0] = 0;
 		p[1] = 0;

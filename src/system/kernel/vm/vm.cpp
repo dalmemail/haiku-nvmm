@@ -244,7 +244,8 @@ static const size_t kMemoryReserveForPriority[] = {
 };
 
 
-ObjectCache* gPageMappingsObjectCache;
+static ObjectCache** sPageMappingsObjectCaches;
+static uint32 sPageMappingsMask;
 
 static rw_lock sAreaCacheLock = RW_LOCK_INITIALIZER("area->cache");
 
@@ -255,23 +256,10 @@ static uint32 sPageFaults;
 
 static VMPhysicalPageMapper* sPhysicalPageMapper;
 
-#if DEBUG_CACHE_LIST
-
-struct cache_info {
-	VMCache*	cache;
-	addr_t		page_count;
-	addr_t		committed;
-};
-
-static const int kCacheInfoTableCount = 100 * 1024;
-static cache_info* sCacheInfoTable;
-
-#endif	// DEBUG_CACHE_LIST
-
 
 // function declarations
 static void delete_area(VMAddressSpace* addressSpace, VMArea* area,
-	bool addressSpaceCleanup);
+	bool deletingAddressSpace, bool alreadyRemoved = false);
 static void fix_protection(uint32* protection);
 
 
@@ -403,6 +391,61 @@ private:
 #endif	// VM_PAGE_FAULT_TRACING
 
 
+//	#pragma mark - page mappings allocation
+
+
+static void
+create_page_mappings_object_caches()
+{
+	// We want an even power of 2 smaller than the number of CPUs.
+	const int32 numCPUs = smp_get_num_cpus();
+	int32 count = next_power_of_2(numCPUs);
+	if (count > numCPUs)
+		count >>= 1;
+	sPageMappingsMask = count - 1;
+
+	sPageMappingsObjectCaches = new object_cache*[count];
+	if (sPageMappingsObjectCaches == NULL)
+		panic("failed to allocate page mappings object_cache array");
+
+	for (int32 i = 0; i < count; i++) {
+		char name[32];
+		snprintf(name, sizeof(name), "page mappings %" B_PRId32, i);
+
+		object_cache* cache = create_object_cache_etc(name,
+			sizeof(vm_page_mapping), 0, 0, 64, 128, CACHE_LARGE_SLAB, NULL, NULL,
+			NULL, NULL);
+		if (cache == NULL)
+			panic("failed to create page mappings object_cache");
+
+		object_cache_set_minimum_reserve(cache, 1024);
+		sPageMappingsObjectCaches[i] = cache;
+	}
+}
+
+
+static object_cache*
+page_mapping_object_cache_for(page_num_t page)
+{
+	return sPageMappingsObjectCaches[page & sPageMappingsMask];
+}
+
+
+static vm_page_mapping*
+allocate_page_mapping(page_num_t page, uint32 flags = 0)
+{
+	return (vm_page_mapping*)object_cache_alloc(page_mapping_object_cache_for(page),
+		flags);
+}
+
+
+void
+vm_free_page_mapping(page_num_t page, vm_page_mapping* mapping, uint32 flags)
+{
+	object_cache_free(page_mapping_object_cache_for(page), mapping, flags);
+}
+
+
 //	#pragma mark -
 
 
@@ -483,8 +526,11 @@ allocate_area_page_protections(VMArea* area)
 	// init the page protections for all pages to that of the area
 	uint32 areaProtection = area->protection
 		& (B_READ_AREA | B_WRITE_AREA | B_EXECUTE_AREA);
-	memset(area->page_protections, areaProtection | (areaProtection << 4),
-		bytes);
+	memset(area->page_protections, areaProtection | (areaProtection << 4), bytes);
+
+	// clear protections from the area
+	area->protection &= ~(B_READ_AREA | B_WRITE_AREA | B_EXECUTE_AREA
+		| B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA | B_KERNEL_EXECUTE_AREA);
 	return B_OK;
 }
 
@@ -554,8 +600,7 @@ map_page(VMArea* area, vm_page* page, addr_t address, uint32 protection,
 		DEBUG_PAGE_ACCESS_CHECK(page);
 
 		bool isKernelSpace = area->address_space == VMAddressSpace::Kernel();
-		vm_page_mapping* mapping = (vm_page_mapping*)object_cache_alloc(
-			gPageMappingsObjectCache,
+		vm_page_mapping* mapping = allocate_page_mapping(page->physical_page_number,
 			CACHE_DONT_WAIT_FOR_MEMORY
 				| (isKernelSpace ? CACHE_DONT_LOCK_KERNEL_SPACE : 0));
 		if (mapping == NULL)
@@ -1157,7 +1202,9 @@ map_backing_store(VMAddressSpace* addressSpace, VMCache* cache, off_t offset,
 		cache->Unlock();
 
 	// insert the area in the global areas map
-	VMAreas::Insert(area);
+	status = VMAreas::Insert(area);
+	if (status != B_OK)
+		goto err3;
 
 	// grab a ref to the address space (the area holds this)
 	addressSpace->Get();
@@ -1168,6 +1215,10 @@ map_backing_store(VMAddressSpace* addressSpace, VMCache* cache, off_t offset,
 	*_area = area;
 	return B_OK;
 
+err3:
+	cache->Lock();
+	cache->RemoveArea(area);
+	area->cache = NULL;
 err2:
 	if (mapping == REGION_PRIVATE_MAP) {
 		// We created this cache, so we must delete it again. Note, that we
@@ -1869,10 +1920,10 @@ vm_map_physical_memory(team_id team, const char* name, void** _address,
 
 	virtual_address_restrictions addressRestrictions = {};
 	addressRestrictions.address = *_address;
-	addressRestrictions.address_specification = addressSpec & ~B_MTR_MASK;
+	addressRestrictions.address_specification = addressSpec & ~B_MEMORY_TYPE_MASK;
 	status = map_backing_store(locker.AddressSpace(), cache, 0, name, size,
-		B_FULL_LOCK, protection, 0, REGION_NO_PRIVATE_MAP, 0, &addressRestrictions,
-		true, &area, _address);
+		B_FULL_LOCK, protection, 0, REGION_NO_PRIVATE_MAP, CREATE_AREA_DONT_COMMIT_MEMORY,
+		&addressRestrictions, true, &area, _address);
 
 	if (status < B_OK)
 		cache->ReleaseRefLocked();
@@ -1880,14 +1931,18 @@ vm_map_physical_memory(team_id team, const char* name, void** _address,
 	cache->Unlock();
 
 	if (status == B_OK) {
-		// set requested memory type -- use uncached, if not given
-		uint32 memoryType = addressSpec & B_MTR_MASK;
-		if (memoryType == 0)
-			memoryType = B_MTR_UC;
+		// Set requested memory type -- default to uncached, but allow
+		// that to be overridden by ranges that may already exist.
+		uint32 memoryType = addressSpec & B_MEMORY_TYPE_MASK;
+		const bool weak = (memoryType == 0);
+		if (weak)
+			memoryType = B_UNCACHED_MEMORY;
+
+		status = arch_vm_set_memory_type(area, physicalAddress, memoryType,
+			weak ? &memoryType : NULL);
 
 		area->SetMemoryType(memoryType);
 
-		status = arch_vm_set_memory_type(area, physicalAddress, memoryType);
 		if (status != B_OK)
 			delete_area(locker.AddressSpace(), area, false);
 	}
@@ -1951,7 +2006,7 @@ vm_map_physical_memory_vecs(team_id team, const char* name, void** _address,
 		addressSpec, _size, protection, vecs, vecCount));
 
 	if (!arch_vm_supports_protection(protection)
-		|| (addressSpec & B_MTR_MASK) != 0) {
+		|| (addressSpec & B_MEMORY_TYPE_MASK) != 0) {
 		return B_NOT_SUPPORTED;
 	}
 
@@ -1985,9 +2040,9 @@ vm_map_physical_memory_vecs(team_id team, const char* name, void** _address,
 	VMArea* area;
 	virtual_address_restrictions addressRestrictions = {};
 	addressRestrictions.address = *_address;
-	addressRestrictions.address_specification = addressSpec & ~B_MTR_MASK;
-	result = map_backing_store(locker.AddressSpace(), cache, 0, name,
-		size, B_FULL_LOCK, protection, 0, REGION_NO_PRIVATE_MAP, 0,
+	addressRestrictions.address_specification = addressSpec & ~B_MEMORY_TYPE_MASK;
+	result = map_backing_store(locker.AddressSpace(), cache, 0, name, size,
+		B_FULL_LOCK, protection, 0, REGION_NO_PRIVATE_MAP, CREATE_AREA_DONT_COMMIT_MEMORY,
 		&addressRestrictions, true, &area, _address);
 
 	if (result != B_OK)
@@ -2073,7 +2128,7 @@ vm_create_null_area(team_id team, const char* name, void** address,
 	addressRestrictions.address_specification = addressSpec;
 	status = map_backing_store(locker.AddressSpace(), cache, 0, name, size,
 		B_LAZY_LOCK, B_KERNEL_READ_AREA, B_KERNEL_READ_AREA,
-		REGION_NO_PRIVATE_MAP, flags,
+		REGION_NO_PRIVATE_MAP, flags | CREATE_AREA_DONT_COMMIT_MEMORY,
 		&addressRestrictions, true, &area, address);
 
 	if (status < B_OK) {
@@ -2102,27 +2157,28 @@ vm_create_vnode_cache(struct vnode* vnode, struct VMCache** cache)
 */
 static void
 pre_map_area_pages(VMArea* area, VMCache* cache,
-	vm_page_reservation* reservation)
+	vm_page_reservation* reservation, int32 maxCount)
 {
 	addr_t baseAddress = area->Base();
 	addr_t cacheOffset = area->cache_offset;
 	page_num_t firstPage = cacheOffset / B_PAGE_SIZE;
 	page_num_t endPage = firstPage + area->Size() / B_PAGE_SIZE;
 
-	for (VMCachePagesTree::Iterator it
-				= cache->pages.GetIterator(firstPage, true, true);
-			vm_page* page = it.Next();) {
+	VMCachePagesTree::Iterator it = cache->pages.GetIterator(firstPage, true, true);
+	vm_page* page;
+	while ((page = it.Next()) != NULL && maxCount > 0) {
 		if (page->cache_offset >= endPage)
 			break;
 
 		// skip busy and inactive pages
-		if (page->busy || page->usage_count == 0)
+		if (page->busy || (page->usage_count == 0 && !page->accessed))
 			continue;
 
 		DEBUG_PAGE_ACCESS_START(page);
 		map_page(area, page,
 			baseAddress + (page->cache_offset * B_PAGE_SIZE - cacheOffset),
 			B_READ_AREA | B_KERNEL_READ_AREA, reservation);
+		maxCount--;
 		DEBUG_PAGE_ACCESS_END(page);
 	}
 }
@@ -2269,16 +2325,23 @@ _vm_map_file(team_id team, const char* name, void** _address,
 		cache->ReleaseRefLocked();
 	}
 
-	if (status == B_OK && (protection & B_READ_AREA) != 0)
-		pre_map_area_pages(area, cache, &reservation);
+	if (status == B_OK && (protection & B_READ_AREA) != 0) {
+		// Pre-map at most 10MB worth of pages.
+		pre_map_area_pages(area, cache, &reservation,
+			(10LL * 1024 * 1024) / B_PAGE_SIZE);
+	}
 
 	cache->Unlock();
 
 	if (status == B_OK) {
-		// TODO: this probably deserves a smarter solution, ie. don't always
-		// prefetch stuff, and also, probably don't trigger it at this place.
-		cache_prefetch_vnode(vnode, offset, min_c(size, 10LL * 1024 * 1024));
-			// prefetches at max 10 MB starting from "offset"
+		// TODO: this probably deserves a smarter solution, e.g. probably
+		// trigger prefetch somewhere else.
+
+		// Prefetch at most 10MB starting from "offset", but only if the cache
+		// doesn't already contain more pages than the prefetch size.
+		const size_t prefetch = min_c(size, 10LL * 1024 * 1024);
+		if (cache->page_count < (prefetch / B_PAGE_SIZE))
+			cache_prefetch_vnode(vnode, offset, prefetch);
 	}
 
 	if (status != B_OK)
@@ -2397,13 +2460,17 @@ vm_clone_area(team_id team, const char* name, void** address,
 	} else if (sourceArea->cache_type == CACHE_TYPE_NULL) {
 		status = B_NOT_ALLOWED;
 	} else {
+		uint32 flags = 0;
+		if (mapping != REGION_PRIVATE_MAP)
+			flags |= CREATE_AREA_DONT_COMMIT_MEMORY;
+
 		virtual_address_restrictions addressRestrictions = {};
 		addressRestrictions.address = *address;
 		addressRestrictions.address_specification = addressSpec;
 		status = map_backing_store(targetAddressSpace, cache,
 			sourceArea->cache_offset, name, sourceArea->Size(),
 			sourceArea->wiring, protection, sourceArea->protection_max,
-			mapping, 0, &addressRestrictions,
+			mapping, flags, &addressRestrictions,
 			kernel, &newArea, address);
 	}
 	if (status == B_OK && mapping != REGION_PRIVATE_MAP) {
@@ -2493,14 +2560,17 @@ vm_clone_area(team_id team, const char* name, void** address,
 	\param area The area to be deleted.
 	\param deletingAddressSpace \c true, if the address space is in the process
 		of being deleted.
+	\param alreadyRemoved \c true, if the area was already removed from the global
+		areas map (and thus had its ID deallocated.)
 */
 static void
 delete_area(VMAddressSpace* addressSpace, VMArea* area,
-	bool deletingAddressSpace)
+	bool deletingAddressSpace, bool alreadyRemoved)
 {
 	ASSERT(!area->IsWired());
 
-	VMAreas::Remove(area);
+	if (area->id >= 0 && !alreadyRemoved)
+		VMAreas::Remove(area);
 
 	// At this point the area is removed from the global hash table, but
 	// still exists in the area list.
@@ -2948,6 +3018,16 @@ vm_set_area_protection(team_id team, area_id areaID, uint32 newProtection,
 		}
 	} while (restart);
 
+	if (area->page_protections != NULL) {
+		// Get rid of the per-page protections.
+		free_etc(area->page_protections,
+			area->address_space == VMAddressSpace::Kernel() ? HEAP_DONT_LOCK_KERNEL_SPACE : 0);
+		area->page_protections = NULL;
+
+		// Assume the existing protections don't match the new ones.
+		isWritable = !becomesWritable;
+	}
+
 	bool changePageProtection = true;
 	bool changeTopCachePagesOnly = false;
 
@@ -3192,717 +3272,6 @@ vm_remove_all_page_mappings_if_unaccessed(struct vm_page *page)
 }
 
 
-static int
-display_mem(int argc, char** argv)
-{
-	bool physical = false;
-	addr_t copyAddress;
-	int32 displayWidth;
-	int32 itemSize;
-	int32 num = -1;
-	addr_t address;
-	int i = 1, j;
-
-	if (argc > 1 && argv[1][0] == '-') {
-		if (!strcmp(argv[1], "-p") || !strcmp(argv[1], "--physical")) {
-			physical = true;
-			i++;
-		} else
-			i = 99;
-	}
-
-	if (argc < i + 1 || argc > i + 2) {
-		kprintf("usage: dl/dw/ds/db/string [-p|--physical] <address> [num]\n"
-			"\tdl - 8 bytes\n"
-			"\tdw - 4 bytes\n"
-			"\tds - 2 bytes\n"
-			"\tdb - 1 byte\n"
-			"\tstring - a whole string\n"
-			"  -p or --physical only allows memory from a single page to be "
-			"displayed.\n");
-		return 0;
-	}
-
-	address = parse_expression(argv[i]);
-
-	if (argc > i + 1)
-		num = parse_expression(argv[i + 1]);
-
-	// build the format string
-	if (strcmp(argv[0], "db") == 0) {
-		itemSize = 1;
-		displayWidth = 16;
-	} else if (strcmp(argv[0], "ds") == 0) {
-		itemSize = 2;
-		displayWidth = 8;
-	} else if (strcmp(argv[0], "dw") == 0) {
-		itemSize = 4;
-		displayWidth = 4;
-	} else if (strcmp(argv[0], "dl") == 0) {
-		itemSize = 8;
-		displayWidth = 2;
-	} else if (strcmp(argv[0], "string") == 0) {
-		itemSize = 1;
-		displayWidth = -1;
-	} else {
-		kprintf("display_mem called in an invalid way!\n");
-		return 0;
-	}
-
-	if (num <= 0)
-		num = displayWidth;
-
-	void* physicalPageHandle = NULL;
-
-	if (physical) {
-		int32 offset = address & (B_PAGE_SIZE - 1);
-		if (num * itemSize + offset > B_PAGE_SIZE) {
-			num = (B_PAGE_SIZE - offset) / itemSize;
-			kprintf("NOTE: number of bytes has been cut to page size\n");
-		}
-
-		address = ROUNDDOWN(address, B_PAGE_SIZE);
-
-		if (vm_get_physical_page_debug(address, &copyAddress,
-				&physicalPageHandle) != B_OK) {
-			kprintf("getting the hardware page failed.");
-			return 0;
-		}
-
-		address += offset;
-		copyAddress += offset;
-	} else
-		copyAddress = address;
-
-	if (!strcmp(argv[0], "string")) {
-		kprintf("%p \"", (char*)copyAddress);
-
-		// string mode
-		for (i = 0; true; i++) {
-			char c;
-			if (debug_memcpy(B_CURRENT_TEAM, &c, (char*)copyAddress + i, 1)
-					!= B_OK
-				|| c == '\0') {
-				break;
-			}
-
-			if (c == '\n')
-				kprintf("\\n");
-			else if (c == '\t')
-				kprintf("\\t");
-			else {
-				if (!isprint(c))
-					c = '.';
-
-				kprintf("%c", c);
-			}
-		}
-
-		kprintf("\"\n");
-	} else {
-		// number mode
-		for (i = 0; i < num; i++) {
-			uint64 value;
-
-			if ((i % displayWidth) == 0) {
-				int32 displayed = min_c(displayWidth, (num-i)) * itemSize;
-				if (i != 0)
-					kprintf("\n");
-
-				kprintf("[0x%lx]  ", address + i * itemSize);
-
-				for (j = 0; j < displayed; j++) {
-					char c;
-					if (debug_memcpy(B_CURRENT_TEAM, &c,
-							(char*)copyAddress + i * itemSize + j, 1) != B_OK) {
-						displayed = j;
-						break;
-					}
-					if (!isprint(c))
-						c = '.';
-
-					kprintf("%c", c);
-				}
-				if (num > displayWidth) {
-					// make sure the spacing in the last line is correct
-					for (j = displayed; j < displayWidth * itemSize; j++)
-						kprintf(" ");
-				}
-				kprintf("  ");
-			}
-
-			if (debug_memcpy(B_CURRENT_TEAM, &value,
-					(uint8*)copyAddress + i * itemSize, itemSize) != B_OK) {
-				kprintf("read fault");
-				break;
-			}
-
-			switch (itemSize) {
-				case 1:
-					kprintf(" %02" B_PRIx8, *(uint8*)&value);
-					break;
-				case 2:
-					kprintf(" %04" B_PRIx16, *(uint16*)&value);
-					break;
-				case 4:
-					kprintf(" %08" B_PRIx32, *(uint32*)&value);
-					break;
-				case 8:
-					kprintf(" %016" B_PRIx64, *(uint64*)&value);
-					break;
-			}
-		}
-
-		kprintf("\n");
-	}
-
-	if (physical) {
-		copyAddress = ROUNDDOWN(copyAddress, B_PAGE_SIZE);
-		vm_put_physical_page_debug(copyAddress, physicalPageHandle);
-	}
-	return 0;
-}
-
-
-static void
-dump_cache_tree_recursively(VMCache* cache, int level,
-	VMCache* highlightCache)
-{
-	// print this cache
-	for (int i = 0; i < level; i++)
-		kprintf("  ");
-	if (cache == highlightCache)
-		kprintf("%p <--\n", cache);
-	else
-		kprintf("%p\n", cache);
-
-	// recursively print its consumers
-	for (VMCache::ConsumerList::Iterator it = cache->consumers.GetIterator();
-			VMCache* consumer = it.Next();) {
-		dump_cache_tree_recursively(consumer, level + 1, highlightCache);
-	}
-}
-
-
-static int
-dump_cache_tree(int argc, char** argv)
-{
-	if (argc != 2 || !strcmp(argv[1], "--help")) {
-		kprintf("usage: %s <address>\n", argv[0]);
-		return 0;
-	}
-
-	addr_t address = parse_expression(argv[1]);
-	if (address == 0)
-		return 0;
-
-	VMCache* cache = (VMCache*)address;
-	VMCache* root = cache;
-
-	// find the root cache (the transitive source)
-	while (root->source != NULL)
-		root = root->source;
-
-	dump_cache_tree_recursively(root, 0, cache);
-
-	return 0;
-}
-
-
-const char*
-vm_cache_type_to_string(int32 type)
-{
-	switch (type) {
-		case CACHE_TYPE_RAM:
-			return "RAM";
-		case CACHE_TYPE_DEVICE:
-			return "device";
-		case CACHE_TYPE_VNODE:
-			return "vnode";
-		case CACHE_TYPE_NULL:
-			return "null";
-
-		default:
-			return "unknown";
-	}
-}
-
-
-#if DEBUG_CACHE_LIST
-
-static void
-update_cache_info_recursively(VMCache* cache, cache_info& info)
-{
-	info.page_count += cache->page_count;
-	if (cache->type == CACHE_TYPE_RAM)
-		info.committed += cache->committed_size;
-
-	// recurse
-	for (VMCache::ConsumerList::Iterator it = cache->consumers.GetIterator();
-			VMCache* consumer = it.Next();) {
-		update_cache_info_recursively(consumer, info);
-	}
-}
-
-
-static int
-cache_info_compare_page_count(const void* _a, const void* _b)
-{
-	const cache_info* a = (const cache_info*)_a;
-	const cache_info* b = (const cache_info*)_b;
-	if (a->page_count == b->page_count)
-		return 0;
-	return a->page_count < b->page_count ? 1 : -1;
-}
-
-
-static int
-cache_info_compare_committed(const void* _a, const void* _b)
-{
-	const cache_info* a = (const cache_info*)_a;
-	const cache_info* b = (const cache_info*)_b;
-	if (a->committed == b->committed)
-		return 0;
-	return a->committed < b->committed ? 1 : -1;
-}
-
-
-static void
-dump_caches_recursively(VMCache* cache, cache_info& info, int level)
-{
-	for (int i = 0; i < level; i++)
-		kprintf("  ");
-
-	kprintf("%p: type: %s, base: %" B_PRIdOFF ", size: %" B_PRIdOFF ", "
-		"pages: %" B_PRIu32, cache, vm_cache_type_to_string(cache->type),
-		cache->virtual_base, cache->virtual_end, cache->page_count);
-
-	if (level == 0)
-		kprintf("/%lu", info.page_count);
-
-	if (cache->type == CACHE_TYPE_RAM || (level == 0 && info.committed > 0)) {
-		kprintf(", committed: %" B_PRIdOFF, cache->committed_size);
-
-		if (level == 0)
-			kprintf("/%lu", info.committed);
-	}
-
-	// areas
-	if (cache->areas != NULL) {
-		VMArea* area = cache->areas;
-		kprintf(", areas: %" B_PRId32 " (%s, team: %" B_PRId32 ")", area->id,
-			area->name, area->address_space->ID());
-
-		while (area->cache_next != NULL) {
-			area = area->cache_next;
-			kprintf(", %" B_PRId32, area->id);
-		}
-	}
-
-	kputs("\n");
-
-	// recurse
-	for (VMCache::ConsumerList::Iterator it = cache->consumers.GetIterator();
-			VMCache* consumer = it.Next();) {
-		dump_caches_recursively(consumer, info, level + 1);
-	}
-}
-
-
-static int
-dump_caches(int argc, char** argv)
-{
-	if (sCacheInfoTable == NULL) {
-		kprintf("No cache info table!\n");
-		return 0;
-	}
-
-	bool sortByPageCount = true;
-
-	for (int32 i = 1; i < argc; i++) {
-		if (strcmp(argv[i], "-c") == 0) {
-			sortByPageCount = false;
-		} else {
-			print_debugger_command_usage(argv[0]);
-			return 0;
-		}
-	}
-
-	uint32 totalCount = 0;
-	uint32 rootCount = 0;
-	off_t totalCommitted = 0;
-	page_num_t totalPages = 0;
-
-	VMCache* cache = gDebugCacheList;
-	while (cache) {
-		totalCount++;
-		if (cache->source == NULL) {
-			cache_info stackInfo;
-			cache_info& info = rootCount < (uint32)kCacheInfoTableCount
-				? sCacheInfoTable[rootCount] : stackInfo;
-			rootCount++;
-			info.cache = cache;
-			info.page_count = 0;
-			info.committed = 0;
-			update_cache_info_recursively(cache, info);
-			totalCommitted += info.committed;
-			totalPages += info.page_count;
-		}
-
-		cache = cache->debug_next;
-	}
-
-	if (rootCount <= (uint32)kCacheInfoTableCount) {
-		qsort(sCacheInfoTable, rootCount, sizeof(cache_info),
-			sortByPageCount
-				? &cache_info_compare_page_count
-				: &cache_info_compare_committed);
-	}
-
-	kprintf("total committed memory: %" B_PRIdOFF ", total used pages: %"
-		B_PRIuPHYSADDR "\n", totalCommitted, totalPages);
-	kprintf("%" B_PRIu32 " caches (%" B_PRIu32 " root caches), sorted by %s "
-		"per cache tree...\n\n", totalCount, rootCount, sortByPageCount ?
-			"page count" : "committed size");
-
-	if (rootCount <= (uint32)kCacheInfoTableCount) {
-		for (uint32 i = 0; i < rootCount; i++) {
-			cache_info& info = sCacheInfoTable[i];
-			dump_caches_recursively(info.cache, info, 0);
-		}
-	} else
-		kprintf("Cache info table too small! Can't sort and print caches!\n");
-
-	return 0;
-}
-
-#endif	// DEBUG_CACHE_LIST
-
-
-static int
-dump_cache(int argc, char** argv)
-{
-	VMCache* cache;
-	bool showPages = false;
-	int i = 1;
-
-	if (argc < 2 || !strcmp(argv[1], "--help")) {
-		kprintf("usage: %s [-ps] <address>\n"
-			"  if -p is specified, all pages are shown, if -s is used\n"
-			"  only the cache info is shown respectively.\n", argv[0]);
-		return 0;
-	}
-	while (argv[i][0] == '-') {
-		char* arg = argv[i] + 1;
-		while (arg[0]) {
-			if (arg[0] == 'p')
-				showPages = true;
-			arg++;
-		}
-		i++;
-	}
-	if (argv[i] == NULL) {
-		kprintf("%s: invalid argument, pass address\n", argv[0]);
-		return 0;
-	}
-
-	addr_t address = parse_expression(argv[i]);
-	if (address == 0)
-		return 0;
-
-	cache = (VMCache*)address;
-
-	cache->Dump(showPages);
-
-	set_debug_variable("_sourceCache", (addr_t)cache->source);
-
-	return 0;
-}
-
-
-static void
-dump_area_struct(VMArea* area, bool mappings)
-{
-	kprintf("AREA: %p\n", area);
-	kprintf("name:\t\t'%s'\n", area->name);
-	kprintf("owner:\t\t0x%" B_PRIx32 "\n", area->address_space->ID());
-	kprintf("id:\t\t0x%" B_PRIx32 "\n", area->id);
-	kprintf("base:\t\t0x%lx\n", area->Base());
-	kprintf("size:\t\t0x%lx\n", area->Size());
-	kprintf("protection:\t0x%" B_PRIx32 "\n", area->protection);
-	kprintf("page_protection:%p\n", area->page_protections);
-	kprintf("wiring:\t\t0x%x\n", area->wiring);
-	kprintf("memory_type:\t%#" B_PRIx32 "\n", area->MemoryType());
-	kprintf("cache:\t\t%p\n", area->cache);
-	kprintf("cache_type:\t%s\n", vm_cache_type_to_string(area->cache_type));
-	kprintf("cache_offset:\t0x%" B_PRIx64 "\n", area->cache_offset);
-	kprintf("cache_next:\t%p\n", area->cache_next);
-	kprintf("cache_prev:\t%p\n", area->cache_prev);
-
-	VMAreaMappings::Iterator iterator = area->mappings.GetIterator();
-	if (mappings) {
-		kprintf("page mappings:\n");
-		while (iterator.HasNext()) {
-			vm_page_mapping* mapping = iterator.Next();
-			kprintf("  %p", mapping->page);
-		}
-		kprintf("\n");
-	} else {
-		uint32 count = 0;
-		while (iterator.Next() != NULL) {
-			count++;
-		}
-		kprintf("page mappings:\t%" B_PRIu32 "\n", count);
-	}
-}
-
-
-static int
-dump_area(int argc, char** argv)
-{
-	bool mappings = false;
-	bool found = false;
-	int32 index = 1;
-	VMArea* area;
-	addr_t num;
-
-	if (argc < 2 || !strcmp(argv[1], "--help")) {
-		kprintf("usage: area [-m] [id|contains|address|name] <id|address|name>\n"
-			"All areas matching either id/address/name are listed. You can\n"
-			"force to check only a specific item by prefixing the specifier\n"
-			"with the id/contains/address/name keywords.\n"
-			"-m shows the area's mappings as well.\n");
-		return 0;
-	}
-
-	if (!strcmp(argv[1], "-m")) {
-		mappings = true;
-		index++;
-	}
-
-	int32 mode = 0xf;
-	if (!strcmp(argv[index], "id"))
-		mode = 1;
-	else if (!strcmp(argv[index], "contains"))
-		mode = 2;
-	else if (!strcmp(argv[index], "name"))
-		mode = 4;
-	else if (!strcmp(argv[index], "address"))
-		mode = 0;
-	if (mode != 0xf)
-		index++;
-
-	if (index >= argc) {
-		kprintf("No area specifier given.\n");
-		return 0;
-	}
-
-	num = parse_expression(argv[index]);
-
-	if (mode == 0) {
-		dump_area_struct((struct VMArea*)num, mappings);
-	} else {
-		// walk through the area list, looking for the arguments as a name
-
-		VMAreasTree::Iterator it = VMAreas::GetIterator();
-		while ((area = it.Next()) != NULL) {
-			if (((mode & 4) != 0
-					&& !strcmp(argv[index], area->name))
-				|| (num != 0 && (((mode & 1) != 0 && (addr_t)area->id == num)
-					|| (((mode & 2) != 0 && area->Base() <= num
-						&& area->Base() + area->Size() > num))))) {
-				dump_area_struct(area, mappings);
-				found = true;
-			}
-		}
-
-		if (!found)
-			kprintf("could not find area %s (%ld)\n", argv[index], num);
-	}
-
-	return 0;
-}
-
-
-static int
-dump_area_list(int argc, char** argv)
-{
-	VMArea* area;
-	const char* name = NULL;
-	int32 id = 0;
-
-	if (argc > 1) {
-		id = parse_expression(argv[1]);
-		if (id == 0)
-			name = argv[1];
-	}
-
-	kprintf("%-*s      id  %-*s    %-*sprotect lock  name\n",
-		B_PRINTF_POINTER_WIDTH, "addr", B_PRINTF_POINTER_WIDTH, "base",
-		B_PRINTF_POINTER_WIDTH, "size");
-
-	VMAreasTree::Iterator it = VMAreas::GetIterator();
-	while ((area = it.Next()) != NULL) {
-		if ((id != 0 && area->address_space->ID() != id)
-			|| (name != NULL && strstr(area->name, name) == NULL))
-			continue;
-
-		kprintf("%p %5" B_PRIx32 "  %p  %p %4" B_PRIx32 " %4d  %s\n", area,
-			area->id, (void*)area->Base(), (void*)area->Size(),
-			area->protection, area->wiring, area->name);
-	}
-	return 0;
-}
-
-
-static int
-dump_available_memory(int argc, char** argv)
-{
-	kprintf("Available memory: %" B_PRIdOFF "/%" B_PRIuPHYSADDR " bytes\n",
-		sAvailableMemory, (phys_addr_t)vm_page_num_pages() * B_PAGE_SIZE);
-	return 0;
-}
-
-
-static int
-dump_mapping_info(int argc, char** argv)
-{
-	bool reverseLookup = false;
-	bool pageLookup = false;
-
-	int argi = 1;
-	for (; argi < argc && argv[argi][0] == '-'; argi++) {
-		const char* arg = argv[argi];
-		if (strcmp(arg, "-r") == 0) {
-			reverseLookup = true;
-		} else if (strcmp(arg, "-p") == 0) {
-			reverseLookup = true;
-			pageLookup = true;
-		} else {
-			print_debugger_command_usage(argv[0]);
-			return 0;
-		}
-	}
-
-	// We need at least one argument, the address. Optionally a thread ID can be
-	// specified.
-	if (argi >= argc || argi + 2 < argc) {
-		print_debugger_command_usage(argv[0]);
-		return 0;
-	}
-
-	uint64 addressValue;
-	if (!evaluate_debug_expression(argv[argi++], &addressValue, false))
-		return 0;
-
-	Team* team = NULL;
-	if (argi < argc) {
-		uint64 threadID;
-		if (!evaluate_debug_expression(argv[argi++], &threadID, false))
-			return 0;
-
-		Thread* thread = Thread::GetDebug(threadID);
-		if (thread == NULL) {
-			kprintf("Invalid thread/team ID \"%s\"\n", argv[argi - 1]);
-			return 0;
-		}
-
-		team = thread->team;
-	}
-
-	if (reverseLookup) {
-		phys_addr_t physicalAddress;
-		if (pageLookup) {
-			vm_page* page = (vm_page*)(addr_t)addressValue;
-			physicalAddress = page->physical_page_number * B_PAGE_SIZE;
-		} else {
-			physicalAddress = (phys_addr_t)addressValue;
-			physicalAddress -= physicalAddress % B_PAGE_SIZE;
-		}
-
-		kprintf("    Team     Virtual Address      Area\n");
-		kprintf("--------------------------------------\n");
-
-		struct Callback : VMTranslationMap::ReverseMappingInfoCallback {
-			Callback()
-				:
-				fAddressSpace(NULL)
-			{
-			}
-
-			void SetAddressSpace(VMAddressSpace* addressSpace)
-			{
-				fAddressSpace = addressSpace;
-			}
-
-			virtual bool HandleVirtualAddress(addr_t virtualAddress)
-			{
-				kprintf("%8" B_PRId32 "  %#18" B_PRIxADDR, fAddressSpace->ID(),
-					virtualAddress);
-				if (VMArea* area = fAddressSpace->LookupArea(virtualAddress))
-					kprintf("  %8" B_PRId32 " %s\n", area->id, area->name);
-				else
-					kprintf("\n");
-				return false;
-			}
-
-		private:
-			VMAddressSpace*	fAddressSpace;
-		} callback;
-
-		if (team != NULL) {
-			// team specified -- get its address space
-			VMAddressSpace* addressSpace = team->address_space;
-			if (addressSpace == NULL) {
-				kprintf("Failed to get address space!\n");
-				return 0;
-			}
-
-			callback.SetAddressSpace(addressSpace);
-			addressSpace->TranslationMap()->DebugGetReverseMappingInfo(
-				physicalAddress, callback);
-		} else {
-			// no team specified -- iterate through all address spaces
-			for (VMAddressSpace* addressSpace = VMAddressSpace::DebugFirst();
-				addressSpace != NULL;
-				addressSpace = VMAddressSpace::DebugNext(addressSpace)) {
-				callback.SetAddressSpace(addressSpace);
-				addressSpace->TranslationMap()->DebugGetReverseMappingInfo(
-					physicalAddress, callback);
-			}
-		}
-	} else {
-		// get the address space
-		addr_t virtualAddress = (addr_t)addressValue;
-		virtualAddress -= virtualAddress % B_PAGE_SIZE;
-		VMAddressSpace* addressSpace;
-		if (IS_KERNEL_ADDRESS(virtualAddress)) {
-			addressSpace = VMAddressSpace::Kernel();
-		} else if (team != NULL) {
-			addressSpace = team->address_space;
-		} else {
-			Thread* thread = debug_get_debugged_thread();
-			if (thread == NULL || thread->team == NULL) {
-				kprintf("Failed to get team!\n");
-				return 0;
-			}
-
-			addressSpace = thread->team->address_space;
-		}
-
-		if (addressSpace == NULL) {
-			kprintf("Failed to get address space!\n");
-			return 0;
-		}
-
-		// let the translation map implementation do the job
-		addressSpace->TranslationMap()->DebugPrintMappingInfo(virtualAddress);
-	}
-
-	return 0;
-}
-
-
 /*!	Deletes all areas and reserved regions in the given address space.
 
 	The caller must ensure that none of the areas has any wired ranges.
@@ -3922,10 +3291,19 @@ vm_delete_areas(struct VMAddressSpace* addressSpace, bool deletingAddressSpace)
 	// remove all reserved areas in this address space
 	addressSpace->UnreserveAllAddressRanges(0);
 
+	// remove all areas from the areas map at once (to avoid lock contention)
+	VMAreas::WriteLock();
+	{
+		VMAddressSpace::AreaIterator it = addressSpace->GetAreaIterator();
+		while (VMArea* area = it.Next())
+			VMAreas::Remove(area);
+	}
+	VMAreas::WriteUnlock();
+
 	// delete all the areas in this address space
 	while (VMArea* area = addressSpace->FirstArea()) {
 		ASSERT(!area->IsWired());
-		delete_area(addressSpace, area, deletingAddressSpace);
+		delete_area(addressSpace, area, deletingAddressSpace, true);
 	}
 
 	addressSpace->WriteUnlock();
@@ -4091,11 +3469,9 @@ create_preloaded_image_areas(struct preloaded_image* _image)
 void
 vm_free_kernel_args(kernel_args* args)
 {
-	uint32 i;
-
 	TRACE(("vm_free_kernel_args()\n"));
 
-	for (i = 0; i < args->num_kernel_args_ranges; i++) {
+	for (uint32 i = 0; i < args->num_kernel_args_ranges; i++) {
 		area_id area = area_for((void*)(addr_t)args->kernel_args_range[i].start);
 		if (area >= B_OK)
 			delete_area(area);
@@ -4109,11 +3485,11 @@ allocate_kernel_args(kernel_args* args)
 	TRACE(("allocate_kernel_args()\n"));
 
 	for (uint32 i = 0; i < args->num_kernel_args_ranges; i++) {
-		void* address = (void*)(addr_t)args->kernel_args_range[i].start;
+		const addr_range& range = args->kernel_args_range[i];
+		void* address = (void*)(addr_t)range.start;
 
 		create_area("_kernel args_", &address, B_EXACT_ADDRESS,
-			args->kernel_args_range[i].size, B_ALREADY_WIRED,
-			B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA);
+			range.size, B_ALREADY_WIRED, B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA);
 	}
 }
 
@@ -4124,9 +3500,9 @@ unreserve_boot_loader_ranges(kernel_args* args)
 	TRACE(("unreserve_boot_loader_ranges()\n"));
 
 	for (uint32 i = 0; i < args->num_virtual_allocated_ranges; i++) {
+		const addr_range& range = args->virtual_allocated_range[i];
 		vm_unreserve_address_range(VMAddressSpace::KernelID(),
-			(void*)(addr_t)args->virtual_allocated_range[i].start,
-			args->virtual_allocated_range[i].size);
+			(void*)(addr_t)range.start, range.size);
 	}
 }
 
@@ -4137,18 +3513,19 @@ reserve_boot_loader_ranges(kernel_args* args)
 	TRACE(("reserve_boot_loader_ranges()\n"));
 
 	for (uint32 i = 0; i < args->num_virtual_allocated_ranges; i++) {
-		void* address = (void*)(addr_t)args->virtual_allocated_range[i].start;
+		const addr_range& range = args->virtual_allocated_range[i];
+		void* address = (void*)(addr_t)range.start;
 
 		// If the address is no kernel address, we just skip it. The
 		// architecture specific code has to deal with it.
 		if (!IS_KERNEL_ADDRESS(address)) {
 			dprintf("reserve_boot_loader_ranges(): Skipping range: %p, %"
-				B_PRIu64 "\n", address, args->virtual_allocated_range[i].size);
+				B_PRIu64 "\n", address, range.size);
 			continue;
 		}
 
 		status_t status = vm_reserve_address_range(VMAddressSpace::KernelID(),
-			&address, B_EXACT_ADDRESS, args->virtual_allocated_range[i].size, 0);
+			&address, B_EXACT_ADDRESS, range.size, 0);
 		if (status < B_OK)
 			panic("could not reserve boot loader ranges\n");
 	}
@@ -4159,48 +3536,51 @@ static addr_t
 allocate_early_virtual(kernel_args* args, size_t size, addr_t alignment)
 {
 	size = PAGE_ALIGN(size);
+	if (alignment <= B_PAGE_SIZE) {
+		// All allocations are naturally page-aligned.
+		alignment = 0;
+	} else {
+		ASSERT((alignment % B_PAGE_SIZE) == 0);
+	}
 
-	// find a slot in the virtual allocation addr range
+	// Find a slot in the virtual allocation ranges.
 	for (uint32 i = 1; i < args->num_virtual_allocated_ranges; i++) {
-		// check to see if the space between this one and the last is big enough
-		addr_t rangeStart = args->virtual_allocated_range[i].start;
-		addr_t previousRangeEnd = args->virtual_allocated_range[i - 1].start
-			+ args->virtual_allocated_range[i - 1].size;
+		// Check if the space between this one and the previous is big enough.
+		const addr_range& range = args->virtual_allocated_range[i];
+		addr_range& previousRange = args->virtual_allocated_range[i - 1];
+		const addr_t previousRangeEnd = previousRange.start + previousRange.size;
 
 		addr_t base = alignment > 0
 			? ROUNDUP(previousRangeEnd, alignment) : previousRangeEnd;
 
-		if (base >= KERNEL_BASE && base < rangeStart
-				&& rangeStart - base >= size) {
-			args->virtual_allocated_range[i - 1].size
-				+= base + size - previousRangeEnd;
+		if (base >= KERNEL_BASE && base < range.start && (range.start - base) >= size) {
+			previousRange.size += base + size - previousRangeEnd;
 			return base;
 		}
 	}
 
-	// we hadn't found one between allocation ranges. this is ok.
-	// see if there's a gap after the last one
-	int lastEntryIndex = args->num_virtual_allocated_ranges - 1;
-	addr_t lastRangeEnd = args->virtual_allocated_range[lastEntryIndex].start
-		+ args->virtual_allocated_range[lastEntryIndex].size;
+	// We didn't find one between allocation ranges. This is OK.
+	// See if there's a gap after the last one.
+	addr_range& lastRange
+		= args->virtual_allocated_range[args->num_virtual_allocated_ranges - 1];
+	const addr_t lastRangeEnd = lastRange.start + lastRange.size;
 	addr_t base = alignment > 0
 		? ROUNDUP(lastRangeEnd, alignment) : lastRangeEnd;
-	if (KERNEL_BASE + (KERNEL_SIZE - 1) - base >= size) {
-		args->virtual_allocated_range[lastEntryIndex].size
-			+= base + size - lastRangeEnd;
+	if ((KERNEL_BASE + (KERNEL_SIZE - 1) - base) >= size) {
+		lastRange.size += base + size - lastRangeEnd;
 		return base;
 	}
 
-	// see if there's a gap before the first one
-	addr_t rangeStart = args->virtual_allocated_range[0].start;
-	if (rangeStart > KERNEL_BASE && rangeStart - KERNEL_BASE >= size) {
-		base = rangeStart - size;
+	// See if there's a gap before the first one.
+	addr_range& firstRange = args->virtual_allocated_range[0];
+	if (firstRange.start > KERNEL_BASE && (firstRange.start - KERNEL_BASE) >= size) {
+		base = firstRange.start - size;
 		if (alignment > 0)
 			base = ROUNDDOWN(base, alignment);
 
 		if (base >= KERNEL_BASE) {
-			args->virtual_allocated_range[0].start = base;
-			args->virtual_allocated_range[0].size += rangeStart - base;
+			firstRange.size += firstRange.start - base;
+			firstRange.start = base;
 			return base;
 		}
 	}
@@ -4215,9 +3595,8 @@ is_page_in_physical_memory_range(kernel_args* args, phys_addr_t address)
 	// TODO: horrible brute-force method of determining if the page can be
 	// allocated
 	for (uint32 i = 0; i < args->num_physical_memory_ranges; i++) {
-		if (address >= args->physical_memory_range[i].start
-			&& address < args->physical_memory_range[i].start
-				+ args->physical_memory_range[i].size)
+		const addr_range& range = args->physical_memory_range[i];
+		if (address >= range.start && address < (range.start + range.size))
 			return true;
 	}
 	return false;
@@ -4227,43 +3606,142 @@ is_page_in_physical_memory_range(kernel_args* args, phys_addr_t address)
 page_num_t
 vm_allocate_early_physical_page(kernel_args* args)
 {
-	for (uint32 i = 0; i < args->num_physical_allocated_ranges; i++) {
-		phys_addr_t nextPage;
+	return vm_allocate_early_physical_page_etc(args);
+}
 
-		nextPage = args->physical_allocated_range[i].start
-			+ args->physical_allocated_range[i].size;
-		// see if the page after the next allocated paddr run can be allocated
-		if (i + 1 < args->num_physical_allocated_ranges
-			&& args->physical_allocated_range[i + 1].size != 0) {
-			// see if the next page will collide with the next allocated range
-			if (nextPage >= args->physical_allocated_range[i+1].start)
+
+page_num_t
+vm_allocate_early_physical_page_etc(kernel_args* args, phys_addr_t maxAddress)
+{
+	if (args->num_physical_allocated_ranges == 0) {
+		panic("early physical page allocations no longer possible!");
+		return 0;
+	}
+	if (maxAddress == 0)
+		maxAddress = __HAIKU_PHYS_ADDR_MAX;
+
+#if defined(B_HAIKU_PHYSICAL_64_BIT)
+	// Check if the last physical range is above the 32-bit maximum.
+	const addr_range& lastMemoryRange =
+		args->physical_memory_range[args->num_physical_memory_ranges - 1];
+	const uint64 post32bitAddr = 0x100000000LL;
+	if ((lastMemoryRange.start + lastMemoryRange.size) > post32bitAddr
+			&& args->num_physical_allocated_ranges < MAX_PHYSICAL_ALLOCATED_RANGE) {
+		// To avoid consuming physical memory in the 32-bit range (which drivers may need),
+		// ensure the last allocated range at least ends past the 32-bit boundary.
+		const addr_range& lastAllocatedRange =
+			args->physical_allocated_range[args->num_physical_allocated_ranges - 1];
+		const phys_addr_t lastAllocatedPage = lastAllocatedRange.start + lastAllocatedRange.size;
+		if (lastAllocatedPage < post32bitAddr) {
+			// Create ranges until we have one at least starting at the first point past 4GB.
+			// (Some of the logic here is similar to the new-range code at the end of the method.)
+			for (uint32 i = 0; i < args->num_physical_memory_ranges; i++) {
+				addr_range& memoryRange = args->physical_memory_range[i];
+				if ((memoryRange.start + memoryRange.size) < lastAllocatedPage)
+					continue;
+				if (memoryRange.size < (B_PAGE_SIZE * 128))
+					continue;
+
+				uint64 rangeStart = memoryRange.start;
+				if ((memoryRange.start + memoryRange.size) <= post32bitAddr) {
+					if (memoryRange.start < lastAllocatedPage)
+						continue;
+
+					// Range has no pages allocated and ends before the 32-bit boundary.
+				} else {
+					// Range ends past the 32-bit boundary. It could have some pages allocated,
+					// but if we're here, we know that nothing is allocated above the boundary,
+					// so we want to create a new range with it regardless.
+					if (rangeStart < post32bitAddr)
+						rangeStart = post32bitAddr;
+				}
+
+				addr_range& allocatedRange =
+					args->physical_allocated_range[args->num_physical_allocated_ranges++];
+				allocatedRange.start = rangeStart;
+				allocatedRange.size = 0;
+
+				if (rangeStart >= post32bitAddr)
+					break;
+				if (args->num_physical_allocated_ranges == MAX_PHYSICAL_ALLOCATED_RANGE)
+					break;
+			}
+		}
+	}
+#endif
+
+	// Try expanding the existing physical ranges upwards.
+	for (int32 i = args->num_physical_allocated_ranges - 1; i >= 0; i--) {
+		addr_range& range = args->physical_allocated_range[i];
+		phys_addr_t nextPage = range.start + range.size;
+
+		// check constraints
+		if (nextPage > maxAddress)
+			continue;
+
+		// make sure the page does not collide with the next allocated range
+		if ((i + 1) < (int32)args->num_physical_allocated_ranges) {
+			addr_range& nextRange = args->physical_allocated_range[i + 1];
+			if (nextRange.size != 0 && nextPage >= nextRange.start)
 				continue;
 		}
-		// see if the next physical page fits in the memory block
+		// see if the next page fits in the memory block
 		if (is_page_in_physical_memory_range(args, nextPage)) {
 			// we got one!
-			args->physical_allocated_range[i].size += B_PAGE_SIZE;
+			range.size += B_PAGE_SIZE;
 			return nextPage / B_PAGE_SIZE;
 		}
 	}
 
 	// Expanding upwards didn't work, try going downwards.
 	for (uint32 i = 0; i < args->num_physical_allocated_ranges; i++) {
-		phys_addr_t nextPage;
+		addr_range& range = args->physical_allocated_range[i];
+		phys_addr_t nextPage = range.start - B_PAGE_SIZE;
 
-		nextPage = args->physical_allocated_range[i].start - B_PAGE_SIZE;
-		// see if the page after the prev allocated paddr run can be allocated
-		if (i > 0 && args->physical_allocated_range[i - 1].size != 0) {
-			// see if the next page will collide with the next allocated range
-			if (nextPage < args->physical_allocated_range[i-1].start
-				+ args->physical_allocated_range[i-1].size)
+		// check constraints
+		if (nextPage > maxAddress)
+			continue;
+
+		// make sure the page does not collide with the previous allocated range
+		if (i > 0) {
+			addr_range& previousRange = args->physical_allocated_range[i - 1];
+			if (previousRange.size != 0 && nextPage < (previousRange.start + previousRange.size))
 				continue;
 		}
 		// see if the next physical page fits in the memory block
 		if (is_page_in_physical_memory_range(args, nextPage)) {
 			// we got one!
-			args->physical_allocated_range[i].start -= B_PAGE_SIZE;
-			args->physical_allocated_range[i].size += B_PAGE_SIZE;
+			range.start -= B_PAGE_SIZE;
+			range.size += B_PAGE_SIZE;
+			return nextPage / B_PAGE_SIZE;
+		}
+	}
+
+	// Try starting a new range.
+	if (args->num_physical_allocated_ranges < MAX_PHYSICAL_ALLOCATED_RANGE) {
+		const addr_range& lastAllocatedRange =
+			args->physical_allocated_range[args->num_physical_allocated_ranges - 1];
+		const phys_addr_t lastAllocatedPage = lastAllocatedRange.start + lastAllocatedRange.size;
+
+		phys_addr_t nextPage = 0;
+		for (uint32 i = 0; i < args->num_physical_memory_ranges; i++) {
+			const addr_range& range = args->physical_memory_range[i];
+			// Ignore everything before the last-allocated page, as well as small ranges.
+			if (range.start < lastAllocatedPage || range.size < (B_PAGE_SIZE * 128))
+				continue;
+			if (range.start > maxAddress)
+				break;
+
+			nextPage = range.start;
+			break;
+		}
+
+		if (nextPage != 0) {
+			// we got one!
+			addr_range& range =
+				args->physical_allocated_range[args->num_physical_allocated_ranges++];
+			range.start = nextPage;
+			range.size = B_PAGE_SIZE;
 			return nextPage / B_PAGE_SIZE;
 		}
 	}
@@ -4292,16 +3770,19 @@ vm_allocate_early(kernel_args* args, size_t virtualSize, size_t physicalSize,
 	}
 
 	// map the pages
-	for (uint32 i = 0; i < PAGE_ALIGN(physicalSize) / B_PAGE_SIZE; i++) {
+	for (uint32 i = 0; i < HOWMANY(physicalSize, B_PAGE_SIZE); i++) {
 		page_num_t physicalAddress = vm_allocate_early_physical_page(args);
 		if (physicalAddress == 0)
 			panic("error allocating early page!\n");
 
 		//dprintf("vm_allocate_early: paddr 0x%lx\n", physicalAddress);
 
-		arch_vm_translation_map_early_map(args, virtualBase + i * B_PAGE_SIZE,
+		status_t status = arch_vm_translation_map_early_map(args,
+			virtualBase + i * B_PAGE_SIZE,
 			physicalAddress * B_PAGE_SIZE, attributes,
 			&vm_allocate_early_physical_page);
+		if (status != B_OK)
+			panic("error mapping early page!");
 	}
 
 	return virtualBase;
@@ -4406,68 +3887,9 @@ vm_init(kernel_args* args)
 		(void *)ROUNDDOWN(0xdeadbeef, B_PAGE_SIZE), B_PAGE_SIZE * 64);
 #endif
 
-	// create the object cache for the page mappings
-	gPageMappingsObjectCache = create_object_cache_etc("page mappings",
-		sizeof(vm_page_mapping), 0, 0, 64, 128, CACHE_LARGE_SLAB, NULL, NULL,
-		NULL, NULL);
-	if (gPageMappingsObjectCache == NULL)
-		panic("failed to create page mappings object cache");
+	create_page_mappings_object_caches();
 
-	object_cache_set_minimum_reserve(gPageMappingsObjectCache, 1024);
-
-#if DEBUG_CACHE_LIST
-	if (vm_page_num_free_pages() >= 200 * 1024 * 1024 / B_PAGE_SIZE) {
-		virtual_address_restrictions virtualRestrictions = {};
-		virtualRestrictions.address_specification = B_ANY_KERNEL_ADDRESS;
-		physical_address_restrictions physicalRestrictions = {};
-		create_area_etc(VMAddressSpace::KernelID(), "cache info table",
-			ROUNDUP(kCacheInfoTableCount * sizeof(cache_info), B_PAGE_SIZE),
-			B_FULL_LOCK, B_KERNEL_READ_AREA | B_KERNEL_WRITE_AREA,
-			CREATE_AREA_DONT_WAIT, 0, &virtualRestrictions,
-			&physicalRestrictions, (void**)&sCacheInfoTable);
-	}
-#endif	// DEBUG_CACHE_LIST
-
-	// add some debugger commands
-	add_debugger_command("areas", &dump_area_list, "Dump a list of all areas");
-	add_debugger_command("area", &dump_area,
-		"Dump info about a particular area");
-	add_debugger_command("cache", &dump_cache, "Dump VMCache");
-	add_debugger_command("cache_tree", &dump_cache_tree, "Dump VMCache tree");
-#if DEBUG_CACHE_LIST
-	if (sCacheInfoTable != NULL) {
-		add_debugger_command_etc("caches", &dump_caches,
-			"List all VMCache trees",
-			"[ \"-c\" ]\n"
-			"All cache trees are listed sorted in decreasing order by number "
-				"of\n"
-			"used pages or, if \"-c\" is specified, by size of committed "
-				"memory.\n",
-			0);
-	}
-#endif
-	add_debugger_command("avail", &dump_available_memory,
-		"Dump available memory");
-	add_debugger_command("dl", &display_mem, "dump memory long words (64-bit)");
-	add_debugger_command("dw", &display_mem, "dump memory words (32-bit)");
-	add_debugger_command("ds", &display_mem, "dump memory shorts (16-bit)");
-	add_debugger_command("db", &display_mem, "dump memory bytes (8-bit)");
-	add_debugger_command("string", &display_mem, "dump strings");
-
-	add_debugger_command_etc("mapping", &dump_mapping_info,
-		"Print address mapping information",
-		"[ \"-r\" | \"-p\" ] <address> [ <thread ID> ]\n"
-		"Prints low-level page mapping information for a given address. If\n"
-		"neither \"-r\" nor \"-p\" are specified, <address> is a virtual\n"
-		"address that is looked up in the translation map of the current\n"
-		"team, respectively the team specified by thread ID <thread ID>. If\n"
-		"\"-r\" is specified, <address> is a physical address that is\n"
-		"searched in the translation map of all teams, respectively the team\n"
-		"specified by thread ID <thread ID>. If \"-p\" is specified,\n"
-		"<address> is the address of a vm_page structure. The behavior is\n"
-		"equivalent to specifying \"-r\" with the physical address of that\n"
-		"page.\n",
-		0);
+	vm_debug_init();
 
 	TRACE(("vm_init: exit\n"));
 
@@ -5050,7 +4472,8 @@ vm_soft_fault(VMAddressSpace* addressSpace, addr_t originalAddress,
 
 				context.UnlockAll();
 
-				if (object_cache_reserve(gPageMappingsObjectCache, 1, 0)
+				if (object_cache_reserve(page_mapping_object_cache_for(
+							context.page->physical_page_number), 1, 0)
 						!= B_OK) {
 					// Apparently the situation is serious. Let's get ourselves
 					// killed.
@@ -5144,6 +4567,16 @@ off_t
 vm_available_memory(void)
 {
 	MutexLocker locker(sAvailableMemoryLock);
+	return sAvailableMemory;
+}
+
+
+/*!	Like vm_available_memory(), but only for use in the kernel
+	debugger.
+*/
+off_t
+vm_available_memory_debug(void)
+{
 	return sAvailableMemory;
 }
 
@@ -5255,7 +4688,7 @@ vm_set_area_memory_type(area_id id, phys_addr_t physicalBase, uint32 type)
 	map->Unlock();
 
 	// set the physical memory type
-	status_t error = arch_vm_set_memory_type(area, physicalBase, type);
+	status_t error = arch_vm_set_memory_type(area, physicalBase, type, NULL);
 	if (error != B_OK) {
 		// reset the memory type of the area and the mapped pages
 		map->Lock();
@@ -5501,93 +4934,6 @@ void
 vm_memcpy_physical_page(phys_addr_t to, phys_addr_t from)
 {
 	return sPhysicalPageMapper->MemcpyPhysicalPage(to, from);
-}
-
-
-/*!	Copies a range of memory directly from/to a page that might not be mapped
-	at the moment.
-
-	For \a unsafeMemory the current mapping (if any is ignored). The function
-	walks through the respective area's cache chain to find the physical page
-	and copies from/to it directly.
-	The memory range starting at \a unsafeMemory with a length of \a size bytes
-	must not cross a page boundary.
-
-	\param teamID The team ID identifying the address space \a unsafeMemory is
-		to be interpreted in. Ignored, if \a unsafeMemory is a kernel address
-		(the kernel address space is assumed in this case). If \c B_CURRENT_TEAM
-		is passed, the address space of the thread returned by
-		debug_get_debugged_thread() is used.
-	\param unsafeMemory The start of the unsafe memory range to be copied
-		from/to.
-	\param buffer A safely accessible kernel buffer to be copied from/to.
-	\param size The number of bytes to be copied.
-	\param copyToUnsafe If \c true, memory is copied from \a buffer to
-		\a unsafeMemory, the other way around otherwise.
-*/
-status_t
-vm_debug_copy_page_memory(team_id teamID, void* unsafeMemory, void* buffer,
-	size_t size, bool copyToUnsafe)
-{
-	if (size > B_PAGE_SIZE || ROUNDDOWN((addr_t)unsafeMemory, B_PAGE_SIZE)
-			!= ROUNDDOWN((addr_t)unsafeMemory + size - 1, B_PAGE_SIZE)) {
-		return B_BAD_VALUE;
-	}
-
-	// get the address space for the debugged thread
-	VMAddressSpace* addressSpace;
-	if (IS_KERNEL_ADDRESS(unsafeMemory)) {
-		addressSpace = VMAddressSpace::Kernel();
-	} else if (teamID == B_CURRENT_TEAM) {
-		Thread* thread = debug_get_debugged_thread();
-		if (thread == NULL || thread->team == NULL)
-			return B_BAD_ADDRESS;
-
-		addressSpace = thread->team->address_space;
-	} else
-		addressSpace = VMAddressSpace::DebugGet(teamID);
-
-	if (addressSpace == NULL)
-		return B_BAD_ADDRESS;
-
-	// get the area
-	VMArea* area = addressSpace->LookupArea((addr_t)unsafeMemory);
-	if (area == NULL)
-		return B_BAD_ADDRESS;
-
-	// search the page
-	off_t cacheOffset = (addr_t)unsafeMemory - area->Base()
-		+ area->cache_offset;
-	VMCache* cache = area->cache;
-	vm_page* page = NULL;
-	while (cache != NULL) {
-		page = cache->DebugLookupPage(cacheOffset);
-		if (page != NULL)
-			break;
-
-		// Page not found in this cache -- if it is paged out, we must not try
-		// to get it from lower caches.
-		if (cache->DebugHasPage(cacheOffset))
-			break;
-
-		cache = cache->source;
-	}
-
-	if (page == NULL)
-		return B_UNSUPPORTED;
-
-	// copy from/to physical memory
-	phys_addr_t physicalAddress = page->physical_page_number * B_PAGE_SIZE
-		+ (addr_t)unsafeMemory % B_PAGE_SIZE;
-
-	if (copyToUnsafe) {
-		if (page->Cache() != area->cache)
-			return B_UNSUPPORTED;
-
-		return vm_memcpy_to_physical(physicalAddress, buffer, size, false);
-	}
-
-	return vm_memcpy_from_physical(buffer, physicalAddress, size, false);
 }
 
 
@@ -6348,7 +5694,7 @@ transfer_area(area_id id, void** _address, uint32 addressSpec, team_id target,
 	if (status != B_OK)
 		return status;
 
-	if (info.team != thread_get_current_thread()->team->id)
+	if (!kernel && info.team != thread_get_current_thread()->team->id)
 		return B_PERMISSION_DENIED;
 
 	// We need to mark the area cloneable so the following operations work.

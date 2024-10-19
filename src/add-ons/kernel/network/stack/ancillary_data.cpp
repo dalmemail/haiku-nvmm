@@ -13,7 +13,7 @@
 #include <util/DoublyLinkedList.h>
 
 
-#define MAX_ANCILLARY_DATA_SIZE	128
+#define MAX_ANCILLARY_DATA_SIZE	(32 * sizeof(void*))
 
 
 struct ancillary_data : DoublyLinkedListLinkImpl<ancillary_data> {
@@ -56,6 +56,8 @@ delete_ancillary_data_container(ancillary_data_container* container)
 			data->destructor(&data->header, data->Data());
 		free(data);
 	}
+
+	delete container;
 }
 
 

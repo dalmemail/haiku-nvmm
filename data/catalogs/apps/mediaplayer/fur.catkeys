@@ -1,4 +1,4 @@
-1	friulian	x-vnd.Haiku-MediaPlayer	787895969
+1	friulian	x-vnd.Haiku-MediaPlayer	390961765
 Remove Entry into Trash	MediaPlayer-RemovePLItemsCmd		Sposte element te Scovacere
 Close	MediaPlayer-PlaylistWindow		Siere
 Volume of background clips	MediaPlayer-SettingsWindow		Volum des riproduzions di sotfont
@@ -16,7 +16,6 @@ DrawBitmap	MediaPlayer-InfoWin		Dissegnâ Bitmap
 File info	MediaPlayer-InfoWin		Informazions file
 raw audio	MediaPlayer-InfoWin		audio grês
 Select all	MediaPlayer-PlaylistWindow		Selezione dut
-New player…	MediaPlayer-Main		Gnove riproduzion…
 Move Entries	MediaPlayer-MovePLItemsCmd		Sposte vôs
 OK	MediaPlayer-Main		Va ben
 Remove	MediaPlayer-PlaylistWindow		Gjave
@@ -30,7 +29,6 @@ Open file…	MediaPlayer-Main		Vierç file…
 Scale controls in full screen mode	MediaPlayer-SettingsWindow		Ridimensione controi in modalitât plen visôr
 View options	MediaPlayer-SettingsWindow		Opzions di visualizazion
 %d kHz	MediaPlayer-InfoWin		%d kHz
-Eject Device	MediaPlayer-Main		Pare fûr il dispositîf
 Full volume	MediaPlayer-SettingsWindow		Volum massim
 <untitled>	PlaylistItem-title		<cence titul>
 Start media server	MediaPlayer-Main		Invie servidôr multimediâl
@@ -51,6 +49,7 @@ MediaPlayer settings	MediaPlayer-SettingsWindow		Impostazions di MediaPlayer
 Copyright	MediaPlayer-InfoWin		Copyright
 Invalid URL inserted!	MediaPlayer-NetworkStream		Inserît URL no valit!
 Aspect ratio	MediaPlayer-Main		Proporzions
+Eject device	MediaPlayer-Main		Pare fûr dispositîf
 Saving the playlist failed.\n\nError: 	MediaPlayer-PlaylistWindow		Salvament de liste di riproduzion falît.\n\nErôr: 
 <no media>	MediaPlayer-InfoWin		<cence media>
 Hide interface	MediaPlayer-Main		Plate interface
@@ -127,6 +126,7 @@ Full screen	MediaPlayer-Main		Plen visôr
 OK	MediaPlayer-NetworkStream		Va ben
 Internal error (locking failed). Saving the playlist failed.	MediaPlayer-PlaylistWindow		Erôr interni (erôr tal blocâ/lock). Salvament de liste di riproduzion falît.
 100% scale	MediaPlayer-Main		Scjale 100%
+New player	MediaPlayer-Main		Gnûf riprodutôr
 <nothing to redo>	MediaPlayer-PlaylistWindow		<nie di tornâ a fâ>
 Bad URL	MediaPlayer-NetworkStream		URL sbaliât
 Save	MediaPlayer-Main		Salve

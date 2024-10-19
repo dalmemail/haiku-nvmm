@@ -318,9 +318,27 @@ insert_physical_allocated_range(uint64 start, uint64 size)
 
 
 status_t
+remove_physical_allocated_range(uint64 start, uint64 size)
+{
+	return remove_address_range(gKernelArgs.physical_allocated_range,
+		&gKernelArgs.num_physical_allocated_ranges, MAX_PHYSICAL_ALLOCATED_RANGE,
+		start, size);
+}
+
+
+status_t
 insert_virtual_allocated_range(uint64 start, uint64 size)
 {
 	return insert_address_range(gKernelArgs.virtual_allocated_range,
+		&gKernelArgs.num_virtual_allocated_ranges, MAX_VIRTUAL_ALLOCATED_RANGE,
+		start, size);
+}
+
+
+status_t
+remove_virtual_allocated_range(uint64 start, uint64 size)
+{
+	return remove_address_range(gKernelArgs.virtual_allocated_range,
 		&gKernelArgs.num_virtual_allocated_ranges, MAX_VIRTUAL_ALLOCATED_RANGE,
 		start, size);
 }
@@ -350,13 +368,14 @@ ignore_physical_memory_ranges_beyond_4gb()
 			continue;
 		}
 
-		if (kLimit - range.start < range.size) {
+		if ((range.start + range.size) > kLimit) {
 			// the range is partially beyond the limit
 			dprintf("ignore_physical_memory_ranges_beyond_4gb(): ignoring "
 				"range: %#" B_PRIx64 " - %#" B_PRIx64 "\n", kLimit,
 				range.start + range.size);
 			gKernelArgs.ignored_physical_memory
 				+= range.size - (kLimit - range.start);
+			range.size = kLimit - range.start;
 		}
 
 		break;

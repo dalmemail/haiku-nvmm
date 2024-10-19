@@ -12,6 +12,7 @@
 #include <vm/VMAddressSpace.h>
 #include <vm/vm_types.h>
 
+#include "VMSAv8TranslationMap.h"
 
 //#define TRACE_ARCH_VM
 #ifdef TRACE_ARCH_VM
@@ -96,7 +97,10 @@ arch_vm_init_post_modules(kernel_args* args)
 void
 arch_vm_aspace_swap(struct VMAddressSpace* from, struct VMAddressSpace* to)
 {
-	TRACE("arch_vm_aspace_swap\n");
+	VMSAv8TranslationMap* fromMap = (VMSAv8TranslationMap*)from->TranslationMap();
+	VMSAv8TranslationMap* toMap = (VMSAv8TranslationMap*)to->TranslationMap();
+	if (fromMap != toMap)
+		VMSAv8TranslationMap::SwitchUserMap(fromMap, toMap);
 }
 
 
@@ -106,6 +110,12 @@ arch_vm_supports_protection(uint32 protection)
 	// User-RO/Kernel-RW is not possible
 	if ((protection & B_READ_AREA) != 0 && (protection & B_WRITE_AREA) == 0
 		&& (protection & B_KERNEL_WRITE_AREA) != 0) {
+		return false;
+	}
+
+	// User-Execute implies User-Read, because it would break PAN otherwise
+	if ((protection & B_EXECUTE_AREA) != 0
+	    && (protection & B_READ_AREA) == 0) {
 		return false;
 	}
 
@@ -120,7 +130,10 @@ arch_vm_unset_memory_type(VMArea* area)
 
 
 status_t
-arch_vm_set_memory_type(VMArea* area, phys_addr_t physicalBase, uint32 type)
+arch_vm_set_memory_type(VMArea* area, phys_addr_t physicalBase, uint32 type,
+	uint32 *effectiveType)
 {
+	// Memory type is set in page tables during mapping,
+	// no need to do anything more here.
 	return B_OK;
 }

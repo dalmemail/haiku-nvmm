@@ -63,6 +63,7 @@
 	| SIGNAL_RANGE_TO_MASK(SIGNAL_REALTIME_MIN, SIGNAL_REALTIME_MAX))
 #define NON_DEFERRABLE_SIGNALS	\
 	(KILL_SIGNALS				\
+	| SIGNAL_TO_MASK(SIGNAL_DEBUG_THREAD) \
 	| SIGNAL_TO_MASK(SIGILL)	\
 	| SIGNAL_TO_MASK(SIGFPE)	\
 	| SIGNAL_TO_MASK(SIGSEGV))
@@ -941,17 +942,17 @@ handle_signals(Thread* thread)
 	sigset_t nonBlockedMask = ~thread->sig_block_mask;
 	sigset_t signalMask = thread->AllPendingSignals() & nonBlockedMask;
 
-	set_ac();
+	arch_cpu_enable_user_access();
 	if (thread->user_thread->defer_signals > 0
 		&& (signalMask & NON_DEFERRABLE_SIGNALS) == 0
 		&& thread->sigsuspend_original_unblocked_mask == 0) {
 		thread->user_thread->pending_signals = signalMask;
-		clear_ac();
+		arch_cpu_disable_user_access();
 		return;
 	}
 
 	thread->user_thread->pending_signals = 0;
-	clear_ac();
+	arch_cpu_disable_user_access();
 
 	// determine syscall restart behavior
 	uint32 restartFlags = atomic_and(&thread->flags,
@@ -1654,7 +1655,7 @@ send_signal_to_team_locked(Team* team, uint32 signalNumber, Signal* signal,
 			// (only the main thread shuts down the team).
 			Thread* mainThread = team->main_thread;
 			if (mainThread != NULL) {
-				mainThread->AddPendingSignal(SIGKILLTHR);
+				mainThread->AddPendingSignal(signalNumber);
 
 				// wake up main thread
 				mainThread->going_to_suspend = false;

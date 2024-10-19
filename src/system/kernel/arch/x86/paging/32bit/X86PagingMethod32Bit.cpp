@@ -47,7 +47,7 @@ using X86LargePhysicalPageMapper::PhysicalPageSlot;
 // #pragma mark - X86PagingMethod32Bit::PhysicalPageSlotPool
 
 
-struct X86PagingMethod32Bit::PhysicalPageSlotPool
+struct X86PagingMethod32Bit::PhysicalPageSlotPool final
 	: X86LargePhysicalPageMapper::PhysicalPageSlotPool {
 public:
 	virtual						~PhysicalPageSlotPool();
@@ -275,6 +275,16 @@ X86PagingMethod32Bit::Init(kernel_args* args,
 	VMPhysicalPageMapper** _physicalPageMapper)
 {
 	TRACE("X86PagingMethod32Bit::Init(): entry\n");
+
+	// Ignore all memory beyond the maximum 32-bit address.
+	static const phys_addr_t kLimit = 1ULL << 32;
+	for (uint32 i = 0; i < args->num_physical_memory_ranges; i++) {
+		addr_range& range = args->physical_memory_range[i];
+		if (range.start >= kLimit)
+			range.size = 0;
+		else if ((range.start + range.size) > kLimit)
+			range.size = kLimit - range.start;
+	}
 
 	// page hole set up in stage2
 	fPageHole = (page_table_entry*)(addr_t)args->arch_args.page_hole;

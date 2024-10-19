@@ -8,17 +8,25 @@
  */
 
 
-/*! Mutex and recursive_lock code */
+#include <debug.h>
 
+#if KDEBUG
+#define KDEBUG_STATIC static
+static status_t _mutex_lock(struct mutex* lock, void* locker);
+static void _mutex_unlock(struct mutex* lock);
+#else
+#define KDEBUG_STATIC
+#define mutex_lock		mutex_lock_inline
+#define mutex_unlock	mutex_unlock_inline
+#define mutex_trylock	mutex_trylock_inline
+#define mutex_lock_with_timeout	mutex_lock_with_timeout_inline
+#endif
 
 #include <lock.h>
 
 #include <stdlib.h>
 #include <string.h>
 
-#include <OS.h>
-
-#include <debug.h>
 #include <int.h>
 #include <kernel.h>
 #include <listeners.h>
@@ -413,9 +421,9 @@ rw_lock_destroy(rw_lock* lock)
 	InterruptsSpinLocker locker(lock->lock);
 
 #if KDEBUG
-	if (lock->waiters != NULL && thread_get_current_thread_id()
-			!= lock->holder) {
-		panic("rw_lock_destroy(): there are blocking threads, but the caller "
+	if ((atomic_get(&lock->count) != 0 || lock->waiters != NULL)
+			&& thread_get_current_thread_id() != lock->holder) {
+		panic("rw_lock_destroy(): lock is in use and the caller "
 			"doesn't hold the write lock (%p)", lock);
 
 		locker.Unlock();
@@ -469,6 +477,7 @@ _rw_lock_set_read_locked(rw_lock* lock)
 		thread->held_read_locks[i] = lock;
 		return;
 	}
+
 	panic("too many read locks!");
 }
 
@@ -484,6 +493,8 @@ _rw_lock_unset_read_locked(rw_lock* lock)
 		thread->held_read_locks[i] = NULL;
 		return;
 	}
+
+	panic("_rw_lock_unset_read_locked(): lock %p not read-locked by current thread", lock);
 }
 
 #endif
@@ -515,6 +526,8 @@ _rw_lock_read_lock(rw_lock* lock)
 		return B_OK;
 	}
 
+	// If we hold a read lock already, but some other thread is waiting
+	// for a write lock, then trying to read-lock again will deadlock.
 	ASSERT_UNLOCKED_RW_LOCK(lock);
 
 	// The writer that originally had the lock when we called atomic_add() might
@@ -658,22 +671,26 @@ _rw_lock_read_lock_with_timeout(rw_lock* lock, uint32 timeoutFlags,
 void
 _rw_lock_read_unlock(rw_lock* lock)
 {
+#if KDEBUG_RW_LOCK_DEBUG
+	int32 oldCount = atomic_add(&lock->count, -1);
+	if (oldCount < RW_LOCK_WRITER_COUNT_BASE) {
+		_rw_lock_unset_read_locked(lock);
+		return;
+	}
+#endif
+
 	InterruptsSpinLocker locker(lock->lock);
 
 	// If we're still holding the write lock or if there are other readers,
 	// no-one can be woken up.
 	if (lock->holder == thread_get_current_thread_id()) {
-		ASSERT(lock->owner_count % RW_LOCK_WRITER_COUNT_BASE > 0);
+		ASSERT((lock->owner_count % RW_LOCK_WRITER_COUNT_BASE) > 0);
 		lock->owner_count--;
 		return;
 	}
 
 #if KDEBUG_RW_LOCK_DEBUG
 	_rw_lock_unset_read_locked(lock);
-
-	int32 oldCount = atomic_add(&lock->count, -1);
-	if (oldCount < RW_LOCK_WRITER_COUNT_BASE)
-		return;
 #endif
 
 	if (--lock->active_readers > 0)
@@ -954,7 +971,7 @@ mutex_switch_from_read_lock(rw_lock* from, mutex* to)
 }
 
 
-status_t
+KDEBUG_STATIC status_t
 _mutex_lock(mutex* lock, void* _locker)
 {
 #if KDEBUG
@@ -983,8 +1000,9 @@ _mutex_lock(mutex* lock, void* _locker)
 	} else if (lock->holder == thread_get_current_thread_id()) {
 		panic("_mutex_lock(): double lock of %p by thread %" B_PRId32, lock,
 			lock->holder);
-	} else if (lock->holder == 0)
+	} else if (lock->holder == 0) {
 		panic("_mutex_lock(): using uninitialized lock %p", lock);
+	}
 #else
 	if ((lock->flags & MUTEX_FLAG_RELEASED) != 0) {
 		lock->flags &= ~MUTEX_FLAG_RELEASED;
@@ -1012,13 +1030,16 @@ _mutex_lock(mutex* lock, void* _locker)
 #if KDEBUG
 	if (error == B_OK) {
 		ASSERT(lock->holder == waiter.thread->id);
+	} else {
+		// This should only happen when the mutex was destroyed.
+		ASSERT(waiter.thread == NULL);
 	}
 #endif
 	return error;
 }
 
 
-void
+KDEBUG_STATIC void
 _mutex_unlock(mutex* lock)
 {
 	InterruptsSpinLocker locker(lock->lock);
@@ -1060,25 +1081,7 @@ _mutex_unlock(mutex* lock)
 }
 
 
-status_t
-_mutex_trylock(mutex* lock)
-{
-#if KDEBUG
-	InterruptsSpinLocker _(lock->lock);
-
-	if (lock->holder < 0) {
-		lock->holder = thread_get_current_thread_id();
-		return B_OK;
-	} else if (lock->holder == 0)
-		panic("_mutex_trylock(): using uninitialized lock %p", lock);
-	return B_WOULD_BLOCK;
-#else
-	return mutex_trylock(lock);
-#endif
-}
-
-
-status_t
+KDEBUG_STATIC status_t
 _mutex_lock_with_timeout(mutex* lock, uint32 timeoutFlags, bigtime_t timeout)
 {
 #if KDEBUG
@@ -1099,8 +1102,9 @@ _mutex_lock_with_timeout(mutex* lock, uint32 timeoutFlags, bigtime_t timeout)
 	} else if (lock->holder == thread_get_current_thread_id()) {
 		panic("_mutex_lock(): double lock of %p by thread %" B_PRId32, lock,
 			lock->holder);
-	} else if (lock->holder == 0)
+	} else if (lock->holder == 0) {
 		panic("_mutex_lock(): using uninitialized lock %p", lock);
+	}
 #else
 	if ((lock->flags & MUTEX_FLAG_RELEASED) != 0) {
 		lock->flags &= ~MUTEX_FLAG_RELEASED;
@@ -1175,6 +1179,62 @@ _mutex_lock_with_timeout(mutex* lock, uint32 timeoutFlags, bigtime_t timeout)
 	}
 
 	return error;
+}
+
+
+#undef mutex_trylock
+status_t
+mutex_trylock(mutex* lock)
+{
+#if KDEBUG
+	InterruptsSpinLocker _(lock->lock);
+
+	if (lock->holder < 0) {
+		lock->holder = thread_get_current_thread_id();
+		return B_OK;
+	} else if (lock->holder == 0) {
+		panic("_mutex_trylock(): using uninitialized lock %p", lock);
+	}
+	return B_WOULD_BLOCK;
+#else
+	return mutex_trylock_inline(lock);
+#endif
+}
+
+
+#undef mutex_lock
+status_t
+mutex_lock(mutex* lock)
+{
+#if KDEBUG
+	return _mutex_lock(lock, NULL);
+#else
+	return mutex_lock_inline(lock);
+#endif
+}
+
+
+#undef mutex_unlock
+void
+mutex_unlock(mutex* lock)
+{
+#if KDEBUG
+	_mutex_unlock(lock);
+#else
+	mutex_unlock_inline(lock);
+#endif
+}
+
+
+#undef mutex_lock_with_timeout
+status_t
+mutex_lock_with_timeout(mutex* lock, uint32 timeoutFlags, bigtime_t timeout)
+{
+#if KDEBUG
+	return _mutex_lock_with_timeout(lock, timeoutFlags, timeout);
+#else
+	return mutex_lock_with_timeout_inline(lock, timeoutFlags, timeout);
+#endif
 }
 
 

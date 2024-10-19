@@ -572,7 +572,27 @@ OpenWithPoseView::AttachedToWindow()
 	_inherited::AttachedToWindow();
 
 	SetViewUIColor(B_TOOL_TIP_BACKGROUND_COLOR);
-	SetLowUIColor(B_TOOL_TIP_TEXT_COLOR);
+	SetLowUIColor(B_TOOL_TIP_BACKGROUND_COLOR);
+}
+
+
+rgb_color
+OpenWithPoseView::TextColor(bool selected) const
+{
+	if (selected)
+		return ui_color(B_TOOL_TIP_BACKGROUND_COLOR);
+	else
+		return ui_color(B_TOOL_TIP_TEXT_COLOR);
+}
+
+
+rgb_color
+OpenWithPoseView::BackColor(bool selected) const
+{
+	if (selected)
+		return InvertedBackColor(ui_color(B_TOOL_TIP_BACKGROUND_COLOR));
+	else
+		return ui_color(B_TOOL_TIP_BACKGROUND_COLOR);
 }
 
 
@@ -1046,8 +1066,6 @@ OpenWithMenu::OpenWithMenu(const char* label, const BMessage* entriesToOpen,
 {
 	InitIconPreloader();
 
-	SetFont(be_plain_font);
-
 	// too long to have triggers
 	SetTriggersEnabled(false);
 }
@@ -1065,8 +1083,6 @@ OpenWithMenu::OpenWithMenu(const char* label, const BMessage* entriesToOpen,
 	fParentWindow(parentWindow)
 {
 	InitIconPreloader();
-
-	SetFont(be_plain_font);
 
 	// too long to have triggers
 	SetTriggersEnabled(false);

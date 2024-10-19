@@ -517,8 +517,8 @@ FSGetPoseLocation(const BNode* node, BPoint* point)
 
 
 static void
-SetupPoseLocation(ino_t sourceParentIno, ino_t destParentIno,
-	const BNode* sourceNode, BNode* destNode, BPoint* loc)
+SetupPoseLocation(ino_t sourceParentIno, ino_t destParentIno, const BNode* sourceNode,
+	BNode* destNode, BPoint* loc)
 {
 	BPoint point;
 	if (loc == NULL
@@ -997,8 +997,7 @@ delete_point(void* point)
 
 
 static status_t
-MoveTask(BObjectList<entry_ref>* srcList, BEntry* destEntry, BList* pointList,
-	uint32 moveMode)
+MoveTask(BObjectList<entry_ref>* srcList, BEntry* destEntry, BList* pointList, uint32 moveMode)
 {
 	ASSERT(!srcList->IsEmpty());
 
@@ -1169,26 +1168,25 @@ MoveTask(BObjectList<entry_ref>* srcList, BEntry* destEntry, BList* pointList,
 			}
 
 			// get location to place this item
-			if (pointList && moveMode != kCopySelectionTo) {
+			if (pointList != NULL && moveMode != kCopySelectionTo) {
 				loc = (BPoint*)pointList->ItemAt(i);
 
-				BNode* src_node = GetWritableNode(&sourceEntry);
-				if (src_node && src_node->InitCheck() == B_OK) {
+				BNode* sourceNode = GetWritableNode(&sourceEntry);
+				if (sourceNode && sourceNode->InitCheck() == B_OK) {
 					PoseInfo poseInfo;
 					poseInfo.fInvisible = false;
 					poseInfo.fInitedDirectory = deststat.st_ino;
 					poseInfo.fLocation = *loc;
-					src_node->WriteAttr(kAttrPoseInfo, B_RAW_TYPE, 0,
-						&poseInfo, sizeof(poseInfo));
+					sourceNode->WriteAttr(kAttrPoseInfo, B_RAW_TYPE, 0, &poseInfo,
+						sizeof(poseInfo));
 				}
-				delete src_node;
+				delete sourceNode;
 			}
 
-			if (pointList)
- 				loc = (BPoint*)pointList->ItemAt(i);
+			if (pointList != NULL)
+				loc = (BPoint*)pointList->ItemAt(i);
 
-			result = MoveItem(&sourceEntry, &destDir, loc, moveMode, NULL,
-				undo, &loopControl);
+			result = MoveItem(&sourceEntry, &destDir, loc, moveMode, NULL, undo, &loopControl);
 			if (result != B_OK)
 				break;
 		}
@@ -1733,8 +1731,7 @@ CopyFolder(BEntry* srcEntry, BDirectory* destDir,
 
 
 status_t
-RecursiveMove(BEntry* entry, BDirectory* destDir,
-	CopyLoopControl* loopControl)
+RecursiveMove(BEntry* entry, BDirectory* destDir, CopyLoopControl* loopControl)
 {
 	const char* name = entry->Name();
 
@@ -1809,7 +1806,7 @@ MoveItem(BEntry* entry, BDirectory* destDir, BPoint* loc, uint32 moveMode,
 					getcwd(oldwd, B_PATH_NAME_LENGTH);
 
 					BEntry destEntry;
-					destDir -> GetEntry(&destEntry);
+					destDir->GetEntry(&destEntry);
 					BPath destPath;
 					destEntry.GetPath(&destPath);
 
@@ -1892,7 +1889,6 @@ MoveItem(BEntry* entry, BDirectory* destDir, BPoint* loc, uint32 moveMode,
 		// if move is on same volume don't copy
 		if (statbuf.st_dev == destNode.device && moveMode != kCopySelectionTo
 			&& moveMode != kDuplicateSelection) {
-
 			// for "Move" the size for status is always 1 - since file
 			// size is irrelevant when simply moving to a new folder
 			loopControl->UpdateStatus(ref.name, ref, 1);
@@ -2129,17 +2125,15 @@ MoveEntryToTrash(BEntry* entry, BPoint* loc, Undo &undo)
 		undo.UpdateEntry(entry, name);
 	}
 
-	BNode* src_node = 0;
-	if (loc && loc != (BPoint*)-1
-		&& (src_node = GetWritableNode(entry, &statbuf)) != 0) {
+	BNode* sourceNode = 0;
+	if (loc && loc != (BPoint*)-1 && (sourceNode = GetWritableNode(entry, &statbuf)) != 0) {
 		trash_dir.GetStat(&statbuf);
 		PoseInfo poseInfo;
 		poseInfo.fInvisible = false;
 		poseInfo.fInitedDirectory = statbuf.st_ino;
 		poseInfo.fLocation = *loc;
-		src_node->WriteAttr(kAttrPoseInfo, B_RAW_TYPE, 0, &poseInfo,
-			sizeof(poseInfo));
-		delete src_node;
+		sourceNode->WriteAttr(kAttrPoseInfo, B_RAW_TYPE, 0, &poseInfo, sizeof(poseInfo));
+		delete sourceNode;
 	}
 
 	BNode node(entry);
@@ -2152,8 +2146,8 @@ MoveEntryToTrash(BEntry* entry, BPoint* loc, Undo &undo)
 	}
 
 	TrackerCopyLoopControl loopControl;
-	MoveItem(entry, &trash_dir, loc, kMoveSelectionTo, name, undo,
-		&loopControl);
+	MoveItem(entry, &trash_dir, loc, kMoveSelectionTo, name, undo, &loopControl);
+
 	return B_OK;
 }
 
@@ -2477,7 +2471,7 @@ FSMakeOriginalName(BString &string, const BDirectory* destDir,
 		return;
 
 	FSMakeOriginalName(string.LockBuffer(B_FILE_NAME_LENGTH),
-		const_cast<BDirectory*>(destDir), suffix ? suffix : " copy");
+		const_cast<BDirectory*>(destDir), suffix ? suffix : NULL);
 	string.UnlockBuffer();
 }
 
@@ -2494,6 +2488,11 @@ FSMakeOriginalName(char* name, BDirectory* destDir, const char* suffix)
 	if (!destDir->Contains(name))
 		return;
 
+	BString copySuffix(B_TRANSLATE_COMMENT("copy", "filename copy"));
+	size_t suffixLength = copySuffix.Length();
+	if (suffix == NULL)
+		suffix = copySuffix;
+
 	// Determine if we're copying a 'copy'. This algorithm isn't perfect.
 	// If you're copying a file whose REAL name ends with 'copy' then
 	// this method will return "<filename> 1", not "<filename> copy"
@@ -2503,9 +2502,9 @@ FSMakeOriginalName(char* name, BDirectory* destDir, const char* suffix)
 
 	bool copycopy = false;		// are we copying a copy?
 	int32 len = (int32)strlen(name);
-	char* p = name + len - 1;	// get pointer to end os name
+	char* p = name + len - 1;	// get pointer to end of name
 
-	// eat up optional numbers (if were copying "<filename> copy 34")
+	// eat up optional numbers (if we're copying "<filename> copy 34")
 	while ((p > name) && isdigit(*p))
 		p--;
 
@@ -2517,7 +2516,8 @@ FSMakeOriginalName(char* name, BDirectory* destDir, const char* suffix)
 	if (p > name) {
 		// p points to the last char of the word. For example, 'y' in 'copy'
 
-		if ((p - 4 > name) && (strncmp(p - 4, suffix, 5) == 0)) {
+		if ((p - suffixLength > name)
+			&& (strncmp(p - suffixLength, suffix, suffixLength + 1) == 0)) {
 			// we found 'copy' in the right place.
 			// so truncate after 'copy'
 			*(p + 1) = '\0';
@@ -2526,19 +2526,20 @@ FSMakeOriginalName(char* name, BDirectory* destDir, const char* suffix)
 			// save the 'root' name of the file, for possible later use.
 			// that is copy everything but trailing " copy". Need to
 			// NULL terminate after copy
-			strncpy(root, name, (uint32)((p - name) - 4));
-			root[(p - name) - 4] = '\0';
+			strncpy(root, name, (uint32)((p - name) - suffixLength));
+			root[(p - name) - suffixLength] = '\0';
 		}
 	}
 
 	if (!copycopy) {
 		// The name can't be longer than B_FILE_NAME_LENGTH.
-		// The algoritm adds " copy XX" to the name. That's 8 characters.
+		// The algorithm adds a localized " copy XX" to the name.
+		// That's the number of characters of "copy" + 4 (spaces + "XX").
 		// B_FILE_NAME_LENGTH already accounts for NULL termination so we
 		// don't need to save an extra char at the end.
-		if (strlen(name) > B_FILE_NAME_LENGTH - 8) {
+		if (strlen(name) > B_FILE_NAME_LENGTH - (suffixLength + 4)) {
 			// name is too long - truncate it!
-			name[B_FILE_NAME_LENGTH - 8] = '\0';
+			name[B_FILE_NAME_LENGTH - (suffixLength + 4)] = '\0';
 		}
 
 		strlcpy(root, name, sizeof(root));
@@ -2840,9 +2841,33 @@ FSIsDeskDir(const BEntry* entry)
 
 
 bool
+FSInDeskDir(const entry_ref* ref)
+{
+	BEntry entry(ref);
+	if (entry.InitCheck() != B_OK)
+		return false;
+
+	BPath path;
+	if (find_directory(B_DESKTOP_DIRECTORY, &path, true) != B_OK)
+		return false;
+
+	BDirectory desktop(path.Path());
+	return desktop.Contains(&entry);
+}
+
+
+bool
 FSIsHomeDir(const BEntry* entry)
 {
 	return FSIsDirFlavor(entry, B_USER_DIRECTORY);
+}
+
+
+bool
+FSIsQueriesDir(const entry_ref* ref)
+{
+	const BEntry entry(ref);
+	return DirectoryMatches(&entry, "queries", B_USER_DIRECTORY);
 }
 
 
@@ -2854,6 +2879,18 @@ FSIsRootDir(const BEntry* entry)
 		return false;
 
 	return strcmp(path.Path(), "/") == 0;
+}
+
+
+bool
+FSInRootDir(const entry_ref* ref)
+{
+	BEntry entry(ref);
+	if (entry.InitCheck() != B_OK)
+		return false;
+
+	BDirectory root("/");
+	return root.Contains(&entry);
 }
 
 
@@ -3213,7 +3250,7 @@ FSCreateTrashDirs()
 
 
 status_t
-FSCreateNewFolder(const entry_ref* ref)
+FSCreateNewFolder(entry_ref* ref)
 {
 	node_ref node;
 	node.device = ref->device;
@@ -3226,7 +3263,8 @@ FSCreateNewFolder(const entry_ref* ref)
 
 	// ToDo: is that really necessary here?
 	BString name(ref->name);
-	FSMakeOriginalName(name, &dir, "-");
+	FSMakeOriginalName(name, &dir, " -");
+	ref->set_name(name.String()); // update ref in case the folder got renamed
 
 	BDirectory newDir;
 	result = dir.CreateDirectory(name.String(), &newDir);

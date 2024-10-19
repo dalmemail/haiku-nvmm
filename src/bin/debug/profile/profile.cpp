@@ -79,7 +79,7 @@ static const char* kUsage =
 	"                   Default is 1000 (1 ms). On a fast machine, a shorter\n"
 	"                   interval might lead to better results, while it might\n"
 	"                   make them worse on slow machines.\n"
-	"  -k             - Don't check kernel images for hits.\n"
+	"  -k             - Also profile kernel frames.\n"
 	"  -l             - Also profile loading the executable.\n"
 	"  -o <output>    - Print the results to file <output>.\n"
 	"  -r, --recorded - Don't profile, but evaluate a recorded kernel profile\n"
@@ -162,10 +162,11 @@ public:
 		if (error != B_OK)
 			return error;
 
-		return AddThread(threadInfo.team, threadID, threadInfo.name);
+		return AddThread(threadInfo.team, threadID, threadInfo.name,
+			threadInfo.kernel_time + threadInfo.user_time);
 	}
 
-	status_t AddThread(team_id teamID, thread_id threadID, const char* name)
+	status_t AddThread(team_id teamID, thread_id threadID, const char* name, bigtime_t cpuTime)
 	{
 		if (FindThread(threadID) != NULL)
 			return B_BAD_VALUE;
@@ -174,7 +175,7 @@ public:
 		if (team == NULL)
 			return B_BAD_TEAM_ID;
 
-		Thread* thread = new(std::nothrow) Thread(threadID, name, team);
+		Thread* thread = new(std::nothrow) Thread(team, threadID, name, cpuTime);
 		if (thread == NULL)
 			return B_NO_MEMORY;
 
@@ -578,7 +579,7 @@ process_event_buffer(ThreadManager& threadManager, uint8* buffer,
 					= (system_profiler_thread_added*)buffer;
 
 				if (threadManager.AddThread(event->team, event->thread,
-						event->name) != B_OK) {
+						event->name, event->cpu_time) != B_OK) {
 					exit(1);
 				}
 				break;
@@ -590,6 +591,7 @@ process_event_buffer(ThreadManager& threadManager, uint8* buffer,
 					= (system_profiler_thread_removed*)buffer;
 
 				if (Thread* thread = threadManager.FindThread(event->thread)) {
+					thread->UpdateCPUTime(event->cpu_time);
 					thread->PrintResults();
 					threadManager.RemoveThread(event->thread);
 				}
@@ -710,6 +712,7 @@ profile_all(const char* const* programArgs, int programArgCount)
 		| B_SYSTEM_PROFILER_SAMPLING_EVENTS;
 	profilerParameters.interval = gOptions.interval;
 	profilerParameters.stack_depth = gOptions.stack_depth;
+	profilerParameters.profile_kernel = gOptions.profile_kernel;
 
 	error = _kern_system_profiler_start(&profilerParameters);
 	if (error != B_OK) {
@@ -748,6 +751,8 @@ profile_all(const char* const* programArgs, int programArgCount)
 		// get next buffer
 		uint64 droppedEvents = 0;
 		error = _kern_system_profiler_next_buffer(bufferSize, &droppedEvents);
+		if (droppedEvents > 0)
+			fprintf(stderr, "system profiler: dropped %" B_PRIu64 "events\n", droppedEvents);
 
 		if (error != B_OK) {
 			if (error == B_INTERRUPTED) {
@@ -765,8 +770,19 @@ profile_all(const char* const* programArgs, int programArgCount)
 	// stop profiling
 	_kern_system_profiler_stop();
 
+	// fetch CPU time for all remaining threads
+	const int32 threadCount = threadManager.CountThreads();
+	for (int32 i = 0; i < threadCount; i++) {
+		Thread* thread = threadManager.ThreadAt(i);
+		thread_info threadInfo;
+		status_t error = get_thread_info(thread->ID(), &threadInfo);
+		if (error != B_OK)
+			continue;
+
+		thread->UpdateCPUTime(threadInfo.kernel_time + threadInfo.user_time);
+	}
+
 	// print results
-	int32 threadCount = threadManager.CountThreads();
 	for (int32 i = 0; i < threadCount; i++) {
 		Thread* thread = threadManager.ThreadAt(i);
 		thread->PrintResults();
@@ -919,6 +935,7 @@ profile_single(const char* const* programArgs, int programArgCount)
 					message.profiler_update.image_event);
 
 				if (message.profiler_update.stopped) {
+					thread->UpdateCPUTime(message.profiler_update.last_cpu_time);
 					thread->PrintResults();
 					threadManager.RemoveThread(thread->ID());
 				}
@@ -1041,7 +1058,7 @@ main(int argc, const char* const* argv)
 				gOptions.interval = atol(optarg);
 				break;
 			case 'k':
-				gOptions.profile_kernel = false;
+				gOptions.profile_kernel = true;
 				break;
 			case 'l':
 				gOptions.profile_loading = true;

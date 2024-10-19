@@ -219,10 +219,12 @@ add_ancillary_data(net_socket* socket, ancillary_data_container* container,
 		if (status != B_OK)
 			return status;
 
-		if (dataLen <= _ALIGN(header->cmsg_len))
+		const size_t alignedLength = CMSG_ALIGN(header->cmsg_len);
+		if (dataLen <= alignedLength)
 			break;
-		dataLen -= _ALIGN(header->cmsg_len);
-		header = (cmsghdr*)((uint8*)header + _ALIGN(header->cmsg_len));
+
+		dataLen -= alignedLength;
+		header = (cmsghdr*)((uint8*)header + alignedLength);
 	}
 
 	return B_OK;
@@ -459,24 +461,6 @@ status_t
 socket_control(net_socket* socket, uint32 op, void* data, size_t length)
 {
 	switch (op) {
-		case FIONBIO:
-		{
-			if (data == NULL)
-				return B_BAD_VALUE;
-
-			int value;
-			if (is_syscall()) {
-				if (!IS_USER_ADDRESS(data)
-					|| user_memcpy(&value, data, sizeof(int)) != B_OK) {
-					return B_BAD_ADDRESS;
-				}
-			} else
-				value = *(int*)data;
-
-			return socket_setsockopt(socket, SOL_SOCKET, SO_NONBLOCK, &value,
-				sizeof(int));
-		}
-
 		case FIONREAD:
 		{
 			if (data == NULL || (socket->options & SO_ACCEPTCONN) != 0)
@@ -1412,7 +1396,7 @@ socket_send(net_socket* socket, msghdr* header, const void* data, size_t length,
 		}
 
 		size_t bufferSize = buffer->size;
-		buffer->flags = flags;
+		buffer->msg_flags = flags;
 		memcpy(buffer->source, &socket->address, socket->address.ss_len);
 		memcpy(buffer->destination, address, addressLength);
 		buffer->destination->sa_len = addressLength;

@@ -14,9 +14,10 @@
 #define isb() __asm__ __volatile__("isb" : : : "memory")
 #define dsb() __asm__ __volatile__("dsb" : : : "memory")
 #define dmb() __asm__ __volatile__("dmb" : : : "memory")
+#define wfi() __asm__ __volatile__("wfi" : : : "memory")
 
-#define set_ac()
-#define clear_ac()
+#define arch_cpu_enable_user_access()
+#define arch_cpu_disable_user_access()
 
 
 #ifndef _ASSEMBLER
@@ -122,9 +123,7 @@ arch_cpu_pause(void)
 static inline void
 arch_cpu_idle(void)
 {
-	uint32 Rd = 0;
-	asm volatile("mcr p15, 0, %[c7format], c7, c0, 4"
-		: : [c7format] "r" (Rd) );
+	wfi();
 }
 
 

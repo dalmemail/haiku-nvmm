@@ -28,6 +28,7 @@
 #include "MarkupParser.h"
 #include "RatingView.h"
 #include "ServerHelper.h"
+#include "SharedIcons.h"
 #include "TextDocumentView.h"
 #include "WebAppInterface.h"
 
@@ -154,8 +155,8 @@ protected:
 	virtual const BBitmap* StarBitmap()
 	{
 		if (fRatingDeterminate)
-			return fStarBlueBitmap->Bitmap(BITMAP_SIZE_16);
-		return fStarGrayBitmap->Bitmap(BITMAP_SIZE_16);
+			return SharedIcons::IconStarBlue16Scaled()->Bitmap();
+		return SharedIcons::IconStarGrey16Scaled()->Bitmap();
 	}
 
 private:
@@ -169,12 +170,11 @@ private:
 };
 
 
-RatePackageWindow::RatePackageWindow(BWindow* parent, BRect frame,
-	Model& model)
+RatePackageWindow::RatePackageWindow(BWindow* parent, BRect frame, Model& model)
 	:
-	BWindow(frame, B_TRANSLATE("Rate package"),
-		B_FLOATING_WINDOW_LOOK, B_FLOATING_SUBSET_WINDOW_FEEL,
-		B_ASYNCHRONOUS_CONTROLS | B_AUTO_UPDATE_SIZE_LIMITS),
+	BWindow(frame, B_TRANSLATE("Rate package"), B_FLOATING_WINDOW_LOOK,
+		B_FLOATING_SUBSET_WINDOW_FEEL,
+		B_ASYNCHRONOUS_CONTROLS | B_AUTO_UPDATE_SIZE_LIMITS | B_CLOSE_ON_ESCAPE),
 	fModel(model),
 	fRatingText(),
 	fTextEditor(new TextEditor(), true),
@@ -270,9 +270,9 @@ void
 RatePackageWindow::_InitLanguagesMenu(BPopUpMenu* menu)
 {
 	AutoLocker<BLocker> locker(fModel.Lock());
-	fCommentLanguageId = fModel.Language()->PreferredLanguage()->ID();
+	fCommentLanguageId = fModel.PreferredLanguage()->ID();
 
-	LanguageMenuUtils::AddLanguagesToMenu(fModel.Language(), menu);
+	LanguageMenuUtils::AddLanguagesToMenu(fModel.Languages(), menu);
 	menu->SetTargetForItems(this);
 	LanguageMenuUtils::MarkLanguageInMenu(fCommentLanguageId, menu);
 }
@@ -303,23 +303,6 @@ RatePackageWindow::_InitStabilitiesMenu(BPopUpMenu* menu)
 			item->SetMarked(true);
 		}
 	}
-}
-
-
-void
-RatePackageWindow::DispatchMessage(BMessage* message, BHandler *handler)
-{
-	if (message->what == B_KEY_DOWN) {
-		int8 key;
-			// if the user presses escape, close the window.
-		if ((message->FindInt8("byte", &key) == B_OK)
-			&& key == B_ESCAPE) {
-			Quit();
-			return;
-		}
-	}
-
-	BWindow::DispatchMessage(message, handler);
 }
 
 

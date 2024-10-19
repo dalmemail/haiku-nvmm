@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <new>
+#include <StackOrHeapArray.h>
 
 #include "Options.h"
 #include "ProfiledEntity.h"
@@ -122,6 +123,7 @@ CallgrindProfileResult::CallgrindProfileResult()
 	:
 	fTotalTicks(0),
 	fUnkownTicks(0),
+	fExpectedTicks(0),
 	fDroppedTicks(0),
 	fNextImageOutputIndex(1),
 	fNextFunctionOutputIndex(1)
@@ -160,6 +162,13 @@ CallgrindProfileResult::AddSamples(ImageProfileResultContainer* container,
 		fUnkownTicks++;
 
 	fTotalTicks++;
+}
+
+
+void
+CallgrindProfileResult::AddExpectedTicks(int32 expected)
+{
+	fExpectedTicks += expected;
 }
 
 
@@ -213,8 +222,8 @@ CallgrindProfileResult::PrintResults(ImageProfileResultContainer* container)
 		fTotalTicks, fTotalTicks * fInterval);
 
 	// get hit images
-	CallgrindImageProfileResult* images[container->CountImages()];
-	int32 imageCount = GetHitImages(container, images);
+	BStackOrHeapArray<CallgrindImageProfileResult*, 128> images(container->CountImages());
+	int32 imageCount = GetHitImages(container, &*images);
 
 	for (int32 i = 0; i < imageCount; i++) {
 		CallgrindImageProfileResult* image = images[i];
@@ -293,9 +302,17 @@ CallgrindProfileResult::_PrintFunction(FILE* out,
 		// need to print the image name
 		int32 index = fNextImageOutputIndex++;
 		image->SetOutputIndex(index);
-		fprintf(out,
-			"%sob=(%" B_PRId32 ") %s:%" B_PRId32 "\n", called ? "c" : "",
-			index, image->GetImage()->Name(), image->ID());
+		const char* name = image->GetImage()->Name();
+		if (name[0] == '/' || strcmp(name, "commpage") == 0) {
+			fprintf(out,
+				"%sob=(%" B_PRId32 ") %s\n", called ? "c" : "",
+				index, name);
+		} else {
+			// add ID to image name
+			fprintf(out,
+				"%sob=(%" B_PRId32 ") %s:%" B_PRId32 "\n", called ? "c" : "",
+				index, name, image->ID());
+		}
 	} else {
 		// image is already known
 		// TODO: We may not need to print it at all!

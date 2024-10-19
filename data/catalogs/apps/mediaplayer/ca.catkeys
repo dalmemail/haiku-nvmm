@@ -1,4 +1,4 @@
-1	catalan; valencian	x-vnd.Haiku-MediaPlayer	787895969
+1	catalan; valencian	x-vnd.Haiku-MediaPlayer	390961765
 Remove Entry into Trash	MediaPlayer-RemovePLItemsCmd		Envia l'entrada a la paperera
 Close	MediaPlayer-PlaylistWindow		Tanca
 Volume of background clips	MediaPlayer-SettingsWindow		Volum dels clips de fons
@@ -16,7 +16,6 @@ DrawBitmap	MediaPlayer-InfoWin		Dibuix de mapa de bits
 File info	MediaPlayer-InfoWin		Informació del fitxer
 raw audio	MediaPlayer-InfoWin		àudio en cru
 Select all	MediaPlayer-PlaylistWindow		Selecciona-ho tot
-New player…	MediaPlayer-Main		Reproductor nou...
 Move Entries	MediaPlayer-MovePLItemsCmd		Mou les entrades
 OK	MediaPlayer-Main		D'acord
 Remove	MediaPlayer-PlaylistWindow		Suprimeix
@@ -30,7 +29,6 @@ Open file…	MediaPlayer-Main		Obre un fitxer...
 Scale controls in full screen mode	MediaPlayer-SettingsWindow		Escala els controls en mode de pantalla completa.
 View options	MediaPlayer-SettingsWindow		Opcions de visualització
 %d kHz	MediaPlayer-InfoWin		%d kHz
-Eject Device	MediaPlayer-Main		Expulsa el dispositiu
 Full volume	MediaPlayer-SettingsWindow		Volum complet
 <untitled>	PlaylistItem-title		<sense títol>
 Start media server	MediaPlayer-Main		Inicia el servidor multimèdia
@@ -51,6 +49,7 @@ MediaPlayer settings	MediaPlayer-SettingsWindow		Paràmetres del Reproductor mul
 Copyright	MediaPlayer-InfoWin		Dret de reproducció
 Invalid URL inserted!	MediaPlayer-NetworkStream		URL proporcionat no vàlid!
 Aspect ratio	MediaPlayer-Main		Relació d'aspecte
+Eject device	MediaPlayer-Main		Expulsa el dispostiu
 Saving the playlist failed.\n\nError: 	MediaPlayer-PlaylistWindow		Ha fallat desar la llista de reproducció.\n\nError: 
 <no media>	MediaPlayer-InfoWin		<sense mitjans>
 Hide interface	MediaPlayer-Main		Amaga la interfície
@@ -127,6 +126,7 @@ Full screen	MediaPlayer-Main		Pantalla completa
 OK	MediaPlayer-NetworkStream		D'acord
 Internal error (locking failed). Saving the playlist failed.	MediaPlayer-PlaylistWindow		Error intern (fallada de blocatge). Ha fallat desar la llista de reproducció.
 100% scale	MediaPlayer-Main		Escala de 100 %
+New player	MediaPlayer-Main		Reproductor nou
 <nothing to redo>	MediaPlayer-PlaylistWindow		<res per refer>
 Bad URL	MediaPlayer-NetworkStream		URL incorrecte
 Save	MediaPlayer-Main		Desa

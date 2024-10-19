@@ -57,22 +57,6 @@
 	UPDATE_THREAD_USER_TIME_COMMON()						\
 	UNLOCK_THREAD_TIME()
 
-#define UPDATE_THREAD_USER_TIME_PUSH_TIME()					\
-	call	system_time;									\
-	push	%edx;											\
-	push	%eax;											\
-															\
-	LOCK_THREAD_TIME()										\
-															\
-	/* recover the system time, note that */				\
-	/* LOCK_THREAD_TIME() leaves an address on the stack */	\
-	movl	4(%esp), %eax;									\
-	movl	8(%esp), %edx;									\
-															\
-	UPDATE_THREAD_USER_TIME_COMMON()						\
-															\
-	UNLOCK_THREAD_TIME()
-
 #define UPDATE_THREAD_KERNEL_TIME()							\
 	LOCK_THREAD_TIME()										\
 															\
@@ -624,8 +608,7 @@ STATIC_FUNCTION(handle_syscall):
 	STOP_USER_DEBUGGING()
 
 	// update the thread's user time
-	UPDATE_THREAD_USER_TIME_PUSH_TIME()
-		// leave the time on the stack (needed for post syscall debugging)
+	UPDATE_THREAD_USER_TIME()
 
 	sti								// enable interrupts
 
@@ -646,9 +629,11 @@ STATIC_FUNCTION(handle_syscall):
 	// call the syscall function
 	call	*SYSCALL_INFO_function(%esi)
 
-	// overwrite the values of %eax and %edx on the stack (the syscall return
-	// value)
+	// overwrite the values of %eax and %edx on the stack (the syscall return value)
+	testl	$THREAD_FLAGS_64_BIT_SYSCALL_RETURN, THREAD_flags(%edi)
+	jz		1f
 	movl	%edx, IFRAME_dx(%ebp)
+  1:
 	movl	%eax, IFRAME_ax(%ebp)
 
 	TRACE_POST_SYSCALL()
@@ -682,6 +667,25 @@ FUNCTION_END(handle_syscall)
   FUNCTION_END(do_pre_syscall_debug)
 
   STATIC_FUNCTION(post_syscall_work):
+	// post syscall debugging
+	testl	$THREAD_FLAGS_DEBUGGER_INSTALLED, THREAD_flags(%edi)
+	jz		2f
+	xor		%edx, %edx
+	testl	$THREAD_FLAGS_64_BIT_SYSCALL_RETURN, THREAD_flags(%edi)
+	jz		1f
+	movl	IFRAME_dx(%ebp), %edx	// syscall return value
+  1:
+	movl	IFRAME_ax(%ebp), %eax
+	push	%edx
+	push	%eax
+	lea		16(%esp), %eax			// syscall parameters
+	push	%eax
+	movl	IFRAME_orig_eax(%ebp), %eax		// syscall number
+	push	%eax
+	call	user_debug_post_syscall
+	addl	$24, %esp
+
+  2:
 	// clear the 64 bit return value and syscall restarted bits
 	testl	$(THREAD_FLAGS_64_BIT_SYSCALL_RETURN \
 				| THREAD_FLAGS_SYSCALL_RESTARTED), THREAD_flags(%edi)
@@ -695,23 +699,6 @@ FUNCTION_END(handle_syscall)
 	cmpxchgl	%edx, THREAD_flags(%edi)
 	jnz		1b
   2:
-
-	// post syscall debugging
-	testl	$THREAD_FLAGS_DEBUGGER_INSTALLED, THREAD_flags(%edi)
-	jz		1f
-	pushl	-8(%ebp)				// syscall start time
-	pushl	-12(%ebp)
-	movl	IFRAME_dx(%ebp), %edx	// syscall return value
-	movl	IFRAME_ax(%ebp), %eax
-	push	%edx
-	push	%eax
-	lea		16(%esp), %eax			// syscall parameters
-	push	%eax
-	movl	IFRAME_orig_eax(%ebp), %eax		// syscall number
-	push	%eax
-	call	user_debug_post_syscall
-	addl	$24, %esp
-  1:
   FUNCTION_END(post_syscall_work)
 
   bad_syscall_number:

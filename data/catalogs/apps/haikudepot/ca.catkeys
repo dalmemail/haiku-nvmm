@@ -1,9 +1,10 @@
-1	catalan; valencian	x-vnd.Haiku-HaikuDepot	3762371345
+1	catalan; valencian	x-vnd.Haiku-HaikuDepot	2555742361
 Usage conditions download problem	ToLatestUserUsageConditionsWindow		Problema de baixada de les condicions d'ús
 Available packages	MainWindow		Paquets disponibles
 It was not possible to create the new user.	UserLoginWindow		No s'ha pogut crear l'usuari nou.
 An unexpected error has been sent from the server [%li]	ServerHelper		S'ha enviat un error inesperat des del servidor [%li]
 Create account	UserLoginWindow		Creeu un compte
+Fetching changelog for package	PopulatePkgChangelogFromServerProcess		S'obté el registre de canvis per al paquet
 Agree	ToLatestUserUsageConditionsWindow		D'acord
 Install %PackageTitle%	PackageManager		Instal·la %PackageTitle%
 The response to the captcha was incorrect.	ServerHelper		La resposta al CAPTCHA ha estat incorrecta.
@@ -46,6 +47,7 @@ Rating not possible	MainWindow		La puntuació no és possible.
 Package update error	MainWindow		Error d'actualització de paquet
 %FIRST_PROCESS_DESCRIPTION% +{0, plural, one{# process} other{# processes}}	ProcessCoordinator		%FIRST_PROCESS_DESCRIPTION% +{0, plural, one{# procés} other{# processos}}
 Reboot required	PackageManager		Cal reiniciar
+Fetching user ratings for package	PopulatePkgUserRatingsFromServerProcess		S'obtenen les valoracions dels usuaris per al paquet.
 All packages	PackageListView		Tots els paquets
 Send	RatePackageWindow		Envia
 Start package daemon	App		Inicia el dimoni de paquets
@@ -113,6 +115,7 @@ The user does not exist or the wrong password was supplied. Check your credentia
 All repositories	MainWindow		Tots els repositoris
 Repository update error	LocalRepositoryUpdateProcess		Error d'actualització del repositori
 Network error	ServerHelper		Error de xarxa
+HaikuDepot - %PackageName% %PackageVersion%	MainWindow		Dipòsit del Haiku - %PackageName% %PackageVersion%
 An error occurred while refreshing the repository: %error%	LocalRepositoryUpdateProcess		Hi ha hagut un error en actualitzar el repositori: %error%
 User Created	UserLoginWindow		Usuari creat
 Check for updates…	MainWindow		Comprova si hi ha actualitzacions...

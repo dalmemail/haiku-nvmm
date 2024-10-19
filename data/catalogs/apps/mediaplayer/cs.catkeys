@@ -1,4 +1,4 @@
-1	czech	x-vnd.Haiku-MediaPlayer	787895969
+1	czech	x-vnd.Haiku-MediaPlayer	390961765
 Remove Entry into Trash	MediaPlayer-RemovePLItemsCmd		Odstranit položky do koše
 Close	MediaPlayer-PlaylistWindow		Zavřít
 Volume of background clips	MediaPlayer-SettingsWindow		Hlasitost klipů na pozadí
@@ -16,7 +16,6 @@ DrawBitmap	MediaPlayer-InfoWin		Kreslit rastr
 File info	MediaPlayer-InfoWin		Informace o souboru
 raw audio	MediaPlayer-InfoWin		nezpracovaný zvuk
 Select all	MediaPlayer-PlaylistWindow		Vybrat vše
-New player…	MediaPlayer-Main		Nový přehrávač...
 Move Entries	MediaPlayer-MovePLItemsCmd		Přesunout položky
 OK	MediaPlayer-Main		OK
 Remove	MediaPlayer-PlaylistWindow		Odstranit
@@ -30,7 +29,6 @@ Open file…	MediaPlayer-Main		Otevřít soubor...
 Scale controls in full screen mode	MediaPlayer-SettingsWindow		Přizpůsobit velikost ovládacích prvků v režimu celé obrazovky
 View options	MediaPlayer-SettingsWindow		Volby zobrazení
 %d kHz	MediaPlayer-InfoWin		%d kHz
-Eject Device	MediaPlayer-Main		Vysunout zařízení
 Full volume	MediaPlayer-SettingsWindow		Plná hlasitost
 <untitled>	PlaylistItem-title		<bez titulku>
 Start media server	MediaPlayer-Main		Spustit media server
@@ -51,6 +49,7 @@ MediaPlayer settings	MediaPlayer-SettingsWindow		Nastavení Přehrávače médi�
 Copyright	MediaPlayer-InfoWin		Autorská práva
 Invalid URL inserted!	MediaPlayer-NetworkStream		Vloženo neplatné URL!
 Aspect ratio	MediaPlayer-Main		Poměr stran
+Eject device	MediaPlayer-Main		Vysunout zařízení
 Saving the playlist failed.\n\nError: 	MediaPlayer-PlaylistWindow		Uložení playlistu selhalo.\n\nChyba:
 <no media>	MediaPlayer-InfoWin		<žádné médium>
 Hide interface	MediaPlayer-Main		Skrýt rozhraní
@@ -127,6 +126,7 @@ Full screen	MediaPlayer-Main		Celá obrazovka
 OK	MediaPlayer-NetworkStream		OK
 Internal error (locking failed). Saving the playlist failed.	MediaPlayer-PlaylistWindow		Vnitřní chyba (locking failed). Uložení playlistu selhalo.
 100% scale	MediaPlayer-Main		100% měřítko
+New player	MediaPlayer-Main		Nový přehrávač
 <nothing to redo>	MediaPlayer-PlaylistWindow		<nic, co by šlo vrátit>
 Bad URL	MediaPlayer-NetworkStream		Chybné URL
 Save	MediaPlayer-Main		Uložit

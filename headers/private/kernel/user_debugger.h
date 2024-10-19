@@ -122,8 +122,10 @@ struct thread_debug_info {
 
 	// profiling related part; if samples != NULL, the thread is profiled
 	struct {
-		bigtime_t		interval;
-			// sampling interval
+		union {
+			bigtime_t		interval;
+			bigtime_t		syscall_start_time;
+		};
 		area_id			sample_area;
 			// cloned sample buffer area
 		addr_t*			samples;
@@ -147,8 +149,10 @@ struct thread_debug_info {
 			// the buffer
 		bool			variable_stack_depth;
 			// record a variable number of samples per hit
-		bool			buffer_full;
-			// indicates that the sample buffer is full
+		bool			profile_kernel;
+			// record samples in kernel stack frames
+		bool			flush_needed;
+			// indicates that a flush of the sample buffer is needed
 		union {
 			bigtime_t	interval_left;
 				// when unscheduled: the time left of the current sampling
@@ -251,18 +255,18 @@ void init_user_debug();
 // debug event callbacks
 
 void user_debug_pre_syscall(uint32 syscall, void *args);
-void user_debug_post_syscall(uint32 syscall, void *args, uint64 returnValue,
-		bigtime_t startTime);
+void user_debug_post_syscall(uint32 syscall, void *args, uint64 returnValue);
 bool user_debug_exception_occurred(debug_exception_type exception, int signal);
 bool user_debug_handle_signal(int signal, struct sigaction *handler,
 		siginfo_t *info, bool deadly);
 void user_debug_stop_thread();
 void user_debug_team_created(team_id teamID);
-void user_debug_team_deleted(team_id teamID, port_id debuggerPort);
+void user_debug_team_deleted(team_id teamID, port_id debuggerPort, status_t status,
+		int signal, team_usage_info* usageInfo);
 void user_debug_team_exec();
 void user_debug_update_new_thread_flags(Thread* thread);
 void user_debug_thread_created(thread_id threadID);
-void user_debug_thread_deleted(team_id teamID, thread_id threadID);
+void user_debug_thread_deleted(team_id teamID, thread_id threadID, status_t status);
 void user_debug_thread_exiting(Thread* thread);
 void user_debug_image_created(const image_info *imageInfo);
 void user_debug_image_deleted(const image_info *imageInfo);

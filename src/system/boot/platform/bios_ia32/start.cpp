@@ -31,9 +31,6 @@
 #include "smp.h"
 
 
-#define HEAP_SIZE ((1024 + 256) * 1024)
-
-
 // GCC defined globals
 extern void (*__ctor_list)(void);
 extern void (*__ctor_end)(void);
@@ -148,7 +145,7 @@ platform_start_kernel(void)
 
 	smp_boot_other_cpus(smp_start_kernel);
 
-	dprintf("kernel entry at %lx\n", image->elf_header.e_entry);
+	dprintf("kernel entry at %x\n", image->elf_header.e_entry);
 
 	asm("movl	%0, %%eax;	"			// move stack out of way
 		"movl	%%eax, %%esp; "
@@ -184,7 +181,7 @@ _start(void)
 	call_ctors();
 		// call C++ constructors before doing anything else
 
-	args.heap_size = HEAP_SIZE;
+	args.heap_size = 0;
 	args.arguments = NULL;
 
 	serial_init();

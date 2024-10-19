@@ -11,6 +11,7 @@
 
 #include <string.h>
 #include <String.h>
+#include <sys/uio.h>
 
 #include "Context.h"
 #include "MemoryReader.h"
@@ -124,6 +125,7 @@ create_status_t_type_handler()
 	return new StatusTypeHandler;
 }
 
+
 // read_string
 static
 string
@@ -176,6 +178,8 @@ TypeHandlerImpl<const char*>::GetReturnValue(Context &context, uint64 value)
 {
 	return read_string(context, (void *)value);
 }
+
+// #pragma mark - enums, flags
 
 EnumTypeHandler::EnumTypeHandler(const EnumMap &m) : fMap(m) {}
 

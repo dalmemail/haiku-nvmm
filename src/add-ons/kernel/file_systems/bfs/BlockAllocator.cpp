@@ -174,13 +174,14 @@ public:
 	inline void Allocate(uint16 start, uint16 numBlocks);
 	inline void Free(uint16 start, uint16 numBlocks);
 	inline bool IsUsed(uint16 block);
+	inline uint32 NextFree(uint16 startBlock);
 
 	status_t SetTo(AllocationGroup& group, uint16 block);
 	status_t SetToWritable(Transaction& transaction, AllocationGroup& group,
 		uint16 block);
 
 	uint32 NumBlockBits() const { return fNumBits; }
-	uint32& Block(int32 index) { return ((uint32*)fBlock)[index]; }
+	uint32& Chunk(int32 index) { return ((uint32*)fBlock)[index]; }
 	uint8* Block() const { return (uint8*)fBlock; }
 
 private:
@@ -202,14 +203,14 @@ public:
 	status_t Free(Transaction& transaction, uint16 start, int32 length);
 
 	uint32 NumBits() const { return fNumBits; }
-	uint32 NumBlocks() const { return fNumBlocks; }
+	uint32 NumBitmapBlocks() const { return fNumBitmapBlocks; }
 	int32 Start() const { return fStart; }
 
 private:
 	friend class BlockAllocator;
 
 	uint32	fNumBits;
-	uint32	fNumBlocks;
+	uint32	fNumBitmapBlocks;
 	int32	fStart;
 	int32	fFirstFree;
 	int32	fFreeBits;
@@ -265,8 +266,32 @@ AllocationBlock::IsUsed(uint16 block)
 	if (block > fNumBits)
 		return true;
 
-	// the block bitmap is accessed in 32-bit blocks
-	return Block(block >> 5) & HOST_ENDIAN_TO_BFS_INT32(1UL << (block % 32));
+	// the block bitmap is accessed in 32-bit chunks
+	return Chunk(block >> 5) & HOST_ENDIAN_TO_BFS_INT32(1UL << (block % 32));
+}
+
+
+uint32
+AllocationBlock::NextFree(uint16 startBlock)
+{
+	// Set all bits below the start block in the current chunk, to ignore them.
+	uint32 ignoreNext = (1UL << (startBlock % 32)) - 1;
+
+	for (uint32 offset = ROUNDDOWN(startBlock, 32);
+			offset < fNumBits; offset += 32) {
+		uint32 chunk = Chunk(offset >> 5);
+		chunk |= ignoreNext;
+		ignoreNext = 0;
+
+		if (chunk == UINT32_MAX)
+			continue;
+		uint32 result = offset + ffs(~chunk) - 1;
+		if (result >= fNumBits)
+			break;
+		return result;
+	}
+
+	return fNumBits;
 }
 
 
@@ -289,7 +314,7 @@ AllocationBlock::Allocate(uint16 start, uint16 numBlocks)
 		for (int32 i = start % 32; i < 32 && numBlocks; i++, numBlocks--)
 			mask |= 1UL << i;
 
-		T(BlockChange("b-alloc", block, Block(block),
+		T(BlockChange("b-alloc", block, Chunk(block),
 			Block(block) | HOST_ENDIAN_TO_BFS_INT32(mask)));
 
 #if KDEBUG
@@ -301,7 +326,7 @@ AllocationBlock::Allocate(uint16 start, uint16 numBlocks)
 		}
 #endif
 
-		Block(block++) |= HOST_ENDIAN_TO_BFS_INT32(mask);
+		Chunk(block++) |= HOST_ENDIAN_TO_BFS_INT32(mask);
 		start = 0;
 	}
 	T(Block("b-alloc-out", fBlockNumber, fBlock, fVolume->BlockSize(),
@@ -325,10 +350,10 @@ AllocationBlock::Free(uint16 start, uint16 numBlocks)
 		for (int32 i = start % 32; i < 32 && numBlocks; i++, numBlocks--)
 			mask |= 1UL << (i % 32);
 
-		T(BlockChange("b-free", block, Block(block),
+		T(BlockChange("b-free", block, Chunk(block),
 			Block(block) & HOST_ENDIAN_TO_BFS_INT32(~mask)));
 
-		Block(block++) &= HOST_ENDIAN_TO_BFS_INT32(~mask);
+		Chunk(block++) &= HOST_ENDIAN_TO_BFS_INT32(~mask);
 		start = 0;
 	}
 }
@@ -524,9 +549,7 @@ BlockAllocator::Initialize(bool full)
 {
 	fNumGroups = fVolume->AllocationGroups();
 	fBlocksPerGroup = fVolume->SuperBlock().BlocksPerAllocationGroup();
-	//fNumBlocks = (fVolume->NumBlocks() + fVolume->BlockSize() * 8 - 1)
-		/// (fVolume->BlockSize() * 8);
-	fNumBlocks = fVolume->NumBitmapBlocks();
+	fNumBitmapBlocks = fVolume->NumBitmapBlocks();
 
 	fGroups = new(std::nothrow) AllocationGroup[fNumGroups];
 	if (fGroups == NULL)
@@ -580,11 +603,11 @@ BlockAllocator::InitializeAndClearBitmap(Transaction& transaction)
 		// the last allocation group may contain less blocks than the others
 		if (i == fNumGroups - 1) {
 			fGroups[i].fNumBits = fVolume->NumBlocks() - i * numBits;
-			fGroups[i].fNumBlocks = 1 + ((fGroups[i].NumBits() - 1)
+			fGroups[i].fNumBitmapBlocks = 1 + ((fGroups[i].NumBits() - 1)
 				>> (blockShift + 3));
 		} else {
 			fGroups[i].fNumBits = numBits;
-			fGroups[i].fNumBlocks = fBlocksPerGroup;
+			fGroups[i].fNumBitmapBlocks = fBlocksPerGroup;
 		}
 		fGroups[i].fStart = offset;
 		fGroups[i].fFirstFree = fGroups[i].fLargestStart = 0;
@@ -643,11 +666,11 @@ BlockAllocator::_Initialize(BlockAllocator* allocator)
 		// the last allocation group may contain less blocks than the others
 		if (i == numGroups - 1) {
 			groups[i].fNumBits = volume->NumBlocks() - i * bitsPerGroup;
-			groups[i].fNumBlocks = 1 + ((groups[i].NumBits() - 1)
+			groups[i].fNumBitmapBlocks = 1 + ((groups[i].NumBits() - 1)
 				>> (blockShift + 3));
 		} else {
 			groups[i].fNumBits = bitsPerGroup;
-			groups[i].fNumBlocks = blocks;
+			groups[i].fNumBitmapBlocks = blocks;
 		}
 		groups[i].fStart = offset;
 
@@ -796,7 +819,7 @@ BlockAllocator::AllocateBlocks(Transaction& transaction, int32 groupIndex,
 		int32 currentBit = start;
 		bool canFindGroupLargest = start == 0;
 
-		for (; block < group.NumBlocks(); block++) {
+		for (; block < group.NumBitmapBlocks(); block++) {
 			if (cached.SetTo(group, block) < B_OK)
 				RETURN_ERROR(B_ERROR);
 
@@ -833,13 +856,19 @@ BlockAllocator::AllocateBlocks(Transaction& transaction, int32 groupIndex,
 						}
 						currentLength = 0;
 					}
-					if ((int32)group.NumBits() - currentBit
+					if (((int32)group.NumBits() - currentBit)
 							<= groupLargestLength) {
 						// We can't find a bigger block in this group anymore,
 						// let's skip the rest.
-						block = group.NumBlocks();
+						block = group.NumBitmapBlocks();
 						break;
 					}
+
+					// Advance the current bit to one before the next free (or last) bit,
+					// so that the next loop iteration will check the next free bit.
+					const uint32 nextFreeOffset = cached.NextFree(bit) - bit;
+					bit += nextFreeOffset - 1;
+					currentBit += nextFreeOffset - 1;
 				}
 				currentBit++;
 			}
@@ -1200,7 +1229,7 @@ BlockAllocator::Trim(uint64 offset, uint64 size, uint64& trimmedSize)
 	for (int32 groupIndex = 0; groupIndex <= lastGroup; groupIndex++) {
 		AllocationGroup& group = fGroups[groupIndex];
 
-		for (uint32 block = firstBlock; block < group.NumBlocks(); block++) {
+		for (uint32 block = firstBlock; block < group.NumBitmapBlocks(); block++) {
 			cached.SetTo(group, block);
 
 			for (uint32 i = firstBit; i < cached.NumBlockBits(); i++) {
@@ -1265,7 +1294,7 @@ BlockAllocator::CheckBlocks(off_t start, off_t length, bool allocated,
 
 	AllocationBlock cached(fVolume);
 
-	while (groupBlock < fGroups[group].NumBlocks() && length > 0) {
+	while (groupBlock < fGroups[group].NumBitmapBlocks() && length > 0) {
 		if (cached.SetTo(fGroups[group], groupBlock) != B_OK)
 			RETURN_ERROR(B_IO_ERROR);
 
@@ -1286,7 +1315,7 @@ BlockAllocator::CheckBlocks(off_t start, off_t length, bool allocated,
 
 		blockOffset = 0;
 
-		if (++groupBlock >= fGroups[group].NumBlocks()) {
+		if (++groupBlock >= fGroups[group].NumBitmapBlocks()) {
 			groupBlock = 0;
 			group++;
 		}
@@ -1399,7 +1428,7 @@ BlockAllocator::Dump(int32 index)
 
 		kprintf("[%3" B_PRId32 "] num bits:       %" B_PRIu32 "  (%p)\n", i,
 			group.NumBits(), &group);
-		kprintf("      num blocks:     %" B_PRIu32 "\n", group.NumBlocks());
+		kprintf("      num blocks:     %" B_PRIu32 "\n", group.NumBitmapBlocks());
 		kprintf("      start:          %" B_PRId32 "\n", group.Start());
 		kprintf("      first free:     %" B_PRId32 "\n", group.fFirstFree);
 		kprintf("      largest start:  %" B_PRId32 "%s\n", group.fLargestStart,

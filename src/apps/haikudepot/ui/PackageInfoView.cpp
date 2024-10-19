@@ -14,6 +14,7 @@
 #include <CardLayout.h>
 #include <Catalog.h>
 #include <ColumnListView.h>
+#include <ControlLook.h>
 #include <Font.h>
 #include <GridView.h>
 #include <LayoutBuilder.h>
@@ -42,11 +43,12 @@
 #include "MarkupTextView.h"
 #include "MessagePackageListener.h"
 #include "PackageContentsView.h"
-#include "ProcessCoordinatorFactory.h"
 #include "PackageInfo.h"
 #include "PackageManager.h"
+#include "ProcessCoordinatorFactory.h"
 #include "RatingView.h"
 #include "ScrollableGroupView.h"
+#include "SharedIcons.h"
 #include "TextView.h"
 
 
@@ -63,7 +65,7 @@ enum {
 
 
 static const float kContentTint = (B_NO_TINT + B_LIGHTEN_1_TINT) / 2.0f;
-static const uint16 kScreenshotSize = 320;
+static const uint32 kScreenshotSize = 320;
 
 
 class RatingsScrollView : public GeneralContentScrollView {
@@ -359,12 +361,13 @@ public:
 
 	void SetPackage(const PackageInfoRef package)
 	{
-		BitmapRef bitmap;
-		status_t iconResult = fPackageIconRepository.GetIcon(
-			package->Name(), BITMAP_SIZE_64, bitmap);
+		BitmapHolderRef bitmapHolderRef;
+		BSize iconSize = BControlLook::ComposeIconSize(32.0);
+		status_t iconResult = fPackageIconRepository.GetIcon(package->Name(), iconSize.Width() + 1,
+			bitmapHolderRef);
 
 		if (iconResult == B_OK)
-			fIconView->SetBitmap(bitmap, BITMAP_SIZE_32);
+			fIconView->SetBitmap(bitmapHolderRef);
 		else
 			fIconView->UnsetBitmap();
 
@@ -375,28 +378,44 @@ public:
 			fPublisherView->SetToolTip(publisher);
 			fPublisherView->SetText(publisher.TruncateChars(45)
 				.Append(B_UTF8_ELLIPSIS));
-		} else
+		} else {
+			fPublisherView->SetToolTip("");
 			fPublisherView->SetText(publisher);
+		}
 
 		fVersionInfo->SetText(package->Version().ToString());
 
-		RatingSummary ratingSummary = package->CalculateRatingSummary();
+		UserRatingInfoRef userRatingInfo = package->UserRatingInfo();
+		UserRatingSummaryRef userRatingSummary;
 
-		fRatingView->SetRating(ratingSummary.averageRating);
+		if (userRatingInfo.IsSet()) {
+			userRatingSummary = userRatingInfo->Summary();
+		}
 
-		if (ratingSummary.ratingCount > 0) {
+		bool hasAverageRating = false;
+
+		if (userRatingSummary.IsSet()) {
+			if (userRatingSummary->AverageRating() != RATING_MISSING) {
+				hasAverageRating = true;
+			}
+		}
+
+		if (hasAverageRating) {
+			fRatingView->SetRating(userRatingSummary->AverageRating());
+
 			BString avgRating;
-			avgRating.SetToFormat("%.1f", ratingSummary.averageRating);
+			avgRating.SetToFormat("%.1f", userRatingSummary->AverageRating());
 			fAvgRating->SetText(avgRating);
 
 			BString votes;
-			votes.SetToFormat("%d", ratingSummary.ratingCount);
+			votes.SetToFormat("%d", userRatingSummary->RatingCount());
 
 			BString voteInfo(B_TRANSLATE("(%Votes%)"));
 			voteInfo.ReplaceAll("%Votes%", votes);
 
 			fVoteInfo->SetText(voteInfo);
 		} else {
+			fRatingView->SetRating(RATING_MISSING);
 			fAvgRating->SetText("");
 			fVoteInfo->SetText(B_TRANSLATE("n/a"));
 		}
@@ -411,7 +430,7 @@ public:
 		fTitleView->SetText("");
 		fPublisherView->SetText("");
 		fVersionInfo->SetText("");
-		fRatingView->SetRating(-1.0f);
+		fRatingView->SetRating(RATING_MISSING);
 		fAvgRating->SetText("");
 		fVoteInfo->SetText("");
 	}
@@ -632,7 +651,6 @@ private:
 
 
 enum {
-	MSG_EMAIL_PUBLISHER				= 'emlp',
 	MSG_VISIT_PUBLISHER_WEBSITE		= 'vpws',
 };
 
@@ -641,9 +659,7 @@ class AboutView : public BView {
 public:
 	AboutView()
 		:
-		BView("about view", 0),
-		fEmailIcon("text/x-email"),
-		fWebsiteIcon("text/html")
+		BView("about view", 0)
 	{
 		SetViewUIColor(B_PANEL_BACKGROUND_COLOR, kContentTint);
 
@@ -658,12 +674,6 @@ public:
 		GetFont(&smallFont);
 		smallFont.SetSize(std::max(9.0f, ceilf(smallFont.Size() * 0.85f)));
 
-		// TODO: Clicking the screen shot view should open ShowImage with the
-		// the screen shot. This could be done by writing the screen shot to
-		// a temporary folder, launching ShowImage to display it, and writing
-		// all other screenshots associated with the package to the same folder
-		// so the user can use the ShowImage navigation to view the other
-		// screenshots.
 		fScreenshotView = new LinkedBitmapView("screenshot view",
 			new BMessage(MSG_SHOW_SCREENSHOT));
 		fScreenshotView->SetExplicitMinSize(BSize(64.0f, 64.0f));
@@ -671,11 +681,6 @@ public:
 			BSize(B_SIZE_UNLIMITED, B_SIZE_UNLIMITED));
 		fScreenshotView->SetExplicitAlignment(
 			BAlignment(B_ALIGN_CENTER, B_ALIGN_TOP));
-
-		fEmailIconView = new BitmapView("email icon view");
-		fEmailLinkView = new LinkView("email link view", "",
-			new BMessage(MSG_EMAIL_PUBLISHER));
-		fEmailLinkView->SetFont(&smallFont);
 
 		fWebsiteIconView = new BitmapView("website icon view");
 		fWebsiteLinkView = new LinkView("website link view", "",
@@ -686,7 +691,6 @@ public:
 			B_USE_DEFAULT_SPACING);
 
 		fScreenshotView->SetViewUIColor(ViewUIColor(), kContentTint);
-		fEmailLinkView->SetViewUIColor(ViewUIColor(), kContentTint);
 		fWebsiteLinkView->SetViewUIColor(ViewUIColor(), kContentTint);
 
 		BLayoutBuilder::Group<>(this, B_HORIZONTAL, 0.0f)
@@ -694,8 +698,6 @@ public:
 				.Add(fScreenshotView)
 				.AddGroup(B_HORIZONTAL)
 					.AddGrid(B_USE_HALF_ITEM_SPACING, B_USE_HALF_ITEM_SPACING)
-						.Add(fEmailIconView, 0, 0)
-						.Add(fEmailLinkView, 1, 0)
 						.Add(fWebsiteIconView, 0, 1)
 						.Add(fWebsiteLinkView, 1, 1)
 					.End()
@@ -718,7 +720,6 @@ public:
 	virtual void AttachedToWindow()
 	{
 		fScreenshotView->SetTarget(this);
-		fEmailLinkView->SetTarget(this);
 		fWebsiteLinkView->SetTarget(this);
 	}
 
@@ -740,15 +741,6 @@ public:
 				break;
 			}
 
-			case MSG_EMAIL_PUBLISHER:
-			{
-				// TODO: Implement. If memory serves, there is a
-				// standard command line interface which mail apps should
-				// support, i.e. to open a compose window with the TO: field
-				// already set.
-				break;
-			}
-
 			case MSG_VISIT_PUBLISHER_WEBSITE:
 			{
 				BUrl url(fWebsiteLinkView->Text());
@@ -762,10 +754,10 @@ public:
 		}
 	}
 
-	void SetScreenshotThumbnail(const BitmapRef& bitmapRef)
+	void SetScreenshotThumbnail(BitmapHolderRef bitmapHolderRef)
 	{
-		if (bitmapRef.IsSet()) {
-			fScreenshotView->SetBitmap(bitmapRef);
+		if (bitmapHolderRef.IsSet()) {
+			fScreenshotView->SetBitmap(bitmapHolderRef);
 			fScreenshotView->SetEnabled(true);
 		} else {
 			fScreenshotView->UnsetBitmap();
@@ -776,17 +768,13 @@ public:
 	void SetPackage(const PackageInfoRef package)
 	{
 		fDescriptionView->SetText(package->ShortDescription(), package->FullDescription());
-		fEmailIconView->SetBitmap(&fEmailIcon, BITMAP_SIZE_16);
-		_SetContactInfo(fEmailLinkView, package->Publisher().Email());
-		fWebsiteIconView->SetBitmap(&fWebsiteIcon, BITMAP_SIZE_16);
+		fWebsiteIconView->SetBitmap(SharedIcons::IconHTMLPackage16Scaled());
 		_SetContactInfo(fWebsiteLinkView, package->Publisher().Website());
 	}
 
 	void Clear()
 	{
 		fDescriptionView->SetText("");
-		fEmailIconView->UnsetBitmap();
-		fEmailLinkView->SetText("");
 		fWebsiteIconView->UnsetBitmap();
 		fWebsiteLinkView->SetText("");
 		fScreenshotView->UnsetBitmap();
@@ -810,11 +798,6 @@ private:
 
 	LinkedBitmapView*	fScreenshotView;
 
-	SharedBitmap		fEmailIcon;
-	BitmapView*			fEmailIconView;
-	LinkView*			fEmailLinkView;
-
-	SharedBitmap		fWebsiteIcon;
 	BitmapView*			fWebsiteIconView;
 	LinkView*			fWebsiteLinkView;
 };
@@ -940,19 +923,28 @@ public:
 		layoutBuilder.SetInsets(5);
 	}
 
-	void SetToSummary(const RatingSummary& summary) {
-		for (int32 i = 0; i < 5; i++) {
-			int32 count = summary.ratingCountByStar[4 - i];
+	void SetToSummary(const UserRatingSummaryRef summary) {
+		if (!summary.IsSet())
+			Clear();
+		else {
+			// note that the logic here inverts the ordering of the stars so that
+			// star 5 is at the top.
 
-			BString label;
-			label.SetToFormat("%" B_PRId32, count);
-			fCountViews[i]->SetText(label);
+			for (int32 i = 0; i < 5; i++) {
+				int32 count = summary->RatingCountByStar(5 - i);
 
-			if (summary.ratingCount > 0) {
-				fDiagramBarViews[i]->SetValue(
-					(float)count / summary.ratingCount);
-			} else
-				fDiagramBarViews[i]->SetValue(0.0f);
+				BString label;
+				label.SetToFormat("%" B_PRId32, count);
+				fCountViews[i]->SetText(label);
+
+				int ratingCount = summary->RatingCount();
+
+				if (ratingCount > 0) {
+					fDiagramBarViews[i]->SetValue(
+						static_cast<float>(count) / static_cast<float>(ratingCount));
+				} else
+					fDiagramBarViews[i]->SetValue(0.0f);
+			}
 		}
 	}
 
@@ -1011,10 +1003,19 @@ public:
 	{
 		ClearRatings();
 
-		// TODO: Re-use rating summary already used for TitleView...
-		fRatingSummaryView->SetToSummary(package->CalculateRatingSummary());
+		UserRatingInfoRef userRatingInfo = package->UserRatingInfo();
+		UserRatingSummaryRef userRatingSummary;
 
-		int count = package->CountUserRatings();
+		if (userRatingInfo.IsSet())
+			userRatingSummary = userRatingInfo->Summary();
+
+		fRatingSummaryView->SetToSummary(userRatingSummary);
+
+		int count = 0;
+
+		if (userRatingInfo.IsSet())
+			count = userRatingInfo->CountUserRatings();
+
 		if (count == 0) {
 			BStringView* noRatingsView = new BStringView("no ratings",
 				B_TRANSLATE("No user ratings available."));
@@ -1025,17 +1026,18 @@ public:
 			noRatingsView->SetExplicitMaxSize(
 				BSize(B_SIZE_UNLIMITED, B_SIZE_UNLIMITED));
 			fRatingContainerLayout->AddView(0, noRatingsView);
-			return;
+		} else {
+			for (int i = count - 1; i >= 0; i--) {
+				UserRatingRef rating = userRatingInfo->UserRatingAtIndex(i);
+					// was previously filtering comments just for the current
+					// user's language, but as there are not so many comments at
+					// the moment, just show all of them for now.
+				RatingItemView* view = new RatingItemView(rating);
+				fRatingContainerLayout->AddView(0, view);
+			}
 		}
 
-		for (int i = count - 1; i >= 0; i--) {
-			UserRatingRef rating = package->UserRatingAtIndex(i);
-				// was previously filtering comments just for the current
-				// user's language, but as there are not so many comments at
-				// the moment, just show all of them for now.
-			RatingItemView* view = new RatingItemView(rating);
-			fRatingContainerLayout->AddView(0, view);
-		}
+		InvalidateLayout();
 	}
 
 	void Clear()
@@ -1189,7 +1191,7 @@ public:
 		Clear();
 	}
 
-	void SetScreenshotThumbnail(const BitmapRef& bitmap)
+	void SetScreenshotThumbnail(BitmapHolderRef bitmap)
 	{
 		fAboutView->SetScreenshotThumbnail(bitmap);
 	}
@@ -1425,7 +1427,7 @@ PackageInfoView::_SetPackageScreenshotThumb(const PackageInfoRef& package)
 		HDDEBUG("no screenshot for pkg [%s]", package->Name().String());
 
 	if (!hasCachedBitmap)
-		fPagesView->SetScreenshotThumbnail(BitmapRef());
+		fPagesView->SetScreenshotThumbnail(BitmapHolderRef());
 }
 
 
@@ -1436,7 +1438,13 @@ PackageInfoView::_ScreenshotThumbCoordinate(const PackageInfoRef& package)
 		return ScreenshotCoordinate();
 	if (package->CountScreenshotInfos() == 0)
 		return ScreenshotCoordinate();
-	return ScreenshotCoordinate(package->ScreenshotInfoAtIndex(0)->Code(), kScreenshotSize, kScreenshotSize);
+
+	uint32 screenshotSizeScaled
+		= MAX(static_cast<uint32>(BControlLook::ComposeIconSize(kScreenshotSize).Width()),
+			MAX_IMAGE_SIZE);
+
+	return ScreenshotCoordinate(package->ScreenshotInfoAtIndex(0)->Code(), screenshotSizeScaled + 1,
+		screenshotSizeScaled + 1);
 }
 
 
@@ -1449,6 +1457,8 @@ PackageInfoView::_ScreenshotThumbCoordinate(const PackageInfoRef& package)
 void
 PackageInfoView::HandleScreenshotCached(const ScreenshotCoordinate& coordinate)
 {
+	HDINFO("handle screenshot cached [%s] %" B_PRIu16 " x %" B_PRIu16, coordinate.Code().String(),
+		coordinate.Width(), coordinate.Height());
 	_HandleScreenshotCached(fPackage, coordinate);
 }
 
@@ -1458,23 +1468,18 @@ PackageInfoView::_HandleScreenshotCached(const PackageInfoRef& package,
 	const ScreenshotCoordinate& coordinate)
 {
 	ScreenshotCoordinate desiredCoordinate = _ScreenshotThumbCoordinate(package);
-	bool hasBitmap = false;
 
 	if (desiredCoordinate.IsValid() && desiredCoordinate == coordinate) {
 		HDDEBUG("screenshot [%s] has been cached and matched; will load",
 			coordinate.Code().String());
-		BitmapRef bitmapRef;
-		if (fModel->GetPackageScreenshotRepository()->CacheAndLoadScreenshot(
-				coordinate, &bitmapRef) != B_OK) {
+		BitmapHolderRef bitmapHolderRef;
+		if (fModel->GetPackageScreenshotRepository()->CacheAndLoadScreenshot(coordinate,
+				bitmapHolderRef) != B_OK) {
 			HDERROR("unable to load the screenshot [%s]", coordinate.Code().String());
 		} else {
-			fPagesView->SetScreenshotThumbnail(bitmapRef);
-			hasBitmap = true;
+			fPagesView->SetScreenshotThumbnail(bitmapHolderRef);
 		}
 	}
-
-	if (!hasBitmap)
-		fPagesView->SetScreenshotThumbnail(BitmapRef());
 }
 
 

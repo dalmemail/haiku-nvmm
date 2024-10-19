@@ -12,12 +12,14 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 
 #include <OS.h>
 
 #include <AutoDeleter.h>
 #include <AutoDeleterDrivers.h>
 #include <BytePointer.h>
+#include <StackOrHeapArray.h>
 
 #include <syscalls.h>
 #include <syscall_restart.h>
@@ -38,7 +40,7 @@
 #endif
 
 
-static const size_t kMaxReadDirBufferSize = 64 * 1024;
+static const size_t kMaxReadDirBufferSize = B_PAGE_SIZE * 2;
 
 extern object_cache* sFileDescriptorCache;
 
@@ -59,10 +61,10 @@ void dump_fd(int fd, struct file_descriptor* descriptor);
 void
 dump_fd(int fd,struct file_descriptor* descriptor)
 {
-	dprintf("fd[%d] = %p: type = %" B_PRId32 ", ref_count = %" B_PRId32 ", ops "
+	dprintf("fd[%d] = %p: ref_count = %" B_PRId32 ", ops "
 		"= %p, u.vnode = %p, u.mount = %p, cookie = %p, open_mode = %" B_PRIx32
 		", pos = %" B_PRId64 "\n",
-		fd, descriptor, descriptor->type, descriptor->ref_count,
+		fd, descriptor, descriptor->ref_count,
 		descriptor->ops, descriptor->u.vnode, descriptor->u.mount,
 		descriptor->cookie, descriptor->open_mode, descriptor->pos);
 }
@@ -202,7 +204,7 @@ void
 close_fd(struct io_context* context, struct file_descriptor* descriptor)
 {
 	// POSIX advisory locks need to be released when any file descriptor closes
-	if (descriptor->type == FDTYPE_FILE)
+	if (fd_is_file(descriptor))
 		vfs_release_posix_lock(context, descriptor);
 
 	if (atomic_add(&descriptor->open_count, -1) == 1) {
@@ -472,6 +474,26 @@ fd_ioctl(bool kernelFD, int fd, uint32 op, void* buffer, size_t length)
 	if (!descriptor.IsSet())
 		return B_FILE_ERROR;
 
+	// Special case: translate FIONBIO into fcntl(F_SETFL).
+	if (op == FIONBIO) {
+		if (buffer == NULL)
+			return B_BAD_VALUE;
+
+		int value;
+		if (is_called_via_syscall()) {
+			if (!IS_USER_ADDRESS(buffer)
+				|| user_memcpy(&value, buffer, sizeof(int)) != B_OK) {
+				return B_BAD_ADDRESS;
+			}
+		} else
+			value = *(int*)buffer;
+
+		size_t argument = descriptor->open_mode & ~O_NONBLOCK;
+		argument |= (value ? O_NONBLOCK : 0);
+
+		return (kernelFD ? _kern_fcntl : _user_fcntl)(fd, F_SETFL, argument);
+	}
+
 	status_t status;
 	if (descriptor->ops->fd_ioctl)
 		status = descriptor->ops->fd_ioctl(descriptor.Get(), op, buffer, length);
@@ -539,9 +561,10 @@ select_fd(int32 fd, struct select_info* info, bool kernel)
 		// immediately notify the select call
 		eventsToSelect &= ~SELECT_OUTPUT_ONLY_FLAGS;
 		if (eventsToSelect != 0)
-			return notify_select_events(info, eventsToSelect);
-		else
-			return B_OK;
+			notify_select_events(info, eventsToSelect);
+
+		info->selected_events = 0;
+		return B_UNSUPPORTED;
 	}
 
 	// We need the FD to stay open while we're doing this, so no select()/
@@ -659,25 +682,86 @@ fd_is_valid(int fd, bool kernel)
 }
 
 
-struct vnode*
-fd_vnode(struct file_descriptor* descriptor)
+static ssize_t
+common_vector_io(int fd, off_t pos, const iovec* vecs, size_t count, bool write, bool kernel)
 {
-	switch (descriptor->type) {
-		case FDTYPE_FILE:
-		case FDTYPE_DIR:
-		case FDTYPE_ATTR_DIR:
-		case FDTYPE_ATTR:
-			return descriptor->u.vnode;
+	if (pos < -1)
+		return B_BAD_VALUE;
+
+	FileDescriptorPutter descriptor(get_fd(get_current_io_context(kernel), fd));
+	if (!descriptor.IsSet())
+		return B_FILE_ERROR;
+
+	if (write ? (descriptor->open_mode & O_RWMASK) == O_RDONLY
+			: (descriptor->open_mode & O_RWMASK) == O_WRONLY) {
+		return B_FILE_ERROR;
 	}
 
-	return NULL;
-}
+	bool movePosition = false;
+	if (pos == -1 && descriptor->pos != -1) {
+		pos = descriptor->pos;
+		movePosition = true;
+	}
 
+	if (write ? descriptor->ops->fd_write == NULL
+			: descriptor->ops->fd_read == NULL) {
+		return B_BAD_VALUE;
+	}
 
-static status_t
-common_close(int fd, bool kernel)
-{
-	return close_fd_index(get_current_io_context(kernel), fd);
+	if (!movePosition && count > 1 && (write ? descriptor->ops->fd_writev != NULL
+			: descriptor->ops->fd_readv != NULL)) {
+		ssize_t result;
+		if (write) {
+			result = descriptor->ops->fd_writev(descriptor.Get(), pos,
+				vecs, count);
+		} else {
+			result = descriptor->ops->fd_readv(descriptor.Get(), pos,
+				vecs, count);
+		}
+		if (result != B_UNSUPPORTED)
+			return result;
+		// If not supported, just fall back to the loop.
+	}
+
+	status_t status = B_OK;
+	ssize_t bytesTransferred = 0;
+	for (size_t i = 0; i < count; i++) {
+		if (vecs[i].iov_base == NULL)
+			continue;
+
+		size_t length = vecs[i].iov_len;
+		if (write) {
+			status = descriptor->ops->fd_write(descriptor.Get(), pos,
+				vecs[i].iov_base, &length);
+		} else {
+			status = descriptor->ops->fd_read(descriptor.Get(), pos,
+				vecs[i].iov_base, &length);
+		}
+
+		if (status != B_OK) {
+			if (bytesTransferred == 0)
+				return status;
+			break;
+		}
+
+		if ((uint64)bytesTransferred + length > SSIZE_MAX)
+			bytesTransferred = SSIZE_MAX;
+		else
+			bytesTransferred += (ssize_t)length;
+
+		if (pos != -1)
+			pos += length;
+
+		if (length < vecs[i].iov_len)
+			break;
+	}
+
+	if (movePosition) {
+		descriptor->pos = write && (descriptor->open_mode & O_APPEND) != 0
+			? descriptor->ops->fd_seek(descriptor.Get(), 0, SEEK_END) : pos;
+	}
+
+	return bytesTransferred;
 }
 
 
@@ -736,75 +820,28 @@ static ssize_t
 common_user_vector_io(int fd, off_t pos, const iovec* userVecs, size_t count,
 	bool write)
 {
-	if (pos < -1)
+	if (count > IOV_MAX)
 		return B_BAD_VALUE;
 
-	iovec* vecs;
+	BStackOrHeapArray<iovec, 16> vecs(count);
+	if (!vecs.IsValid())
+		return B_NO_MEMORY;
+
 	status_t error = get_iovecs_from_user(userVecs, count, vecs, true);
 	if (error != B_OK)
 		return error;
-	MemoryDeleter _(vecs);
 
-	FileDescriptorPutter descriptor(get_fd(get_current_io_context(false), fd));
-	if (!descriptor.IsSet())
-		return B_FILE_ERROR;
+	SyscallRestartWrapper<ssize_t> result;
+	result = common_vector_io(fd, pos, vecs, count, write, false);
 
-	if (write ? (descriptor->open_mode & O_RWMASK) == O_RDONLY
-			: (descriptor->open_mode & O_RWMASK) == O_WRONLY) {
-		return B_FILE_ERROR;
-	}
+	return result;
+}
 
-	bool movePosition = false;
-	if (pos == -1 && descriptor->pos != -1) {
-		pos = descriptor->pos;
-		movePosition = true;
-	}
 
-	if (write ? descriptor->ops->fd_write == NULL
-			: descriptor->ops->fd_read == NULL) {
-		return B_BAD_VALUE;
-	}
-
-	SyscallRestartWrapper<status_t> status;
-
-	ssize_t bytesTransferred = 0;
-	for (size_t i = 0; i < count; i++) {
-		if (vecs[i].iov_base == NULL)
-			continue;
-
-		size_t length = vecs[i].iov_len;
-		if (write) {
-			status = descriptor->ops->fd_write(descriptor.Get(), pos,
-				vecs[i].iov_base, &length);
-		} else {
-			status = descriptor->ops->fd_read(descriptor.Get(), pos, vecs[i].iov_base,
-				&length);
-		}
-
-		if (status != B_OK) {
-			if (bytesTransferred == 0)
-				return status;
-			status = B_OK;
-			break;
-		}
-
-		if ((uint64)bytesTransferred + length > SSIZE_MAX)
-			bytesTransferred = SSIZE_MAX;
-		else
-			bytesTransferred += (ssize_t)length;
-
-		pos += length;
-
-		if (length < vecs[i].iov_len)
-			break;
-	}
-
-	if (movePosition) {
-		descriptor->pos = write && (descriptor->open_mode & O_APPEND) != 0
-			? descriptor->ops->fd_seek(descriptor.Get(), 0, SEEK_END) : pos;
-	}
-
-	return bytesTransferred;
+static status_t
+common_close(int fd, bool kernel)
+{
+	return close_fd_index(get_current_io_context(kernel), fd);
 }
 
 
@@ -1027,58 +1064,6 @@ _kern_read(int fd, off_t pos, void* buffer, size_t length)
 
 
 ssize_t
-_kern_readv(int fd, off_t pos, const iovec* vecs, size_t count)
-{
-	status_t status;
-
-	if (pos < -1)
-		return B_BAD_VALUE;
-
-	FileDescriptorPutter descriptor(get_fd(get_current_io_context(true), fd));
-
-	if (!descriptor.IsSet())
-		return B_FILE_ERROR;
-	if ((descriptor->open_mode & O_RWMASK) == O_WRONLY)
-		return B_FILE_ERROR;
-
-	bool movePosition = false;
-	if (pos == -1 && descriptor->pos != -1) {
-		pos = descriptor->pos;
-		movePosition = true;
-	}
-
-	if (descriptor->ops->fd_read == NULL)
-		return B_BAD_VALUE;
-
-	SyscallFlagUnsetter _;
-
-	ssize_t bytesRead = 0;
-
-	for (size_t i = 0; i < count; i++) {
-		size_t length = vecs[i].iov_len;
-		status = descriptor->ops->fd_read(descriptor.Get(), pos,
-			vecs[i].iov_base, &length);
-		if (status != B_OK) {
-			bytesRead = status;
-			break;
-		}
-
-		if ((uint64)bytesRead + length > SSIZE_MAX)
-			bytesRead = SSIZE_MAX;
-		else
-			bytesRead += (ssize_t)length;
-
-		pos += vecs[i].iov_len;
-	}
-
-	if (movePosition)
-		descriptor->pos = pos;
-
-	return bytesRead;
-}
-
-
-ssize_t
 _kern_write(int fd, off_t pos, const void* buffer, size_t length)
 {
 	if (pos < -1)
@@ -1119,54 +1104,18 @@ _kern_write(int fd, off_t pos, const void* buffer, size_t length)
 
 
 ssize_t
+_kern_readv(int fd, off_t pos, const iovec* vecs, size_t count)
+{
+	SyscallFlagUnsetter _;
+	return common_vector_io(fd, pos, vecs, count, false, true);
+}
+
+
+ssize_t
 _kern_writev(int fd, off_t pos, const iovec* vecs, size_t count)
 {
-	status_t status;
-
-	if (pos < -1)
-		return B_BAD_VALUE;
-
-	FileDescriptorPutter descriptor(get_fd(get_current_io_context(true), fd));
-
-	if (!descriptor.IsSet())
-		return B_FILE_ERROR;
-	if ((descriptor->open_mode & O_RWMASK) == O_RDONLY)
-		return B_FILE_ERROR;
-
-	bool movePosition = false;
-	if (pos == -1 && descriptor->pos != -1) {
-		pos = descriptor->pos;
-		movePosition = true;
-	}
-
-	if (descriptor->ops->fd_write == NULL)
-		return B_BAD_VALUE;
-
 	SyscallFlagUnsetter _;
-
-	ssize_t bytesWritten = 0;
-
-	for (size_t i = 0; i < count; i++) {
-		size_t length = vecs[i].iov_len;
-		status = descriptor->ops->fd_write(descriptor.Get(), pos,
-			vecs[i].iov_base, &length);
-		if (status != B_OK) {
-			bytesWritten = status;
-			break;
-		}
-
-		if ((uint64)bytesWritten + length > SSIZE_MAX)
-			bytesWritten = SSIZE_MAX;
-		else
-			bytesWritten += (ssize_t)length;
-
-		pos += vecs[i].iov_len;
-	}
-
-	if (movePosition)
-		descriptor->pos = pos;
-
-	return bytesWritten;
+	return common_vector_io(fd, pos, vecs, count, true, true);
 }
 
 

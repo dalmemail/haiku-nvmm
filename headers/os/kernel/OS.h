@@ -22,7 +22,7 @@ extern "C" {
 /* System constants */
 
 #define B_OS_NAME_LENGTH	32
-#define B_INFINITE_TIMEOUT	(9223372036854775807LL)
+#define B_INFINITE_TIMEOUT	(0x7FFFFFFFFFFFFFFFLL)
 
 #define B_PAGE_SIZE			PAGESIZE
 
@@ -37,6 +37,9 @@ enum {
 	B_TIMEOUT_REAL_TIME_BASE		= 0x40,
 	B_ABSOLUTE_REAL_TIME_TIMEOUT	= B_ABSOLUTE_TIMEOUT
 										| B_TIMEOUT_REAL_TIME_BASE
+								/* fails after an absolute timeout
+												with B_TIMED_OUT based on the
+												real time clock */
 };
 
 

@@ -161,6 +161,9 @@ const struct supported_device {
 	{0x5926, INTEL_MODEL_KBY,  "Kabylake ULT GT3"},
 	{0x5927, INTEL_MODEL_KBY,  "Kabylake ULT GT3"},
 
+	{0x3185, INTEL_MODEL_KBYM, "GeminiLake GT1"},	// Same device id for desktop and mobile.
+	{0x3184, INTEL_MODEL_KBYM, "GeminiLake GT1.5"},	// Same device id for desktop and mobile.
+
 	{0x3e90, INTEL_MODEL_CFL,  "CoffeeLake GT1"},
 	{0x3e93, INTEL_MODEL_CFL,  "CoffeeLake GT1"},
 	{0x3e91, INTEL_MODEL_CFL,  "CoffeeLake GT2"},
@@ -172,6 +175,13 @@ const struct supported_device {
 	{0x3eab, INTEL_MODEL_CFLM, "CoffeeLake Halo GT2"},
 	{0x3ea5, INTEL_MODEL_CFL,  "CoffeeLake GT3"},
 	{0x3ea6, INTEL_MODEL_CFL,  "CoffeeLake GT3"},
+
+	{0x8a56, INTEL_MODEL_CFLM, "IceLake GT1"},
+	{0x8a5c, INTEL_MODEL_CFLM, "IceLake GT1.5"},
+	{0x8a5a, INTEL_MODEL_CFLM, "IceLake GT1.5"},
+	{0x8a51, INTEL_MODEL_CFLM, "IceLake GT2"},
+	{0x8a52, INTEL_MODEL_CFLM, "IceLake GT2"},
+	{0x8a53, INTEL_MODEL_CFLM, "IceLake GT2"},
 
 	{0x9ba4, INTEL_MODEL_CML,	"CometLake GT1"},
 	{0x9ba8, INTEL_MODEL_CML,	"CometLake GT1"},
@@ -192,6 +202,11 @@ const struct supported_device {
 	{0x4e71, INTEL_MODEL_JSLM,	"JasperLake"},
 
 	{0x9a49, INTEL_MODEL_TGLM,	"TigerLake"},
+	{0x9a78, INTEL_MODEL_TGLM,	"TigerLake"},
+	{0x9a40, INTEL_MODEL_TGLM,	"TigerLake"},
+	{0x9a60, INTEL_MODEL_TGLM,	"TigerLake"},
+	{0x9a68, INTEL_MODEL_TGLM,	"TigerLake"},
+	{0x9a70, INTEL_MODEL_TGLM,	"TigerLake"},
 };
 
 int32 api_version = B_CUR_DRIVER_API_VERSION;
@@ -275,6 +290,9 @@ detect_intel_pch()
 			case INTEL_PCH_KBP_DEVICE_ID:
 				ERROR("%s: Found Kaby Lake PCH\n", __func__);
 				return INTEL_PCH_SPT;
+			case INTEL_PCH_GMP_DEVICE_ID:
+				ERROR("%s: Found Gemini Lake PCH\n", __func__);
+				return INTEL_PCH_CNP;
 			case INTEL_PCH_CNP_DEVICE_ID:
 			case INTEL_PCH_CNP_LP_DEVICE_ID:
 				ERROR("%s: Found Cannon Lake PCH\n", __func__);

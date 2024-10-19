@@ -6,10 +6,16 @@
 
 
 #include <net/if_media.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
 #include <new>
 
 #include <ethernet.h>
+#include <kernel.h>
 #include <lock.h>
+#include <net_buffer.h>
+#include <util/AutoLock.h>
 #include <util/DoublyLinkedList.h>
 #include <virtio.h>
 
@@ -116,6 +122,7 @@ typedef struct {
 
 
 static device_manager_info* sDeviceManager;
+static net_buffer_module_info* sBufferModule;
 
 
 static void virtio_net_rxDone(void* driverCookie, void* cookie);
@@ -215,7 +222,7 @@ virtio_net_rx_enqueue_buf(virtio_net_driver_info* info, BufInfo* buf)
 
 
 static status_t
-virtio_net_ctrl_exec_cmd(virtio_net_driver_info* info, int cmd, int value)
+virtio_net_ctrl_exec_cmd(virtio_net_driver_info* info, int cmd, bool value)
 {
 	struct {
 		struct virtio_net_ctrl_hdr hdr;
@@ -227,7 +234,7 @@ virtio_net_ctrl_exec_cmd(virtio_net_driver_info* info, int cmd, int value)
 
 	s.hdr.net_class = VIRTIO_NET_CTRL_RX;
 	s.hdr.cmd = cmd;
-	s.onoff = value == 0;
+	s.onoff = value;
 	s.ack = VIRTIO_NET_ERR;
 
 	physical_entry entries[3];
@@ -257,16 +264,16 @@ virtio_net_ctrl_exec_cmd(virtio_net_driver_info* info, int cmd, int value)
 
 
 static status_t
-virtio_net_set_promisc(virtio_net_driver_info* info, int value)
+virtio_net_set_promisc(virtio_net_driver_info* info, bool on)
 {
-	return virtio_net_ctrl_exec_cmd(info, VIRTIO_NET_CTRL_RX_PROMISC, value);
+	return virtio_net_ctrl_exec_cmd(info, VIRTIO_NET_CTRL_RX_PROMISC, on);
 }
 
 
 static int
-vtnet_set_allmulti(virtio_net_driver_info* info, int value)
+vtnet_set_allmulti(virtio_net_driver_info* info, bool on)
 {
-	return virtio_net_ctrl_exec_cmd(info, VIRTIO_NET_CTRL_RX_ALLMULTI, value);
+	return virtio_net_ctrl_exec_cmd(info, VIRTIO_NET_CTRL_RX_ALLMULTI, on);
 }
 
 
@@ -289,9 +296,9 @@ virtio_net_init_device(void* _info, void** _cookie)
 
 	info->virtio->negotiate_features(info->virtio_device,
 		VIRTIO_NET_F_STATUS | VIRTIO_NET_F_MAC | VIRTIO_NET_F_MTU
-		| VIRTIO_NET_F_CTRL_VQ | VIRTIO_NET_F_CTRL_RX
-		/* | VIRTIO_NET_F_MQ */,
-		 &info->features, &get_feature_name);
+			| VIRTIO_NET_F_CTRL_VQ | VIRTIO_NET_F_CTRL_RX | VIRTIO_NET_F_GUEST_CSUM
+			/* | VIRTIO_NET_F_MQ */,
+		&info->features, &get_feature_name);
 
 	if ((info->features & VIRTIO_NET_F_MQ) != 0
 			&& (info->features & VIRTIO_NET_F_CTRL_VQ) != 0
@@ -314,7 +321,7 @@ virtio_net_init_device(void* _info, void** _cookie)
 		queueCount++;
 	::virtio_queue virtioQueues[queueCount];
 	status_t status = info->virtio->alloc_queues(info->virtio_device, queueCount,
-		virtioQueues);
+		virtioQueues, NULL);
 	if (status != B_OK) {
 		ERROR("queue allocation failed (%s)\n", strerror(status));
 		return status;
@@ -540,7 +547,7 @@ virtio_net_open(void* _info, const char* path, int openMode, void** _cookie)
 	}
 
 	if ((info->features & VIRTIO_NET_F_MTU) != 0) {
-		dprintf("mtu feature\n");
+		dprintf("virtio_net: mtu feature\n");
 		uint16 mtu;
 		info->virtio->read_device_config(info->virtio_device,
 			offsetof(struct virtio_net_config, mtu),
@@ -551,7 +558,7 @@ virtio_net_open(void* _info, const char* path, int openMode, void** _cookie)
 		else
 			info->virtio->clear_feature(info->virtio_device, VIRTIO_NET_F_MTU);
 	} else {
-		dprintf("no mtu feature\n");
+		dprintf("virtio_net: no mtu feature\n");
 	}
 
 	for (int i = 0; i < info->rxSizes[0]; i++)
@@ -608,15 +615,15 @@ virtio_net_rxDone(void* driverCookie, void* cookie)
 
 
 static status_t
-virtio_net_read(void* cookie, off_t pos, void* buffer, size_t* _length)
+virtio_net_receive(void* cookie, net_buffer** _buffer)
 {
 	CALLED();
 	virtio_net_handle* handle = (virtio_net_handle*)cookie;
 	virtio_net_driver_info* info = handle->info;
 
-	mutex_lock(&info->rxLock);
+	MutexLocker rxLocker(info->rxLock);
 	while (info->rxFullList.Head() == NULL) {
-		mutex_unlock(&info->rxLock);
+		rxLocker.Unlock();
 
 		if (info->nonblocking)
 			return B_WOULD_BLOCK;
@@ -631,7 +638,7 @@ virtio_net_read(void* cookie, off_t pos, void* buffer, size_t* _length)
 		if (semCount > 0)
 			acquire_sem_etc(info->rxDone, semCount, B_RELATIVE_TIMEOUT, 0);
 
-		mutex_lock(&info->rxLock);
+		rxLocker.Lock();
 		while (info->rxDone != -1) {
 			uint32 usedLength = 0;
 			BufInfo* buf = NULL;
@@ -640,17 +647,63 @@ virtio_net_read(void* cookie, off_t pos, void* buffer, size_t* _length)
 				break;
 			}
 
-			buf->rxUsedLength = usedLength;
+			if (usedLength > sizeof(virtio_net_hdr))
+				buf->rxUsedLength = usedLength - sizeof(virtio_net_hdr);
+			else
+				buf->rxUsedLength = 0;
 			info->rxFullList.Add(buf);
 		}
 		TRACE("virtio_net_read: finished waiting\n");
 	}
 
+	net_buffer* buffer = sBufferModule->create(0);
+	if (buffer == NULL)
+		return B_NO_MEMORY;
+
 	BufInfo* buf = info->rxFullList.RemoveHead();
-	*_length = MIN(buf->rxUsedLength, *_length);
-	memcpy(buffer, buf->buffer, *_length);
+	rxLocker.Unlock();
+
+	if (sBufferModule->append(buffer, buf->buffer, buf->rxUsedLength) != B_OK) {
+		sBufferModule->free(buffer);
+		buffer = NULL;
+	}
+	const uint8_t flags = buf->hdr->flags;
+	rxLocker.Lock();
 	virtio_net_rx_enqueue_buf(info, buf);
-	mutex_unlock(&info->rxLock);
+	rxLocker.Unlock();
+
+	if (buffer == NULL)
+		return B_NO_MEMORY;
+
+	if ((flags & (VIRTIO_NET_HDR_F_DATA_VALID | VIRTIO_NET_HDR_F_NEEDS_CSUM)) != 0) {
+		buffer->buffer_flags |= NET_BUFFER_L3_CHECKSUM_VALID;
+
+		// virtio also checks the L4 checksum for common protocols.
+		uint16 etherType;
+		if (sBufferModule->read(buffer, offsetof(ether_header, type),
+				&etherType, sizeof(etherType)) == B_OK) {
+			uint8 protocol = 0;
+			etherType = ntohs(etherType);
+			if (etherType == ETHER_TYPE_IP) {
+				sBufferModule->read(buffer,
+					ETHER_HEADER_LENGTH + offsetof(struct ip, ip_p),
+					&protocol, sizeof(protocol));
+			} else if (etherType == ETHER_TYPE_IPV6) {
+				sBufferModule->read(buffer,
+					ETHER_HEADER_LENGTH + offsetof(struct ip6_hdr, ip6_nxt),
+					&protocol, sizeof(protocol));
+			}
+			if (protocol == IPPROTO_TCP || protocol == IPPROTO_UDP)
+				buffer->buffer_flags |= NET_BUFFER_L4_CHECKSUM_VALID;
+		}
+
+		if ((flags & VIRTIO_NET_HDR_F_NEEDS_CSUM) != 0) {
+			// The data is known to be valid but the checksum in the packet is incomplete.
+			// Ignore this flag for now; the stack accepts packets with CHECKSUM_VALID set.
+		}
+	}
+
+	*_buffer = buffer;
 	return B_OK;
 }
 
@@ -666,8 +719,7 @@ virtio_net_txDone(void* driverCookie, void* cookie)
 
 
 static status_t
-virtio_net_write(void* cookie, off_t pos, const void* buffer,
-	size_t* _length)
+virtio_net_send(void* cookie, net_buffer* buffer)
 {
 	CALLED();
 	virtio_net_handle* handle = (virtio_net_handle*)cookie;
@@ -703,25 +755,32 @@ virtio_net_write(void* cookie, off_t pos, const void* buffer,
 	}
 	BufInfo* buf = info->txFreeList.RemoveHead();
 
-	TRACE("virtio_net_write: copying %lu\n", MIN(MAX_FRAME_SIZE, *_length));
-	memcpy(buf->buffer, buffer, MIN(MAX_FRAME_SIZE, *_length));
+	const size_t size = MIN(MAX_FRAME_SIZE, buffer->size);
+	TRACE("virtio_net_write: copying %lu\n", size);
+	if (sBufferModule->read(buffer, 0, buf->buffer, size) != B_OK) {
+		info->txFreeList.Add(buf);
+		mutex_unlock(&info->txLock);
+		return B_BAD_DATA;
+	}
 	memset(buf->hdr, 0, sizeof(virtio_net_hdr));
 
 	physical_entry entries[2];
 	entries[0] = buf->hdrEntry;
 	entries[0].size = sizeof(virtio_net_hdr);
 	entries[1] = buf->entry;
-	entries[1].size = MIN(MAX_FRAME_SIZE, *_length);
+	entries[1].size = size;
 
 	// queue the virtio_net_hdr + buffer data
 	status_t status = info->virtio->queue_request_v(info->txQueues[0],
 		entries, 2, 0, buf);
 	mutex_unlock(&info->txLock);
+
 	if (status != B_OK) {
 		ERROR("tx queueing on queue %d failed (%s)\n", 0, strerror(status));
 		return status;
 	}
 
+	sBufferModule->free(buffer);
 	return B_OK;
 }
 
@@ -763,7 +822,7 @@ virtio_net_ioctl(void* cookie, uint32 op, void* buffer, size_t length)
 			if (info->promiscuous == value)
 				return B_OK;
 			info->promiscuous = value;
-			return virtio_net_set_promisc(info, value);
+			return virtio_net_set_promisc(info, value != 0);
 		}
 		case ETHER_NONBLOCK:
 		{
@@ -801,7 +860,7 @@ virtio_net_ioctl(void* cookie, uint32 op, void* buffer, size_t length)
 			}
 			if (info->multiCount == 1) {
 				TRACE("Enabling multicast\n");
-				vtnet_set_allmulti(info, 1);
+				vtnet_set_allmulti(info, true);
 			}
 
 			return B_OK;
@@ -829,7 +888,7 @@ virtio_net_ioctl(void* cookie, uint32 op, void* buffer, size_t length)
 				info->multiCount--;
 				if (info->multiCount == 0) {
 					TRACE("Disabling multicast\n");
-					vtnet_set_allmulti(info, 0);
+					vtnet_set_allmulti(info, false);
 				}
 				return B_OK;
 			}
@@ -852,6 +911,20 @@ virtio_net_ioctl(void* cookie, uint32 op, void* buffer, size_t length)
 
 			return user_memcpy(buffer, &state, sizeof(ether_link_state_t));
 		}
+
+		case ETHER_SEND_NET_BUFFER:
+			if (buffer == NULL || length == 0)
+				return B_BAD_DATA;
+			if (!IS_KERNEL_ADDRESS(buffer))
+				return B_BAD_ADDRESS;
+			return virtio_net_send(cookie, (net_buffer*)buffer);
+
+		case ETHER_RECEIVE_NET_BUFFER:
+			if (buffer == NULL || length == 0)
+				return B_BAD_DATA;
+			if (!IS_KERNEL_ADDRESS(buffer))
+				return B_BAD_ADDRESS;
+			return virtio_net_receive(cookie, (net_buffer**)buffer);
 
 		default:
 			ERROR("ioctl: unknown message %" B_PRIx32 "\n", op);
@@ -961,6 +1034,7 @@ virtio_net_register_child_devices(void* _cookie)
 
 module_dependency module_dependencies[] = {
 	{B_DEVICE_MANAGER_MODULE_NAME, (module_info**)&sDeviceManager},
+	{NET_BUFFER_MODULE_NAME, (module_info**)&sBufferModule},
 	{}
 };
 
@@ -978,8 +1052,8 @@ struct device_module_info sVirtioNetDevice = {
 	virtio_net_open,
 	virtio_net_close,
 	virtio_net_free,
-	virtio_net_read,
-	virtio_net_write,
+	NULL,	// read
+	NULL,	// write
 	NULL,	// io
 	virtio_net_ioctl,
 

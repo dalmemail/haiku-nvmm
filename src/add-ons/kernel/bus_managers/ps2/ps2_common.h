@@ -17,7 +17,7 @@
 #include <ISA.h>
 #include <Drivers.h>
 #include <KernelExport.h>
-#include <OS.h>
+#include <lock.h>
 
 #include "ps2_defs.h"
 #include "ps2_dev.h"
@@ -26,7 +26,7 @@
 #if 1
 #	define INFO(x...) dprintf(x)
 #else
-#	define INFO(x...)
+#	define INFO(x...) do {} while (false)
 #endif
 #define ERROR(x...) dprintf(x)
 
@@ -52,7 +52,7 @@ extern device_hooks gPointingDeviceHooks;
 
 extern bool gActiveMultiplexingEnabled;
 extern bool gSetupComplete;
-extern sem_id gControllerSem;
+extern mutex gControllerLock;
 
 
 #ifdef __cplusplus

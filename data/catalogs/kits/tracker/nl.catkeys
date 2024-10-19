@@ -1,4 +1,4 @@
-1	dutch; flemish	x-vnd.Haiku-libtracker	3354499367
+1	dutch; flemish	x-vnd.Haiku-libtracker	1730240650
 Created	ContainerWindow		Gemaakt
 Icon	AttributesView		Icoon
 Open and make preferred	OpenWithWindow		Openen en bevoorkeuren
@@ -13,8 +13,8 @@ Ignore case	SelectionWindow		Niet hoofd-/kleine lettergevoelig
 Current folder	ContainerWindow		Huidige map
 Finish: %time - Over %finishtime left	StatusWindow		Einde: %time - Meer dan %finishtime resterend
 Mount all disks now	AutoMounterSettings		Betrek alle schijven nu
-Location:	InfoWindow		Locatie:
 Name	PoseView		Naam
+Location:	InfoWindow		Locatie:
 Kind:	InfoWindow		Soort:
 contains	FindPanel		bevat
 Open	FilePanelPriv		Openen
@@ -75,7 +75,6 @@ Moving: 	StatusWindow		Verplaatsen:
 Select	SelectionWindow		Selecteren
 Select	InfoWindow		Selecteren
 OK	OpenWithWindow		Oké
-Include trash	FindPanel		Prullenbak erbij opnemen
 Clean up	ContainerWindow		Opruimen
 Modified	FindPanel		Gewijzigd
  (block size: 	InfoWindow		 (blokgrootte: 
@@ -103,7 +102,6 @@ Window	ContainerWindow		Venster
 Remove	FindPanel		Verwijderen
 Company	Person Query Columns		Bedrijf
 Recent documents	FavoritesMenu		Recente documenten
-Save as Query template:	FindPanel		Opslaan als zoekopdracht-sjabloon:
 Edit templates…	TemplatesMenu		Wijzig sjablonen...
 {0, plural, one{# byte} other{# bytes}}	FSUtils		{0, plural, one{# byte} other{# bytes}}
 8-bit integer	AttributesView		8-bit integer
@@ -114,14 +112,12 @@ Hide dotfiles	SettingsView		Verberg dot-bestanden
 Trash	Model		Prullenbak
 Enable type-ahead filtering	SettingsView		Zoeken-tijdens-typen toepassen
 copy	FSUtils	filename copy	kopie
-New folder%ld	FSUtils		Nieuwe map%ld
 Location	OpenWithWindow		Locatie
 Resize to fit	QueryContainerWindow		Grootte passend maken
 List folders first	SettingsView		Toon mappen eerst
 Find	FSUtils		Zoeken
 An item named \"%name\" already exists in this folder. Would you like to replace it with the symbolic link you are creating?	FSUtils		Er bestaat al een item \"%name\" in deze map. Wilt u het vervangen door het gelinkte bestand dat u aan het maken bent?
 List view	ContainerWindow		Lijstweergave
-Temporary	FindPanel		Tijdelijk
 Modified	QueryPoseView		Gewijzigd
 Create relative link	ContainerWindow		Maak een relatieve link
 Owner	FilePermissionsView		Eigenaar
@@ -134,7 +130,6 @@ Too many parenthesis.	libtracker		Te veel haken.
 Increase size	ContainerWindow		Vermeerder grootte
 \nShould this be fixed?	FSUtils		\nMoet dit opgelost worden?
 URL	Bookmark Query Columns		URL
-Move	PoseView		Verplaatsen
 Floating point number	AttributesView		Decimaal getal
 Cancel	ContainerWindow		Annuleren
 Attributes	ContainerWindow		Eigenschappen
@@ -273,9 +268,9 @@ no supporting apps	OpenWithWindow		geen ondersteunde toepassingen
 32-bit unsigned integer	AttributesView		32-bit unsigned integer
 Preparing to empty Trash…	StatusWindow		Leegmaken prullenbak voorbereiden...
 Deleting: 	StatusWindow		Verwijdert:
+label too long	PoseView		label te lang
 the MIME settings	FSUtils		de MIME-instellingen
 You can't move or copy the trash.	FSUtils		U kunt de prullenbak niet verplaatsen of kopiëren.
-label too long	PoseView		label te lang
 Error creating link to \"%name\".	FSUtils		Fout bij het aanmaken van de link naar \"%name\".
 Unknown	FilePermissionsView		Onbekend
 Paste links	ContainerWindow		Links plakken
@@ -323,8 +318,8 @@ MIME Path	AttributesView		MIME-pad
 less than	FindPanel		minder dan
 Error copying file \"%name\":\n\t%error\n\nWould you like to continue?	FSUtils		Fout bij het kopiëren van het bestand \"%name\":\n\t%error\n\nWilt u doorgaan?
 Creating links: 	StatusWindow		Bezig met maken van koppelingen:
-Could not open \"%document\" with application \"%app\" (%error). 	FSUtils		\"%document\" kon niet met \"%app\" geopend worden (%error).
 Create %s clipping	PoseView		Maak %s clipping
+Could not open \"%document\" with application \"%app\" (%error). 	FSUtils		\"%document\" kon niet met \"%app\" geopend worden (%error).
 Error moving \"%name\"	FSUtils		Fout bij het verplaatsen van \"%name\"
 To: %dir	StatusWindow		Naar: %dir
 Paste layout	ContainerWindow		Lay-out plakken
@@ -345,7 +340,6 @@ after	FindPanel		na
 Version	OpenWithWindow		Versie
 Some of the selected items cannot be moved to the Trash. Would you like to delete them instead? (This operation cannot be reverted.)	PoseView		Sommige van de geselecteerde items kunnen niet naar de prullenbak verplaatst worden. Wilt u ze in plaats daarvan verwijderen? (Deze actie kan niet ongedaan gemaakt worden.)
 Add printer…	ContainerWindow		Printer toevoegen...
-On	FindPanel		Naar
 Permissions	ContainerWindow		Machtigingen
 Size:	InfoWindow		Grootte:
 The selected item cannot be moved to the Trash. Would you like to delete it instead? (This operation cannot be reverted.)	PoseView		Het geselecteerde item kon niet naar de prullenbak verplaatst worden. Wilt u het in plaats daarvan verwijderen? (Deze actie kan niet ongedaan gemaakt worden.)
@@ -354,7 +348,6 @@ Sorry, the 'Character' attribute cannot store a multi-byte glyph.	WidgetAttribut
 Open parent	VirtualDirectoryWindow		Bovenliggende openen
 And	FindPanel		En
 Palette-indexed picture	AttributesView		Afbeelding met paletindex
-multiple disks	FindPanel		meerdere schijven
 Drawing pattern	AttributesView		Tekenpatroon
 File offset	AttributesView		Startpunt in bestand
 Name = %name	FindPanel	FindResultTitle	Naam = %name
@@ -370,7 +363,6 @@ Force identify	ContainerWindow		Forceer identificatie
 no items	CountView		geen items
 Time	AttributesView		Tijd
 Disks	DirMenu		Schijven
-Query name:	FindPanel		Zoekopdracht-naam:
 Open parent	ContainerWindow		Open bovenliggende map
 Find…	ContainerWindow		Zoeken...
 moving	FSUtils		bezig met verplaatsen
@@ -448,7 +440,6 @@ Move to Trash	FilePanelPriv		Verpaats naar de prullenbak
 is	FindPanel		is
 If you rename the system folder or its contents, you won't be able to boot %osName!\n\nAre you sure you want to do this?\n\nTo rename the system folder or its contents anyway, hold down the Shift key and click \"Rename\".	FSUtils		Als de systeemmap of diens inhoud hernoemd wordt, dan start %osName niet meer!\n\nWeet u zeker dat u wilt doorgaan?\n\nOm de systeemmap of diens inhoud niettemin te hernoemen, houd de Shift-knop ingedrukt en klik op \"Naam wijzigen\".
 Permissions	FilePermissionsView		Rechten
-New folder %ld	FSUtils		Nieuwe map %ld
 \"%name\" is a legacy executable. Please obtain an updated version or recompile the application.	FSUtils		\"%name\" is in een oud programmaformaat. Zorg dat u een bijgewerkte versie krijgt, of compileer deze zelf.
 Only the boot disk	AutoMounterSettings		Alleen de opstartschijf
 Message	AttributesView		Bericht
@@ -478,7 +469,6 @@ You must drop items on one of the disk icons in the \"Disks\" window.	PoseView		
 Version:	InfoWindow		Versie:
 OK	PoseView		Oké
 Add-ons	DeskWindow		Invoegtoepassingen
-Are you sure you want to move or copy the selected item(s) to this folder?	PoseView		Bent u zeker dat u de geselecteerde item(s) naar deze map wilt verplaatsen of kopiëren?
 Find	FindPanel		Zoeken
 Empty folder	NavMenu		Lege map
 Defaults	TrackerSettingsWindow		Standaardwaarden
@@ -487,8 +477,8 @@ True-color picture	AttributesView		Afbeelding in ware kleuren
 Add-ons	FilePanelPriv		Invoegtoepassingen
 Alignment	AttributesView		Uitlijning
 Move to Trash	FSUtils		Verplaats naar Prullenbak
-Handles %type	OpenWithWindow		Behandelt %type
 Cancel	PoseView		Annuleren
+Handles %type	OpenWithWindow		Behandelt %type
 Delete	PoseView		Verwijderen
 Media parameter	AttributesView		Mediaparameter
 If you alter the home folder, %osName may not behave properly!\n\nAre you sure you want to do this?\n\nTo alter the home folder anyway, hold down the Shift key and click \"I know what I'm doing\".	FSUtils		Als de thuismap gewijzigd wordt, dan functioneert %osName mogelijk niet goed meer!\n\nWeet u zeker dat u wilt doorgaan?\n\nOm de thuismap niettemin te wijzigen, houd de Shift-knop ingedrukt en klik op \"Ik weet zeker wat ik doe\".

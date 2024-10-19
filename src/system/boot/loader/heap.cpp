@@ -52,9 +52,11 @@
 
 const static size_t kAlignment = 8;
 	// all memory chunks will be a multiple of this
-const static size_t kLargeAllocationThreshold = 16 * 1024;
-	// allocations of this size or larger are allocated via
-	// platform_allocate_region()
+
+const static size_t kDefaultHeapSize = (1024 + 512) * 1024;
+	// default initial heap size, unless overridden by platform loader
+const static size_t kLargeAllocationThreshold = 128 * 1024;
+	// allocations of this size or larger are allocated separately
 
 
 class Chunk {
@@ -171,24 +173,23 @@ typedef IteratableSplayTree<FreeChunkTreeDefinition> FreeChunkTree;
 struct LargeAllocation {
 	LargeAllocation()
 	{
-	}
-
-	void SetTo(void* address, size_t size)
-	{
-		fAddress = address;
-		fSize = size;
+		fAddress = NULL;
+		fSize = 0;
 	}
 
 	status_t Allocate(size_t size)
 	{
-		fSize = size;
-		return platform_allocate_region(&fAddress, fSize,
-			B_READ_AREA | B_WRITE_AREA, false);
+		ssize_t actualSize = platform_allocate_heap_region(size, &fAddress);
+		if (actualSize < 0)
+			return actualSize;
+
+		fSize = actualSize;
+		return B_OK;
 	}
 
 	void Free()
 	{
-		platform_free_region(fAddress, fSize);
+		platform_free_heap_region(fAddress, fSize);
 	}
 
 	void* Address() const
@@ -384,7 +385,20 @@ FreeChunk::SetToAllocated(void* allocated)
 void
 heap_release(stage2_args* args)
 {
-	platform_release_heap(args, sHeapBase);
+	heap_print_statistics();
+
+	LargeAllocation* allocation = sLargeAllocations.Clear(true);
+	while (allocation != NULL) {
+		LargeAllocation* next = allocation->HashNext();
+		allocation->Free();
+		allocation = next;
+	}
+
+	platform_free_heap_region(sHeapBase, (addr_t)sHeapEnd - (addr_t)sHeapBase);
+
+	sHeapBase = sHeapEnd = NULL;
+	memset((void*)&sFreeChunkTree, 0, sizeof(sFreeChunkTree));
+	memset((void*)&sLargeAllocations, 0, sizeof(sLargeAllocations));
 }
 
 
@@ -401,14 +415,17 @@ heap_print_statistics()
 status_t
 heap_init(stage2_args* args)
 {
+	if (args->heap_size == 0)
+		args->heap_size = kDefaultHeapSize;
+
 	void* base;
-	void* top;
-	if (platform_init_heap(args, &base, &top) < B_OK)
+	ssize_t size = platform_allocate_heap_region(args->heap_size, &base);
+	if (size < 0)
 		return B_ERROR;
 
 	sHeapBase = base;
-	sHeapEnd = top;
-	sMaxHeapSize = (uint8*)top - (uint8*)base;
+	sHeapEnd = (void*)((addr_t)base + size);
+	sMaxHeapSize = (uint8*)sHeapEnd - (uint8*)sHeapBase;
 
 	// declare the whole heap as one chunk, and add it
 	// to the free list

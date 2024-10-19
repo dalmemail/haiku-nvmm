@@ -57,6 +57,7 @@
 #define IA32_MSR_MTRR_DEFAULT_TYPE		0x2ff
 #define IA32_MSR_MTRR_PHYSICAL_BASE_0	0x200
 #define IA32_MSR_MTRR_PHYSICAL_MASK_0	0x201
+#define IA32_MSR_PAT					0x277
 
 // MSR SPEC CTRL bits
 #define IA32_MSR_SPEC_CTRL_IBRS			(1 << 0)
@@ -176,6 +177,16 @@
 #define	IA32_HWP_REQUEST_DESIRED_VALID					(1ULL << 61)
 #define	IA32_HWP_REQUEST_MAXIMUM_VALID					(1ULL << 62)
 #define	IA32_HWP_REQUEST_MINIMUM_VALID					(1ULL << 63)
+
+// IA32_MSR_PAT bits
+#define IA32_MSR_PAT_ENTRY_MASK							0x7ULL
+#define IA32_MSR_PAT_ENTRY_SHIFT(x)						(x * 8)
+#define IA32_MSR_PAT_TYPE_UNCACHEABLE					0x0ULL
+#define IA32_MSR_PAT_TYPE_WRITE_COMBINING				0x1ULL
+#define IA32_MSR_PAT_TYPE_WRITE_THROUGH					0x4ULL
+#define IA32_MSR_PAT_TYPE_WRITE_PROTECTED				0x5ULL
+#define IA32_MSR_PAT_TYPE_WRITE_BACK					0x6ULL
+#define IA32_MSR_PAT_TYPE_UNCACHED						0x7ULL
 
 // x86 features from cpuid eax 1, edx register
 // reference http://www.intel.com/Assets/en_US/PDF/appnote/241618.pdf (Table 5-5)
@@ -371,7 +382,10 @@
 #define IA32_FEATURE_XSAVES			(1 << 3) // XSAVES and XRSTORS Instruction
 
 // x86 defined features from cpuid eax 0x80000007, edx register
+#define IA32_FEATURE_AMD_HW_PSTATE		(1 << 7)
 #define IA32_FEATURE_INVARIANT_TSC		(1 << 8)
+#define IA32_FEATURE_CPB				(1 << 9)
+#define IA32_FEATURE_PROC_FEEDBACK		(1 << 11)
 
 // x86 defined features from cpuid eax 0x80000008, ebx register
 #define IA32_FEATURE_CLZERO			(1 << 0)	// CLZERO instruction
@@ -496,8 +510,8 @@ typedef struct x86_cpu_module_info {
 
 // features
 enum x86_feature_type {
-	FEATURE_COMMON = 0,     // cpuid eax=1, ecx register
-	FEATURE_EXT,            // cpuid eax=1, edx register
+	FEATURE_COMMON = 0,     // cpuid eax=1, edx register
+	FEATURE_EXT,            // cpuid eax=1, ecx register
 	FEATURE_EXT_AMD_ECX,	// cpuid eax=0x80000001, ecx register (AMD)
 	FEATURE_EXT_AMD,        // cpuid eax=0x80000001, edx register (AMD)
 	FEATURE_5_ECX,			// cpuid eax=5, ecx register
@@ -668,6 +682,7 @@ void x86_set_mtrrs(uint8 defaultType, const x86_mtrr_info* infos,
 	uint32 count);
 void x86_init_fpu();
 bool x86_check_feature(uint32 feature, enum x86_feature_type type);
+bool x86_use_pat();
 void* x86_get_double_fault_stack(int32 cpu, size_t* _size);
 int32 x86_double_fault_get_cpu(void);
 

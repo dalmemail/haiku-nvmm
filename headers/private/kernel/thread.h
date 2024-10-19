@@ -142,7 +142,6 @@ status_t _user_set_thread_priority(thread_id thread, int32 newPriority);
 status_t _user_rename_thread(thread_id thread, const char *name);
 status_t _user_suspend_thread(thread_id thread);
 status_t _user_resume_thread(thread_id thread);
-status_t _user_rename_thread(thread_id thread, const char *name);
 thread_id _user_spawn_thread(struct thread_creation_attributes* attributes);
 status_t _user_wait_for_thread(thread_id id, status_t *_returnCode);
 status_t _user_wait_for_thread_etc(thread_id id, uint32 flags, bigtime_t timeout,
@@ -160,6 +159,9 @@ thread_id _user_find_thread(const char *name);
 status_t _user_get_thread_info(thread_id id, thread_info *info);
 status_t _user_get_next_thread_info(team_id team, int32 *cookie, thread_info *info);
 int _user_get_cpu();
+status_t _user_get_thread_affinity(thread_id id, void* userMask, size_t size);
+status_t _user_set_thread_affinity(thread_id id, const void* userMask, size_t size);
+
 
 status_t _user_block_thread(uint32 flags, bigtime_t timeout);
 status_t _user_unblock_thread(thread_id thread, status_t status);

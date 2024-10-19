@@ -1,9 +1,10 @@
-1	russian	x-vnd.Haiku-HaikuDepot	2231325175
+1	russian	x-vnd.Haiku-HaikuDepot	2555742361
 Usage conditions download problem	ToLatestUserUsageConditionsWindow		Проблемы при загрузке Условий использования
 Available packages	MainWindow		Доступные пакеты
 It was not possible to create the new user.	UserLoginWindow		Не удалось создать нового пользователя.
 An unexpected error has been sent from the server [%li]	ServerHelper		Сервер прислал непредвиденную ошибку [%li]
 Create account	UserLoginWindow		Создать учётную запись
+Fetching changelog for package	PopulatePkgChangelogFromServerProcess		Получение журнала изменений для пакета
 Agree	ToLatestUserUsageConditionsWindow		Принимаю
 Install %PackageTitle%	PackageManager		Установить %PackageTitle%
 The response to the captcha was incorrect.	ServerHelper		Ответ на капчу был неверным.
@@ -46,6 +47,7 @@ Rating not possible	MainWindow		Оценка невозможна
 Package update error	MainWindow		Ошибка обновления пакета
 %FIRST_PROCESS_DESCRIPTION% +{0, plural, one{# process} other{# processes}}	ProcessCoordinator		%FIRST_PROCESS_DESCRIPTION% +{0, plural, one{# процесс} few{# процесса} other{# процессов}}
 Reboot required	PackageManager		Требуется перезагрузка
+Fetching user ratings for package	PopulatePkgUserRatingsFromServerProcess		Получение оценок пользователей для пакета (рейтинга)
 All packages	PackageListView		Все пакеты
 Send	RatePackageWindow		Отправить
 Start package daemon	App		Запустить пакетный демон
@@ -113,6 +115,7 @@ The user does not exist or the wrong password was supplied. Check your credentia
 All repositories	MainWindow		Все репозитории
 Repository update error	LocalRepositoryUpdateProcess		Ошибка обновления репозитория
 Network error	ServerHelper		Ошибка сети
+HaikuDepot - %PackageName% %PackageVersion%	MainWindow		HaikuDepot - %PackageName% %PackageVersion%
 An error occurred while refreshing the repository: %error%	LocalRepositoryUpdateProcess		Произошла ошибка при обновлении репозитория: %error%
 User Created	UserLoginWindow		Пользователь создан
 Check for updates…	MainWindow		Проверить обновления…
@@ -128,6 +131,7 @@ No user ratings available.	PackageInfoView		Рейтинг пользовате�
 <no info>	PackageInfoView		<нет информации>
 Usage conditions download problem	UserUsageConditions		Проблемы при загрузке Условий использования
 An error has arisen downloading the password requirements required to create a new user. Check the log for details and try again. \nInformation about how to view the logs is available in the HaikuDepot section of the Haiku User Guide.	UserLoginWindow		При загрузке требований к паролю, необходимых для создания нового пользователя, возникла ошибка. Ознакомьтесь с подробностями в журнале и повторите попытку. \nИнформация о том, как просматривать журналы, доступна в разделе HaikuDepot руководства пользователя Haiku.
+Fetching screenshot	CacheScreenshotProcess		Получение снимков экрана
 A network transport error has arisen communicating with the server system: %s	ServerHelper		Произошла ошибка при обмене данными с сервером HaikuDepot: %s
 Rating	PackageListView		Оценка
 Synchronizing icons	ServerIconExportUpdateProcess		Синхронизация значков
@@ -139,7 +143,7 @@ Ratings	PackageInfoView		Оценки
 The following problems have been encountered. Please select a solution for each:	PackageProblem		Возникли следующие проблемы. Пожалуйста, выберите решение для каждой из них:
 Local	LocalPkgDataLoadProcess		Локальный
 Package changes	PackageResult	Window title	Зависимости пакетов
-Would it be acceptable to send anonymous usage data to the HaikuDepotServer system from this computer? You can change your preference in the \"Settings\" window later.	MainWindow		Будет ли для Вас приемлема отправка анонимных данных на сервер HaikuDepot с этого компьютера? Вы всегда сможете изменить свой выбор в окне \«Настройки\» позже.
+Would it be acceptable to send anonymous usage data to the HaikuDepotServer system from this computer? You can change your preference in the \"Settings\" window later.	MainWindow		Вы согласны на отправку анонимных данных об этом компьютере на сервер HaikuDepot? Свой выбор Вы всегда сможете изменить позже, в окне \«Настройки\».
 User rating	RatePackageWindow		Пользовательский рейтинг
 Installed packages	MainWindow		Установленные пакеты
 Date	PackageListView		Дата
@@ -186,7 +190,7 @@ HaikuDepot is stopping or completing running operations before quitting.	Shuttin
 The user %Nickname% has been successfully created in the HaikuDepotServer system. You can administer your user details by using the web interface. You are now logged-in as this new user.	UserLoginWindow		Пользователь %Nickname% был успешно создан в системе HaikuDepotServer. Вы можете управлять своими данными пользователя с помощью веб-интерфейса. Вы вошли в систему как новый пользователь.
 Repositories	MainWindow		Репозитории
 This rating is visible to other users	RatePackageWindow		Этот рейтинг виден другим пользователям
-While updating package data, a problem has arisen that may cause data to be outdated or missing from the application's display. Additional details regarding this problem may be able to be obtained from the application logs.\nInformation about how to view the logs is available in the HaikuDepot section of the Haiku User Guide.	MainWindow		При обновлении сведений о пакетах произошла проблема которая может вызвать отображение устаревших данных. Дополнительную информацию можно получить запустив приложение из Терминала.\n
+While updating package data, a problem has arisen that may cause data to be outdated or missing from the application's display. Additional details regarding this problem may be able to be obtained from the application logs.\nInformation about how to view the logs is available in the HaikuDepot section of the Haiku User Guide.	MainWindow		При обновлении данных пакета возникла проблема, из-за которой эти данные могут быть устаревшими или отсутствовать в окне приложения. Дополнительные сведения об этой проблеме могут быть получены из журналов приложения.\nИнформация о том, как просматривать журналы, доступна в разделе HaikuDepot руководства пользователя Haiku.
 An error has arisen downloading the usage conditions. Check the log for details and try again. \nInformation about how to view the logs is available in the HaikuDepot section of the Haiku User Guide.	UserUsageConditions		При загрузке Условий использования возникла ошибка. Ознакомьтесь с подробностями в журнале и повторите попытку. \nИнформация о том, как просматривать журналы, доступна в разделе HaikuDepot руководства пользователя Haiku.
 View agreed usage conditions…	MainWindow		Показать согласованные условия использования…
 The user [%Nickname%] has authenticated, but before proceeding, you are required to agree to the most recent usage conditions.	ToLatestUserUsageConditionsWindow		Пользователь [%Nickname%] прошёл аутентификацию, но прежде чем продолжить, Вам необходимо принять актуальные Условия использования.

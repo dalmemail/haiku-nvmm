@@ -12,17 +12,19 @@
 #include <mail_encoding.h>
 
 #include <Alert.h>
-#include <Autolock.h>
 #include <AutoLocker.h>
+#include <Autolock.h>
+#include <Button.h>
 #include <Catalog.h>
 #include <CheckBox.h>
-#include <Button.h>
 #include <LayoutBuilder.h>
 #include <MenuField.h>
 #include <PopUpMenu.h>
 #include <TextControl.h>
+#include <TranslationUtils.h>
 
 #include "AppUtils.h"
+#include "BitmapHolder.h"
 #include "BitmapView.h"
 #include "Captcha.h"
 #include "HaikuDepotConstants.h"
@@ -154,14 +156,13 @@ UserLoginWindow::UserLoginWindow(BWindow* parent, BRect frame, Model& model)
 
 	{
 		AutoLocker<BLocker> locker(fModel.Lock());
-		fPreferredLanguageId = fModel.Language()->PreferredLanguage()->ID();
+		fPreferredLanguageId = fModel.PreferredLanguage()->ID();
 		// Construct languages popup
 		BPopUpMenu* languagesMenu = new BPopUpMenu(B_TRANSLATE("Language"));
 		fLanguageIdField = new BMenuField("language", B_TRANSLATE("Preferred language:"),
 			languagesMenu);
 
-		LanguageMenuUtils::AddLanguagesToMenu(
-			fModel.Language(), languagesMenu);
+		LanguageMenuUtils::AddLanguagesToMenu(fModel.Languages(), languagesMenu);
 		languagesMenu->SetTargetForItems(this);
 
 		HDINFO("using preferred language code [%s]", fPreferredLanguageId.String());
@@ -988,11 +989,16 @@ UserLoginWindow::_SetCaptcha(Captcha* captcha)
 	if (fCaptcha == NULL)
 		fCaptchaView->UnsetBitmap();
 	else {
-		off_t size;
-		fCaptcha->PngImageData()->GetSize(&size);
-		SharedBitmap* captchaImage
-			= new SharedBitmap(*(fCaptcha->PngImageData()));
-		fCaptchaView->SetBitmap(captchaImage);
+		BBitmap* bitmap = BTranslationUtils::GetBitmap(fCaptcha->PngImageData());
+
+		if (bitmap == NULL) {
+			HDERROR("unable to read the captcha bitmap as an image");
+			fCaptchaView->UnsetBitmap();
+		} else {
+			BitmapHolderRef bitmapHolderRef
+				= BitmapHolderRef(new(std::nothrow) BitmapHolder(bitmap), true);
+			fCaptchaView->SetBitmap(bitmapHolderRef);
+		}
 	}
 	fCaptchaResultField->SetText("");
 }
