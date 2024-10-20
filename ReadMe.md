@@ -1,61 +1,25 @@
-Haiku
+ Hardware virtualization for Haiku’s QEMU port 
 =======================
-**[Homepage](https://www.haiku-os.org/)
-| [Mailing Lists](https://www.haiku-os.org/community/ml)
-| [IRC Channels](https://www.haiku-os.org/community/irc)
-| [Issue Tracker](https://dev.haiku-os.org/)
-| [API docs](https://api.haiku-os.org)**
 
-Haiku is an open-source operating system that specifically targets personal
-computing. Inspired by the BeOS, Haiku is fast, simple to use, easy to learn
-and yet very powerful.
+This Google Summer of Code project aimed to bring hardware virtualization to Haiku by porting NVMM, a hypervisor that already has QEMU support, into Haiku from DragonFlyBSD. This would make using Haiku as their primary operating system a viable approach for more people.
+
+This branch showcases the project status at the end of Google Summer of Code 2024 ([final report](https://www.haiku-os.org/blog/dalme/2024-08-19_gsoc_2024_hardware_virtualization_final_report/)). For further development see the hrev58265 branch.
 
 Goals
 ------------
- * Sensible defaults with minimal configuration required.
- * Clean, clear, concise code.
- * Unified desktop environment.
+ * NVMM driver ported to Haiku (VMX backend only).
+ * QEMU capable of accelerating virtual machines through NVMM.
 
-Trying Haiku
+Links
 ---------------
-Haiku provides pre-built [nightly images](http://download.haiku-os.org/) and
-[release images](https://www.haiku-os.org/get-haiku). Haiku is compatible
-with a large variety of hardware, but in case you don't want to "take the
-plunge" and install Haiku on bare metal, you can install it on a virtual
-machine (VM) instead. If you've never used a VM before, you can follow one of
-the ["Emulating Haiku"](https://www.haiku-os.org/guides/virtualizing/) guides.
+  * [Google Summer of Code proposal](https://github.com/dalmemail/haiku-nvmm/blob/master/proposal.pdf)
+  * [Project thread on Haiku forums](https://discuss.haiku-os.org/t/gsoc-2024-hardware-acceleration-for-haikus-qemu-port/14784)
+  * [Project page at GSoC archive](https://summerofcode.withgoogle.com/programs/2024/projects/7iuNzLBk)
 
-Compiling Haiku
----------------
-See `ReadMe.Compiling`.
+Blog posts:
+  * [[GSoC 2024] Hardware virtualization for Haiku’s QEMU port](https://www.haiku-os.org/blog/dalme/2024-05-11_gsoc_2024_hardware_virtualization_for_haikus_qemu_port/)
+  * [[GSoC 2024] Hardware virtualization: Progress Report #1](https://www.haiku-os.org/blog/dalme/2024-06-27_gsoc_2024_hardware_virtualization_progress_report_1/)
+  * [[GSoC 2024] Hardware Virtualization: Progress Report #2](https://www.haiku-os.org/blog/dalme/2024-07-24_gsoc_2024_hardware_virtualization_progress_report_2/)
+  * [[GSoC 2024] Hardware Virtualization: Final Report](https://www.haiku-os.org/blog/dalme/2024-08-19_gsoc_2024_hardware_virtualization_final_report/)
 
-Contributing
--------------------
-Haiku is a meritocratic open source project with a large variety of tasks. Even
-if you can't write code, *you can still help*! Haiku needs designers,
-(technical) writers, translators, testers... [Get involved](https://www.haiku-os.org/community/getting-involved/)
-and help out!
-
-### Contributing code
-If you're submitting a patch to us, please make sure you're following the
-[patch submitting guidelines](https://dev.haiku-os.org/wiki/CodingGuidelines/SubmittingPatches).
-
-If you're having trouble finding something in the source tree, you can use
-one of our web-based source code browsers:
-
- * https://xref.landonf.org/ (OpenGrok, provided by Landon Fuller)
- * https://git.haiku-os.org/ (git, provided by Haiku, Inc.)
-
-### Contributing documentation
-The main piece of documentation that still needs work are the API docs (found
-in the tree at `docs/user`). Just find an undocumented class, write
-documentation for it, and [submit a patch](https://dev.haiku-os.org/wiki/CodingGuidelines/SubmittingPatches).
-
-### Contributing translations
-See [wiki:i18n](https://dev.haiku-os.org/wiki/i18n).
-
-### Contributing software ports
-See [HaikuPorts](https://github.com/haikuports/haikuports/).
-
-### Contributing to our infrastructure
-See [Infrastructure](https://github.com/haiku/infrastructure/).
+![QEMU accelerating DOOM on KolibriOS through NVMM](https://github.com/dalmemail/haiku-nvmm/blob/master/kolibri-doom.png?raw=true)
