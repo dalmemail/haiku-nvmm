@@ -913,6 +913,10 @@ x86_curthread_restore_dbregs(uint64_t *drs)
 		__asm volatile("clts" ::: "memory");	\
 		fpurstor((union savefpu *)(a), m);	\
 	})
+#elif defined(__HAIKU__)
+// Haiku allows floating point on kernel, we don't need to save and restore FPU
+#define x86_save_fpu(a, m)	/* Not needed */
+#define x86_restore_fpu(a, m)	/* Not needed */
 #endif
 
 /* XCRs. */
