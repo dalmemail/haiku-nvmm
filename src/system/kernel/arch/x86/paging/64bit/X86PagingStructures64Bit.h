@@ -22,6 +22,9 @@ struct X86PagingStructures64Bit final : X86PagingStructures {
 			uint64*				VirtualPMLTop()
 									{ return fVirtualPMLTop; }
 
+			phys_addr_t			PhysicalPMLTop()
+									{ return pgdir_phys; }
+
 private:
 			uint64*				fVirtualPMLTop;
 };

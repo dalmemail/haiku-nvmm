@@ -10,15 +10,18 @@
 
 
 #include <arch/atomic.h>
+#ifdef __cplusplus
 #include <boot/kernel_args.h>
+#endif
 #include <kernel.h>
 
 #include <KernelExport.h>
 
 #include <string.h>
 
-
+#ifdef __cplusplus
 struct kernel_args;
+#endif
 
 
 // intercpu messages
@@ -40,6 +43,7 @@ enum {
 
 typedef void (*smp_call_func)(addr_t data1, int32 currentCPU, addr_t data2, addr_t data3);
 
+#ifdef __cplusplus
 class CPUSet {
 public:
 	inline				CPUSet();
@@ -67,6 +71,7 @@ private:
 
 			uint32		fBitmap[kArraySize];
 };
+#endif
 
 
 #ifdef __cplusplus
@@ -83,8 +88,10 @@ void smp_wake_up_non_boot_cpus(void);
 void smp_cpu_rendezvous(uint32* var);
 void smp_send_ici(int32 targetCPU, int32 message, addr_t data, addr_t data2, addr_t data3,
 		void *data_ptr, uint32 flags);
+#ifdef __cplusplus
 void smp_send_multicast_ici(CPUSet& cpuMask, int32 message, addr_t data,
 		addr_t data2, addr_t data3, void *data_ptr, uint32 flags);
+#endif
 void smp_send_broadcast_ici(int32 message, addr_t data, addr_t data2, addr_t data3,
 		void *data_ptr, uint32 flags);
 void smp_send_broadcast_ici_interrupts_disabled(int32 currentCPU, int32 message,
@@ -106,6 +113,7 @@ void call_single_cpu_sync(uint32 targetCPU, void (*func)(void*, int),
 #endif
 
 
+#ifdef __cplusplus
 inline
 CPUSet::CPUSet()
 {
@@ -199,6 +207,7 @@ CPUSet::IsEmpty() const
 
 	return true;
 }
+#endif
 
 
 // Unless spinlock debug features are enabled, try to inline
