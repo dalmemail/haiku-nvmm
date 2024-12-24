@@ -64,6 +64,7 @@
 #include <kernel/lock.h>
 #include <SupportDefs.h>
 #include <stdlib.h>
+#include <string.h>
 #endif
 
 /* Types. */
