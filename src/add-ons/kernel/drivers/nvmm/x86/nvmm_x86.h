@@ -221,7 +221,7 @@ struct nvmm_cap_md {
 
 #ifndef ASM_NVMM
 
-#ifndef __HAIKU__
+#if defined(__NetBSD__) || defined(__DragonFly__)
 #include <sys/types.h>
 #include <sys/bitops.h>
 #if defined(__DragonFly__)
@@ -231,7 +231,7 @@ struct nvmm_cap_md {
 #undef  __BITS
 #define __BITS(__m, __n)	__BITS64(__m, __n)
 #endif /* __x86_64__ */
-#endif /* __HAIKU__ */
+#endif /* __NetBSD__ || __DragonFly__ */
 #endif /* ASM_NVMM */
 
 /* Segment state. */

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __HAIKU__
+#if defined(__NetBSD__) || defined(__DragonFly__)
 #include <sys/param.h>
 #include <sys/systm.h>
 
