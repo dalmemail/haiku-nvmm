@@ -303,19 +303,20 @@ typedef struct globaldata	os_cpu_t;
  * On NetBSD/DragonFlyBSD each CPU has a unique structure. NVMM
  * uses the unique pointers to those structures as a way to check
  * whether two CPUs are the same or not. In our case we'll use
- * the pointer (void *)n to identify CPU n, except on OS_CPU_FOREACH
- * and os_cpu_number where we'll use a valid pointer to uint32 (os_cpu_t).
- * This hack allows to avoid allocating an os_cpu_t per CPU while also
- * avoiding to modify NVMM's code.
+ * the cpu_ent structure that is declared on cpu.h which can't be
+ * included from C. We declare it here as an incomplete type.
  */
-typedef uint32			os_cpu_t;
+struct cpu_ent;
+
+typedef struct cpu_ent			os_cpu_t;
+os_cpu_t* haiku_get_cpu_struct(uint32 cpu_number);
 #define OS_CPU_FOREACH(cpu)	\
-	os_cpu_t cpu_index_; \
-	cpu = &cpu_index_; \
+	uint32 curcpu = 0; \
 	uint32 _ncpus = haiku_smp_get_num_cpus(); \
-	for (*cpu = 0; *cpu < _ncpus; (*cpu)++)
-#define os_cpu_number(cpu)	(*cpu)
-#define os_curcpu()		haiku_smp_get_current_cpu()
+	for (cpu = haiku_get_cpu_struct(0); curcpu < _ncpus; \
+		cpu = haiku_get_cpu_struct(++curcpu))
+int os_cpu_number(os_cpu_t *cpu);
+#define os_curcpu()		haiku_get_cpu_struct(haiku_smp_get_current_cpu())
 #define os_curcpu_number()	haiku_smp_get_current_cpu()
 uint16 os_curcpu_tss_sel();
 void *os_curcpu_tss();

@@ -92,6 +92,18 @@ extern "C" int32 haiku_smp_get_num_cpus()
 }
 
 
+extern "C" os_cpu_t* haiku_get_cpu_struct(uint32 cpu_number)
+{
+	return &gCPU[cpu_number];
+}
+
+
+extern "C" int os_cpu_number(os_cpu_t *cpu)
+{
+	return cpu->cpu_num;
+}
+
+
 extern "C" thread_id haiku_get_current_thread_id()
 {
 	return thread_get_current_thread_id();
@@ -102,11 +114,8 @@ extern "C"
 void
 os_ipi_unicast(os_cpu_t *cpu, void (*func)(void *, int), void *arg)
 {
-	int64 cpu_index = (int64)cpu;
-	if (cpu_index >= 0 && cpu_index < haiku_smp_get_num_cpus())
-		call_single_cpu_sync((uint32)cpu_index, func, arg);
-	else
-		panic("Invalid CPU index (%ld): No such CPU\n", cpu_index);
+	OS_ASSERT(os_cpu_number(cpu) >= 0 && os_cpu_number(cpu) < haiku_smp_get_num_cpus());
+	call_single_cpu_sync((uint32)os_cpu_number(cpu), func, arg);
 }
 
 
