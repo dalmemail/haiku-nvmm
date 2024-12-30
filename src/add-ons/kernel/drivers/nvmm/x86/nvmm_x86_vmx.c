@@ -2474,8 +2474,10 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			break;
 		}
 
+#if defined(__HAIKU__)
 		// temporary ugly hack
 		break;
+#endif
 	}
 
 	cpudata->vmcs_launched = launched;
