@@ -54,6 +54,7 @@ X86GPAtoHPATranslationMap::~X86GPAtoHPATranslationMap()
 		return;
 
 	if (fPageMapper != NULL) {
+		vm_page_reservation reservation = {};
 		phys_addr_t address;
 		vm_page* page;
 
@@ -83,7 +84,7 @@ X86GPAtoHPATranslationMap::~X86GPAtoHPATranslationMap()
 					}
 
 					DEBUG_PAGE_ACCESS_START(page);
-					vm_page_set_state(page, PAGE_STATE_FREE);
+					vm_page_free_etc(NULL, page, &reservation);
 				}
 
 				address = virtualPDPT[j] & EPT_PDPTE_ADDRESS_MASK;
@@ -94,7 +95,7 @@ X86GPAtoHPATranslationMap::~X86GPAtoHPATranslationMap()
 				}
 
 				DEBUG_PAGE_ACCESS_START(page);
-				vm_page_set_state(page, PAGE_STATE_FREE);
+				vm_page_free_etc(NULL, page, &reservation);
 			}
 
 			address = virtualPML4[i] & EPT_PML4E_ADDRESS_MASK;
@@ -105,8 +106,10 @@ X86GPAtoHPATranslationMap::~X86GPAtoHPATranslationMap()
 			}
 
 			DEBUG_PAGE_ACCESS_START(page);
-			vm_page_set_state(page, PAGE_STATE_FREE);
+			vm_page_free_etc(NULL, page, &reservation);
 		}
+
+		vm_page_unreserve_pages(&reservation);
 
 		fPageMapper->Delete();
 	}
