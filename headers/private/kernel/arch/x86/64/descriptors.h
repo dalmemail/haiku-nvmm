@@ -43,6 +43,8 @@ struct segment_descriptor {
 	uint32 base1 : 8;
 } _PACKED;
 
+typedef struct segment_descriptor segment_descriptor;
+
 struct tss {
 	uint32 _reserved1;
 	uint64 sp0;

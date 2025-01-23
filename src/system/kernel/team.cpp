@@ -1791,7 +1791,7 @@ load_image_internal(char**& _flatArgs, size_t flatArgsSize, int32 argCount,
 	}
 
 	// create an address space for this team
-	status = VMAddressSpace::Create(team->id, USER_BASE, USER_SIZE, false,
+	status = VMAddressSpace::Create(team->id, USER_BASE, USER_SIZE, false, false,
 		&team->address_space);
 	if (status != B_OK)
 		goto err2;
@@ -2148,7 +2148,7 @@ fork_team(void)
 	}
 
 	// create an address space for this team
-	status = VMAddressSpace::Create(team->id, USER_BASE, USER_SIZE, false,
+	status = VMAddressSpace::Create(team->id, USER_BASE, USER_SIZE, false, false,
 		&team->address_space);
 	if (status < B_OK)
 		goto err3;

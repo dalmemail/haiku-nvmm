@@ -26,6 +26,9 @@
 
 #include "VMKernelAddressSpace.h"
 #include "VMUserAddressSpace.h"
+#include "VMVirtualAddressSpace.h"
+
+#include <paging/64bit/X86GPAtoHPATranslationMap.h>
 
 
 //#define TRACE_VM
@@ -128,7 +131,7 @@ VMAddressSpace::Init()
 	}
 
 	// create the initial kernel address space
-	if (Create(B_SYSTEM_TEAM, KERNEL_BASE, KERNEL_SIZE, true,
+	if (Create(B_SYSTEM_TEAM, KERNEL_BASE, KERNEL_SIZE, true, false,
 			&sKernelAddressSpace) != B_OK) {
 		panic("vm_init: error creating kernel address space!\n");
 	}
@@ -184,13 +187,19 @@ VMAddressSpace::Dump() const
 
 /*static*/ status_t
 VMAddressSpace::Create(team_id teamID, addr_t base, size_t size, bool kernel,
-	VMAddressSpace** _addressSpace)
+	bool virtual_space, VMAddressSpace** _addressSpace)
 {
-	VMAddressSpace* addressSpace = kernel
-		? (VMAddressSpace*)new(std::nothrow) VMKernelAddressSpace(teamID, base,
-			size)
-		: (VMAddressSpace*)new(std::nothrow) VMUserAddressSpace(teamID, base,
-			size);
+	VMAddressSpace* addressSpace;
+	if (virtual_space)
+		addressSpace = (VMAddressSpace*)new(std::nothrow) VMVirtualAddressSpace(teamID, base,
+				size);
+	else {
+		addressSpace = kernel
+			? (VMAddressSpace*)new(std::nothrow) VMKernelAddressSpace(teamID, base,
+				size)
+			: (VMAddressSpace*)new(std::nothrow) VMUserAddressSpace(teamID, base,
+				size);
+	}
 	if (addressSpace == NULL)
 		return B_NO_MEMORY;
 
@@ -205,8 +214,16 @@ VMAddressSpace::Create(team_id teamID, addr_t base, size_t size, bool kernel,
 		base, addressSpace));
 
 	// create the corresponding translation map
-	status = arch_vm_translation_map_create_map(kernel,
-		&addressSpace->fTranslationMap);
+	if (virtual_space) {
+		// TODO: Case when the host (Haiku) has 5-level paging
+		// but the guest needs 4-level paging
+		X86GPAtoHPATranslationMap *map = new(std::nothrow) X86GPAtoHPATranslationMap(false);
+		status = map->Init();
+		addressSpace->fTranslationMap = map;
+	}
+	else
+		status = arch_vm_translation_map_create_map(kernel,
+			&addressSpace->fTranslationMap);
 	if (status != B_OK) {
 		delete addressSpace;
 		return status;
