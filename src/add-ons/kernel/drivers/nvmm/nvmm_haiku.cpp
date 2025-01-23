@@ -460,7 +460,7 @@ os_vmobj_rel(os_vmobj_t *vmobj)
 		// locks in this function might be unnecessary
 		// since we're gonna destroy everything (no one else should be around)
 		vmobj->cache->Lock();
-		VMArea *area = vmobj->cache->areas;
+		VMArea *area = vmobj->cache->areas.First();
 		vmobj->cache->Unlock();
 		VMArea *next_area;
 		for (; area != NULL; area = next_area) {
@@ -471,7 +471,7 @@ os_vmobj_rel(os_vmobj_t *vmobj)
 			vaddr_t start = area->Base();
 			vaddr_t end = area->Base() + area->Size();
 			bool wired = area->wiring == B_FULL_LOCK;
-			next_area = area->cache_next;
+			next_area = vmobj->cache->areas.GetNext(area);
 			address_space->ReadUnlock();
 			os_vmmap_t vm_map;
 			vm_map.address_space = address_space;
