@@ -1,0 +1,11 @@
+SubDir HAIKU_TOP src libs libnvmm ;
+
+UseHeaders [ FDirName $(HAIKU_TOP) headers compatibility bsd ] : true ;
+UseHeaders [ FDirName $(HAIKU_TOP) headers libs libnvmm ] : true ;
+UseHeaders [ FDirName $(HAIKU_TOP) src add-ons kernel drivers nvmm ] : true ;
+UseHeaders [ FDirName $(HAIKU_TOP) src add-ons kernel drivers nvmm include ] : true ;
+UseHeaders [ FDirName $(SUBDIR) include ] : true ;
+
+SharedLibrary [ MultiArchDefaultGristFiles libnvmm.so ] :
+	libnvmm.c
+;
